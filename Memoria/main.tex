@@ -1,0 +1,225 @@
+\documentclass[a4paper,10pt]{book}
+\usepackage[spanish, english]{babel}  % Configura el idioma en español
+\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+\usepackage{titling}
+\usepackage{ragged2e}
+\usepackage[hidelinks]{hyperref}
+\usepackage[]{titlesec} % Personalización de títulos
+\usepackage{titletoc} % Personalización del índice
+\usepackage{fancyhdr} % Para encabezados y pies de página
+\usepackage[]{tabularx}
+\usepackage[]{enumitem}
+\usepackage[]{amsmath}
+\usepackage[]{amsthm}
+\usepackage[]{mathtools}
+\usepackage[]{bm}
+\usepackage[]{thmtools}
+\usepackage{nameref}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{amssymb}
+
+
+
+\makeatother
+% ======================================
+% = Color de la Universidad de Sevilla =
+% ======================================
+\usepackage{tikz}
+\definecolor{MiAzul}{cmyk}{1.00,0.2,0,0.87}
+
+% =========
+% = Otros =
+% =========
+
+\setlist{noitemsep}
+
+% ==========================
+% = Matemáticas y teoremas =
+% ==========================
+
+\newcommand{\marcador}{\vrule height 10pt depth 2pt width 2pt \hskip .5em\relax}
+\newcommand{\cabeceraespecial}{%
+    \color{MiAzul}%
+    \normalfont\bfseries}
+\declaretheoremstyle[
+    spaceabove=\medskipamount,
+    spacebelow=\medskipamount,
+    headfont=\cabeceraespecial\marcador,
+    notefont=\cabeceraespecial,
+    notebraces={(}{)},
+    bodyfont=\normalfont,
+    postheadspace=1em,
+    numberwithin=chapter,
+    headindent=0pt,
+    headpunct={.}
+    ]{importante}
+\declaretheoremstyle[
+    spaceabove=\medskipamount,
+    spacebelow=\medskipamount,
+    headfont=\normalfont\color{MiAzul},
+    notefont=\normalfont,
+    notebraces={(}{)},
+    bodyfont=\normalfont,
+    postheadspace=1em,
+    numberwithin=section,
+    headindent=0pt,
+    headpunct={.}
+    ]{normal}
+\declaretheoremstyle[
+    spaceabove=\medskipamount,
+    spacebelow=\medskipamount,
+    headfont=\cabeceraespecial\color{MiAzul},
+    notefont=\normalfont,
+    notebraces={(}{)},
+    bodyfont=\normalfont,
+    postheadspace=1em,
+    numberwithin=section,
+    headindent=0pt,
+    headpunct={.}
+    ]{media}
+\declaretheoremstyle[
+    spaceabove=\medskipamount,
+    spacebelow=\medskipamount,
+    headfont=\normalfont\color{MiAzul},
+    notefont=\normalfont,
+    notebraces={(}{)},
+    bodyfont=\normalfont,
+    postheadspace=1em,
+    headindent=0pt,
+    headpunct={.},
+    numbered=no,
+    qed=\color{MiAzul}QED\marcador,
+    bodyfont=\normalfont\setlength{\parskip}{-2.5pt}
+    ]{demostracion}
+
+% Los nombres de los enunciados. Añade los que necesites.
+\declaretheorem[name=Observaci\'on, style=normal]{remark}
+\declaretheorem[name=Nota, style=normal]{note}
+\declaretheorem[name=Corolario, style=normal]{corollary}
+\declaretheorem[name=Proposici\'on, style=normal]{proposition}
+
+\declaretheorem[name=Ejemplo , style=normal]{ejemplo}
+
+\declaretheorem[name=Lema, style=media]{lemma}
+
+\declaretheorem[name=Teorema, style=importante]{theorem}
+\declaretheorem[name=Definici\'on, style=importante]{definition}
+
+\let\proof=\undefined
+\declaretheorem[name=Demostraci\'on, style=demostracion]{proof}
+
+
+% ============================
+% = Composición de la página =
+% ============================
+\usepackage[
+	a4paper,
+    textwidth=90ex,
+    left=30mm,    % Margen izquierdo
+    right=32mm,   % Margen derecho
+   bottom=35mm,
+]{geometry}
+
+\linespread{1.069}
+\parskip=5pt plus 1pt minus .5pt
+\frenchspacing
+%\raggedright
+
+
+% ==============================
+% = Composición de los títulos =
+% ==============================
+
+
+% =======================
+% = Cabeceras de página =
+% =======================
+\usepackage[]{fancyhdr}
+\usepackage[]{emptypage}
+\fancypagestyle{plain}{%
+    \fancyhf{}%
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+\fancypagestyle{tfg}{%
+    \fancyhf{}%
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+    \fancyhead[LE]{{\normalsize\color{MiAzul}\bfseries\thepage}\quad
+                    \small\textsc{\MakeLowercase{\maintitle}}}
+    \fancyhead[RO]{\small\textsc{\MakeLowercase{\rightmark}}%
+                    \quad{\normalsize\bfseries\color{MiAzul}\thepage}}%
+                    }
+
+
+
+% =======================
+% = Documento =
+% =======================
+
+
+\begin{document}
+
+\author{Nicolás Rodríguez Ruiz}
+
+\selectlanguage{spanish}
+
+\input{Chapters/portada}
+
+\newpage
+\mbox{}
+\thispagestyle{empty}
+\newpage
+
+\selectlanguage{english}
+
+\newpage
+\mbox{}
+\thispagestyle{empty}
+\newpage
+
+
+\selectlanguage{spanish}
+\newpage
+\mbox{}
+\thispagestyle{empty}
+\newpage
+\tableofcontents % Genera el índice automáticamente
+
+
+\newpage
+\mbox{}
+\thispagestyle{empty}
+\newpage
+
+% ==================================
+% = Formato Titulos
+% ==================================
+
+
+% Configuración del capítulo
+\titleformat{\chapter}[display]
+  {\bfseries\Huge	\flushright} % Estilo del texto (negrita, grande y centrado)
+  {\flushright\Huge\textbf{Capítulo \thechapter}
+  \rule{\textwidth}{0.5pt}}
+  {-1.5ex} % Espaciado entre el número y el título
+  {\LARGE\flushleft} % Tamaño del título del capítulo
+  [\vspace{-2.75ex}\Huge\rule{\textwidth}{0.5pt}]
+
+
+\input{Chapters/chapter1.tex}
+
+\input{Chapters/chapter2.tex}
+
+\input{Chapters/chapter3.tex}
+
+\input{Chapters/chapter4.tex}
+
+\input{Chapters/chapter5.tex}
+
+\input{Chapters/chapter6.tex}
+
+\end{document}
