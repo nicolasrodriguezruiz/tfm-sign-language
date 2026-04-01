@@ -130,7 +130,7 @@ RHAND_IDX = list(range(115, 136))
 # Resulting feature dimension
 # Dimensiones: (6 + 3 + 2 + 2 + 21 + 21) = 55 kp × 2 coords = 110
 KEYPOINT_SIZE = (len(FACE_IDX) + len(UPPER_IDX) + len(LARM_IDX) +
-                 len(RARM_IDX) + len(LHAND_IDX) + len(RHAND_IDX)) * 2  # 118
+                 len(RARM_IDX) + len(LHAND_IDX) + len(RHAND_IDX)) * 2  + FACE*3 # 110/113
 
 FACE = True
 
@@ -235,7 +235,7 @@ class Frame:
       - Manos: Lógica original Min-Max (su propio centro de bounding box).
     """
 
-    KEYPOINT_SIZE = KEYPOINT_SIZE + FACE*3 # 55 puntos * 2 + 3*FACE (distancias faciales)
+    KEYPOINT_SIZE = KEYPOINT_SIZE  # 55 puntos * 2 + 3*FACE (distancias faciales)
 
     def __init__(self, json_path: str):
         with open(json_path, "r") as f:
@@ -279,6 +279,11 @@ class Frame:
         rhand_norm = self._normalize_hands(rhand)
 
         if FACE:
+            # --- EXTRACCIÓN DE MICRO-EXPRESIONES (Morfemas no manuales) ---
+            # Usamos los puntos originales de kps antes de normalizar para consistencia
+            def get_dist(p1_idx, p2_idx):
+                return np.linalg.norm(kps[p1_idx, :2] - kps[p2_idx, :2])
+
             d_face = get_dist(0, 18)
             # 1. Apertura de boca
             mouth_open = get_dist(77, 83) / d_face # d_face sería la dist nariz-cuello
@@ -329,10 +334,6 @@ class Frame:
         # al (0,0) de su propio bounding box de forma independiente al cuerpo.
         return (keypoints - v_min) / d - 0.5
 
-    # --- EXTRACCIÓN DE MICRO-EXPRESIONES (Morfemas no manuales) ---
-    # Usamos los puntos originales de kps antes de normalizar para consistencia
-    def get_dist(p1_idx, p2_idx):
-        return np.linalg.norm(kps[p1_idx, :2] - kps[p2_idx, :2])
 
 
 
@@ -581,4 +582,4 @@ if __name__ == "__main__":
     log.info(f"  Val       : {len(val_dataset)}   → {args.val_output}")
     log.info(f"  Tokenizer : {tokenizer.vocab_size} tokens → {args.tokenizer_output}")
     log.info(f"  N         : {N} frames")
-    log.info(f"  INPUT_DIM : {KEYPOINT_SIZE}  ← update in model_train.py")
+    log.info(f"  INPUT_DIM : {KEYPOINT_SIZE}")
