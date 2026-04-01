@@ -186,7 +186,7 @@ def setup_logger(log_dir: str) -> logging.Logger:
 
 class SignLanguageTokenizer:
     """
-    Word-level tokenizer for German (Phoenix) or English (How2Sign).
+    Word-level tokenizer for German (Phoenix)
     Language-agnostic — uses NLTK word_tokenize with language param.
     """
     def __init__(self, language="german"):
@@ -218,10 +218,6 @@ class SignLanguageTokenizer:
         encoded.append(self.word2idx["<eos>"])
         return encoded
 
-
-# ---------------------------------------------------------------------------
-# Frame — extracts and normalises Halpe-136 keypoints
-# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # Frame — extracts and normalises Halpe-136 keypoints
 # ---------------------------------------------------------------------------
