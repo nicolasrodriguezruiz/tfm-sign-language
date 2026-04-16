@@ -1,10 +1,46 @@
 \chapter{Metodología}
 Modelos que vamos a probar, preprocesado de datos (normalización, etc)
 \section{Extracción de Keypoints}
-\subsection{OpenPose}
+Como se mencionó, la extracción de keypoints es el proceso mediante el cual se obtiene una representación estructurada del cuerpo humano a partir de imágenes o vídeo, en forma de coordenadas de puntos anatómicos predefinidos, tales como articulaciones, extremidades o rasgos faciales. Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando información irrelevante como el fondo, la iluminación o la apariencia superficial, lo que la convierte en una representación compacta, generalizable y respetuosa con la privacidad, tal y como se argumentó en la sección anterior.
+
+En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a herramientas de estimación de pose de gran precisión y eficiencia. Entre las más destacadas se encuentran \textbf{MediaPipe Holistic}, desarrollada por Google y ampliamente adoptada en la literatura de lengua de signos por su capacidad para detectar simultáneamente cuerpo, manos y rostro en tiempo real con un bajo costo en recursos computacionales; \textbf{OpenPose}, uno de los primeros sistemas de estimación multi-persona de referencia; y \textbf{AlphaPose}, un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios con múltiple personas, condiciones de oclusión y videos de baja calidad.
+%\subsection{OpenPose}
 \subsection{Alphapose}
+AlphaPose ha demostrado obtener el menor error medio en detección de keypoints frente a MediaPipe y OpenPose incluso bajo condiciones de degradación de imagen \cite{info16110970}, lo que refuerza su idoneidad para entornos de grabación no controlados, habituales en datasets de lengua de signos, especialmente en el dataset con el que trabajaremos.
+
+
+\begin{figure}[htbp]
+  \centering
+  % --- BLOQUE IZQUIERDO: La figura alta ---
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{human_model_halpe_136.jpg}
+
+  \end{minipage}
+  \hfill
+  % --- BLOQUE DERECHO: Las dos figuras cuadradas ---
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    % Primera figura cuadrada
+    \includegraphics[width=0.8\textwidth]{hand_halpe_136.jpg}
+
+    \vspace{0.5cm}
+
+    % Segunda figura cuadrada
+    \includegraphics[width=0.8\textwidth]{face_halpe_136.jpg}
+
+  \end{minipage}
+  \caption{Keypoints en el Modelo Halpe-136}
+\end{figure}
+
+\lstinputlisting[language=json]{code/keypoints-format.txt}
+
 
 \section{Seq2Seq}
+
+\section{Normalización de los Datos}
+
+\section{Métricas}
 
 \section{Transformers}
 \subsection{¿Qué es un Transformer?}

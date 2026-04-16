@@ -1,0 +1,8 @@
+{
+    "version": "alphapose_halpe136",
+    "people": [{
+    "pose_keypoints_2d": [x0,y0,c0, x1,y1,c1, ..., x135,y135,c135],
+    "box": [...],
+    "score": float
+    }]
+}

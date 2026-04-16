@@ -1,4 +1,6 @@
 \documentclass[a4paper, 11pt]{book}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 \usepackage[spanish]{babel}
 \addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
 \usepackage{graphicx}
@@ -20,9 +22,10 @@
 \usepackage{float}
 \usepackage{tikz}
 \usepackage{amssymb}
-
-
-
+\usepackage{listings}
+\lstset{
+  upquote=true
+}
 \makeatother
 
 \definecolor{MiAzul}{cmyk}{1.00,0.2,0,0.87}
@@ -32,6 +35,8 @@
 % =========
 
 \setlist{noitemsep}
+
+\input{listing-style/json.tex}
 
 % ==========================
 % = Matemáticas y teoremas =
