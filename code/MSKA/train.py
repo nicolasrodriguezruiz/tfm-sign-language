@@ -27,7 +27,7 @@ from metrics import wer_list, bleu, rouge
 from optimizer import build_optimizer, build_scheduler
 # Funciones de limpieza de texto específicas de cada variante del dataset Phoenix
 # (normalizan mayúsculas, puntuación, etc.) antes de calcular métricas
-from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014
+# from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 (no se usan)
 
 
 # ---------------------------------------------------------------------------
@@ -246,13 +246,13 @@ def main(args, config):
                          beam_size=config['testing']['recognition']['beam_size'],
                          generate_cfg=config['training']['validation']['translation'],
                          do_translation=config['do_translation'], do_recognition=config['do_recognition'])
-    print(f"Dev loss of the network on the {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
+    print(f"Dev loss de la red en los {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
 
     test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0,
                           beam_size=config['testing']['recognition']['beam_size'],
                           generate_cfg=config['testing']['translation'],
                           do_translation=config['do_translation'], do_recognition=config['do_recognition'])
-    print(f"Test loss of the network on the {len(test_dataloader)} test videos: {test_stats['loss']:.3f}")
+    print(f"Test loss de la red en los {len(test_dataloader)} test videos: {test_stats['loss']:.3f}")
 
     with (output_dir / "log.txt").open("a") as f:
         if config['do_recognition']:
@@ -274,7 +274,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
     model.train()  # activa dropout, batch norm en modo entrenamiento, etc.
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    header = f'Epoch: [{epoch}/{args.epochs}]'
+    header = f'Epoca: [{epoch}/{args.epochs}]'
 
     for step, (batch) in enumerate(metric_logger.log_every(data_loader, print_freq=10, header=header)):
         optimizer.zero_grad()        # limpiar gradientes del paso anterior
@@ -303,7 +303,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
     if args.run:
         args.run.log({'epoch': epoch + 1, 'epoch/train_loss': loss_value})
 
-    print("Averaged stats:", metric_logger)
+    print("Metricas medias:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
