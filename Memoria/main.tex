@@ -1,8 +1,7 @@
 \documentclass[a4paper, 11pt]{book}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish]{babel}
-\addto\captionsspanish{\renewcommand{\tablename}{Tabla}}
+\usepackage[spanish, es-tabla]{babel}
 \usepackage{graphicx}
 \graphicspath{ {./images/} }
 \usepackage{titling}
@@ -21,6 +20,7 @@
 \usepackage{nameref}
 \usepackage{float}
 \usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, shapes.geometric, calc, shadows}
 \usepackage{amssymb}
 \usepackage{listings}
 \lstset{
@@ -212,16 +212,18 @@
   [\vspace{-2.75ex}\Huge\rule{\textwidth}{0.5pt}]
 
 
-\input{Chapters/chapter1.tex} % Intro
+\input{Chapters/Intro.tex} % Intro
 
-\input{Chapters/chapter2.tex} % SOTA
+\input{Chapters/SOTA.tex} % SOTA
 
-\input{Chapters/chapter3.tex} % Metodologia
+\input{Chapters/fundamentos.tex} % Fundamentos
 
-\input{Chapters/chapter4.tex} % Experimetancion
+\input{Chapters/Metodologia.tex} % Metodologia
 
-\input{Chapters/chapter5.tex} % Conclusion
+\input{Chapters/Experimetancion.tex} % Experimetancion
 
-\input{Chapters/chapter6.tex} % Bib
+\input{Chapters/Conclusion.tex} % Conclusion
+
+\input{Chapters/Bib.tex} % Bib
 
 \end{document}

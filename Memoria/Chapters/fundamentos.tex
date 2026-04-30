@@ -1,0 +1,35 @@
+\chapter{Fundamentos}
+
+\section{Medidas de precisión en traducción}
+
+\section{Transformers}
+La aparición de la arquitectura \textbf{transformer}, introducida por \textit{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje. La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela. Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
+
+\subsection{¿Por qué Transformers?}
+Para entender la relevancia e inovación de los transformers es necesario conocer lo que les precedía. En particular, las \textit{long short-term memory} y las \textit{gated recurrent neural networks} dominaron el procesamiento de secuencias mediante mecanismos de computación recurrente, los cuales procesan la información de manera secuencial siguiendo el orden temporal de la entrada. Estas arquitecturas presentaban dos limitaciones fundamentales: la dificultad para captar dependencias de largo alcance debido al desvanecimiento del gradiente y la imposibilidad de paralelizar el entrenamiento, lo que restringe enormemente la eficiencia computacional con secuencias largas.
+
+Los transformers proponen abandonar por completo la recurrencia en favor del mecanismo de atención, lo que les permite captar dependencias de largo alcance en los textos de forma directa y con operaciones fácilmente paralelizables. En lugar de procesar la secuencia elemento a elemento, estos modelos consideran simultáneamente todos los tokens de entrada mediante el mecanismo de auto-atención, que calcula la relevancia relativa entre cada par de posiciones de la secuencia.
+
+Este enfoque introduce varias ventajas clave. En primer lugar, elimina la dependencia estrictamente secuencial del cómputo, permitiendo un uso mucho más eficiente del hardware moderno, especialmente en arquitecturas paralelas como las \textbf{GPUs}. En segundo lugar, facilita el modelado de relaciones a larga distancia sin los problemas asociados al desvanecimiento del gradiente, ya que cualquier elemento de la secuencia puede interactuar directamente con cualquier otro en un solo paso de atención.
+
+Además, los transformers incorporan mecanismos como las codificaciones posicionales para preservar la información sobre el orden de la secuencia, compensando así la ausencia de recurrencia. Esta combinación de atención global y representación posicional ha demostrado ser altamente efectiva en tareas de modelado del lenguaje y traducción automática, superando ampliamente a las arquitecturas recurrentes tradicionales.
+
+Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
+
+\subsection{Codificación Posicional} % \textit{Positional Encoding}}
+
+\subsection{Mecanismo de Auto-atención} % \textit{Self-Attention Mechanism}
+La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Con base en estos pesos, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
+
+La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$. En la práctica sacando provecho de que la multiplicación entre matrices está muy optimizada estas operaciones se hacen mediante matrices, obteniendo la siguiente fórmula.
+\begin{equation*}
+Attention(Q,K,V) = softmax\left( \frac{QK'}{\sqrt{d_k}}\right)V.
+\end{equation*} Se añade el factor de escalado $\sqrt{d_k}$ pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
+\input{Chapters/diagramas/attention.tex}
+
+
+
+
+
+
+\input{Chapters/diagramas/multiheadAttention.tex}

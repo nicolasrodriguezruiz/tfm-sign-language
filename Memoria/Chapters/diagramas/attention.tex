@@ -1,0 +1,52 @@
+\begin{figure}[H]
+\center
+\begin{tikzpicture}[
+    % Estilo base
+    block/.style={
+        rectangle,
+        draw=black,
+        line width=1.5pt,
+        rounded corners=2pt,
+        minimum width=2.5cm,
+        minimum height=0.8cm,
+        font=\sffamily\Large,
+        align=center
+    },
+    % Cambiamos 'scale' por 'styleScale' para evitar el error de pgfkeys
+    styleMatmul/.style={block, fill=blue!15!purple!20},
+    styleScale/.style={block, fill=yellow!25},
+    styleMask/.style={block, fill=red!15},
+    styleSoftmax/.style={block, fill=green!15},
+    arrow/.style={-Stealth, line width=1.2pt}
+]
+
+    % --- NODOS ---
+    \node (Q) at (0,0) {\sffamily\Large Q};
+    \node (K) at (2,0) {\sffamily\Large K};
+    \node (V) at (4,0) {\sffamily\Large V};
+
+    % Columna central (usando el nuevo nombre de estilo styleScale)
+    \node[styleMatmul, above=0.8cm of $(Q)!0.5!(K)$] (mm1) {MatMul};
+    \node[styleScale, above=0.6cm of mm1] (sc) {\text{Scale}};
+    \node[styleMask, above=0.6cm of sc] (mask) {Mask (opt.)};
+    \node[styleSoftmax, above=0.6cm of mask] (sm) {SoftMax};
+
+    % Bloque superior
+    \node[styleMatmul, minimum width=4cm, above=0.8cm of sm, xshift=1.4cm] (mm2) {MatMul};
+
+    % Salida
+    \node (out) [above=0.7cm of mm2] {};
+
+    % --- CONEXIONES ---
+    \draw[arrow] (Q.north) -- ([xshift=-1cm]mm1.south);
+    \draw[arrow] (K.north) -- ([xshift=1cm]mm1.south);
+    \draw[arrow] (mm1) -- (sc);
+    \draw[arrow] (sc) -- (mask);
+    \draw[arrow] (mask) -- (sm);
+    \draw[arrow] (sm.north) -- ([xshift=-1.4cm]mm2.south);
+    \draw[arrow] (V.north) -- ([xshift=1.6cm]mm2.south);
+    \draw[arrow] (mm2.north) -- (out);
+
+\end{tikzpicture}
+\caption{Una cabeza de atención}
+\end{figure}
