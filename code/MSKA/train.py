@@ -29,6 +29,8 @@ from optimizer import build_optimizer, build_scheduler
 # (normalizan mayúsculas, puntuación, etc.) antes de calcular métricas
 # from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 (no se usan)
 
+import warnings
+warnings.filterwarnings("ignore")
 
 # ---------------------------------------------------------------------------
 # Argumentos de línea de comandos
