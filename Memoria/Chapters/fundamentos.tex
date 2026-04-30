@@ -3,7 +3,7 @@
 \section{Medidas de precisión en traducción}
 
 \section{Transformers}
-La aparición de la arquitectura \textbf{transformer}, introducida por \textit{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje. La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela. Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
+La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje. La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela. Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
 
 \subsection{¿Por qué Transformers?}
 Para entender la relevancia e inovación de los transformers es necesario conocer lo que les precedía. En particular, las \textit{long short-term memory} y las \textit{gated recurrent neural networks} dominaron el procesamiento de secuencias mediante mecanismos de computación recurrente, los cuales procesan la información de manera secuencial siguiendo el orden temporal de la entrada. Estas arquitecturas presentaban dos limitaciones fundamentales: la dificultad para captar dependencias de largo alcance debido al desvanecimiento del gradiente y la imposibilidad de paralelizar el entrenamiento, lo que restringe enormemente la eficiencia computacional con secuencias largas.
@@ -19,17 +19,20 @@ Es natural plantearse si esta habilidad y facilidad que presentan los transoform
 \subsection{Codificación Posicional} % \textit{Positional Encoding}}
 
 \subsection{Mecanismo de Auto-atención} % \textit{Self-Attention Mechanism}
-La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Con base en estos pesos, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
+La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
 
-La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$. En la práctica sacando provecho de que la multiplicación entre matrices está muy optimizada estas operaciones se hacen mediante matrices, obteniendo la siguiente fórmula.
+La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$. En la práctica, sacando provecho de que la multiplicación entre matrices está muy optimizada, estas operaciones se hacen mediante matrices, obteniendo la siguiente fórmula.
 \begin{equation*}
 Attention(Q,K,V) = softmax\left( \frac{QK'}{\sqrt{d_k}}\right)V.
-\end{equation*} Se añade el factor de escalado $\sqrt{d_k}$ pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
+\end{equation*} Se añade el factor de escalado $\sqrt{d_k}$, pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño, donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
 \input{Chapters/diagramas/attention.tex}
+%La idea detrás de los mecanismos de atención es, como se menciona, enriquecer el significado de cada uno de los \textit{tokens}, de su representación, teniendo en cuenta los otros de la consulta. Esto permite que el modelo tenga la información más completa posible a la hora de realizar la traducción.
+Un problema que surge es la limitada capacidad de una sola cabeza de prestar atención a multiples aspectos de la entrada, pues al tratar de hacerlo se diluyen las relaciones al mezclarse, potencialmente limitando la capacidad de comprensión del modelo.
 
+Así, en vez de tener una única función de atención con \textit{keys}, \textit{values} y \textit{queries} $d_{\text{modelo}}$-dimensinales, \textbf{Vaswani et al.} proponen utilizar $h$ diferentes proyecciones lineales a dimensión $d_k$, para consultas y claves, y $d_v$ para valores. De esta forma el modelo puede ``prestar atención'' a distintos aspectos de la entrada de forma simultánea.
 
-
-
-
-
+En este caso, la atención multi-cabeza se calcula como sigue\begin{align*}
+MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
+\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
+\end{align*} donde $W^Q_i,W^K_i\in\mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i\in\mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O\in\mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son matrices de pesos entrenables. En particular las matrices $W$ son las proyecciones.
 \input{Chapters/diagramas/multiheadAttention.tex}
