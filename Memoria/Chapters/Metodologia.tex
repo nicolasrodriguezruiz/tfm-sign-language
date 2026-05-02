@@ -3,12 +3,20 @@ Modelos que vamos a probar, preprocesado de datos (normalización, etc)
 \section{Extracción de Keypoints}
 Como se mencionó, la extracción de keypoints es el proceso mediante el cual se obtiene una representación estructurada del cuerpo humano a partir de imágenes o vídeo, en forma de coordenadas de puntos anatómicos predefinidos, tales como articulaciones, extremidades o rasgos faciales. Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando información irrelevante como el fondo, la iluminación o la apariencia superficial, lo que la convierte en una representación compacta, generalizable y respetuosa con la privacidad, tal y como se argumentó en la sección anterior.
 
-En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a herramientas de estimación de pose de gran precisión y eficiencia. Entre las más destacadas se encuentran \textbf{MediaPipe Holistic}, desarrollada por Google y ampliamente adoptada en la literatura de lengua de signos por su capacidad para detectar simultáneamente cuerpo, manos y rostro en tiempo real con un bajo costo en recursos computacionales; \textbf{OpenPose}, uno de los primeros sistemas de estimación multi-persona de referencia; y \textbf{AlphaPose}, un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios con múltiple personas, condiciones de oclusión y videos de baja calidad.
+En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a herramientas de estimación de pose de gran precisión y eficiencia. Entre las más destacadas se encuentran \textbf{MediaPipe Holistic}, desarrollada por Google y ampliamente adoptada en la literatura de lengua de signos por su capacidad para detectar simultáneamente cuerpo, manos y rostro en tiempo real con un \textit{bajo costo en recursos computacionales}; \textbf{OpenPose}, uno de los primeros sistemas de estimación multi-persona de referencia, si bien \textit{ha sido ampliamente utilizado como referencia} en trabajos previos de estimación de pose, presenta limitaciones en términos de eficiencia y robustez frente a enfoques más recientes; aunque métodos como \textbf{HRNet} ofrecen una \textit{elevada precisión en la localización de keypoints en imágenes estáticas}, no incorporan de forma explícita mecanismos de seguimiento temporal, lo que puede generar variabilidad entre frames en secuencias de vídeo. Finalmente, \textbf{AlphaPose}, un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios con múltiple personas, \textit{condiciones de oclusión y videos de baja calidad}, que es espeicalmete nuestro caso. Además, este último, a diferencia de \textbf{HRNet}, está optimizado para ser relativamente rápido, permitiendo una extracción más cómoda.
+
+
+
+
 %\subsection{OpenPose}
 \subsection{Alphapose}
 AlphaPose ha demostrado obtener el menor error medio en detección de keypoints frente a MediaPipe y OpenPose incluso bajo condiciones de degradación de imagen \cite{info16110970}, lo que refuerza su idoneidad para entornos de grabación no controlados, habituales en datasets de lengua de signos, especialmente en el dataset con el que trabajaremos.
 
-
+AlphaPose ofrece la capacidad de cambiar el modelo utilizado para la representación del esqueleto, existiendo principalmente dos conjuntos de datos de pose de cuerpo completo:
+\begin{itemize}
+  \item \textbf{COCO-WholeBody}, una ampliación del conjunto de datos \textbf{MS COCO} enfocada en el cuerpo humano completo. Incluye anotaciones detalladas de puntos clave del cuerpo, manos, cara y pies, lo que permite realizar estimaciones de pose más completas y precisas en tareas de análisis del movimiento humano.
+  \item \textbf{HALPE-136}, un conjunto de datos más reciente que proporciona una anotación aún más densa (136 puntos clave), con especial énfasis en manos y rostro. Este mayor nivel de detalle puede resultar beneficioso en tareas que requieren capturar movimientos finos, como el reconocimiento de lengua de signos, aunque a costa de una mayor complejidad computacional y posible sensibilidad al ruido en entornos no controlados.
+\end{itemize}
 \begin{figure}[htbp]
   \centering
   % --- BLOQUE IZQUIERDO: La figura alta ---
@@ -39,8 +47,6 @@ AlphaPose ha demostrado obtener el menor error medio en detección de keypoints 
 \section{Seq2Seq}
 
 \section{Normalización de los Datos}
-
-\section{Métricas}
 
 \section{Multi Stream Keypoint Attention}
 En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma. Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, hace uso de las glosas como representación intermedia de la traducción, asegurando que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
