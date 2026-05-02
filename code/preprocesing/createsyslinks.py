@@ -26,7 +26,7 @@ def _link_video_frames(video_path, split, video_name):
     return count
 
 def step1_create_symlinks():
-    print("=== PASO 1: Creando enlaces simbólicos (Multihilo) ===")
+    print("=== PASO 1: Creando enlaces simbólicos ===")
     os.makedirs(SYMLINK_DIR, exist_ok=True)
     
     # Preparar la lista de todos los vídeos a procesar
@@ -53,13 +53,13 @@ def step1_create_symlinks():
         for future in concurrent.futures.as_completed(futures):
             total_frames += future.result()
             
-    print(f"Listo. {total_frames} frames enlazados virtualmente a la velocidad de la luz.")
+    print(f"Listo. {total_frames} frames enlazados.")
 
 def step2_run_alphapose():
     print("\n=== PASO 2: Ejecutando AlphaPose (Delegando al script oficial) ===")
     os.chdir(ALPHAPOSE_DIR)
     
-    # Llamada nativa a consola: a prueba de errores de CUDA multiprocessing
+
     cmd = [
         "python", "scripts/demo_inference.py",
         "--cfg", "configs/halpe_136/resnet/256x192_res50_lr1e-3_2x-dcn-combined.yaml",
@@ -109,7 +109,7 @@ def step3_split_json():
         with open(out_file, 'w') as f:
             json.dump({"version": "alphapose_halpe136", "people": people}, f)
             
-    print(f"¡Éxito total! Generados {len(frames_dict)} archivos JSON individuales.")
+    print(f"¡Éxito! Generados {len(frames_dict)} archivos JSON individuales.")
     
     # Limpieza final
     os.remove(results_json)
