@@ -12,6 +12,10 @@ data:
   txt_lowercase: true
   max_sent_length: 400
   dataset_name: Phoenix-2014T
+  augmentation: # Para desactivar poner a 0
+    joint_dropout: 0     # 10% de articulaciones enmascaradas por muestra
+    gaussian_noise: 0   # ruido con std=0.01 sobre coordenadas normalizadas [-1,1]
+
 
 testing:
   recognition:

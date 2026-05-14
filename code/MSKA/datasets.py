@@ -29,6 +29,8 @@ class S2T_Dataset(Dataset.Dataset):
         self.args = args
         self.training_refurbish = training_refurbish
         self.phase = phase
+        # Leer config de augmentación de keypoints (solo se aplica en entrenamiento)
+        self.augmentation_cfg = config['data'].get('augmentation', {})
 
         # Número máximo de frames por muestra
         self.clip_len = 400
@@ -187,6 +189,35 @@ class S2T_Dataset(Dataset.Dataset):
 
         return torch.from_numpy(data_numpy)
 
+    def random_joint_dropout(self, keypoints, dropout_prob):
+        """
+        Enmascara articulaciones enteras aleatoriamente poniendo sus coordenadas a 0.
+        Simula oclusiones visuales: una mano tapada, keypoints no detectados, etc.
+
+        keypoints shape: (C, T, V)
+        dropout_prob: probabilidad de enmascarar cada articulación (p.ej. 0.1 = 10%)
+        """
+        C, T, V = keypoints.shape
+        # Generar máscara por articulación (misma máscara para todos los frames)
+        mask = torch.bernoulli(
+            torch.full((V,), 1 - dropout_prob)
+        ).bool()  # True = mantener, False = enmascarar
+        keypoints[:, :, ~mask] = 0
+        return keypoints
+
+    def random_gaussian_noise(self, keypoints, std):
+        """
+        Añade ruido gaussiano a las coordenadas espaciales.
+        Introduce variabilidad sin alterar la estructura global de la pose.
+
+        Solo se aplica a los canales x e y (primeros 2), no a la confianza.
+        keypoints shape: (C, T, V)
+        std: desviación estándar del ruido (p.ej. 0.01 sobre coordenadas normalizadas [-1,1])
+        """
+        noise = torch.randn_like(keypoints[:2, :, :]) * std
+        keypoints[:2, :, :] += noise
+        return keypoints
+
     def augment_preprocess_inputs(self, is_train, keypoints=None):
         """
         Normaliza los keypoints al rango [-1, 1]:
@@ -197,8 +228,6 @@ class S2T_Dataset(Dataset.Dataset):
 
         En entrenamiento además aplica random_move (rotación aleatoria).
 
-        TODO: el bloque de entrenamiento y el de validación son idénticos salvo
-        por random_move; pendiente añadir más augmentaciones espaciales.
         """
         # Normalización X
         keypoints[:, 0, :, :] /= self.w
@@ -214,10 +243,27 @@ class S2T_Dataset(Dataset.Dataset):
                 keypoints[:, :2, :, :].permute(0, 2, 3, 1).numpy()
             ).permute(0, 3, 1, 2)
 
+            # Joint dropout
+            if self.augmentation_cfg.get('joint_dropout', 0) > 0:
+                for i in range(keypoints.shape[0]):
+                    keypoints[i] = self.random_joint_dropout(
+                        keypoints[i],
+                        dropout_prob=self.augmentation_cfg['joint_dropout']
+                    )
+
+            # Ruido gaussiano # FIXME: Normalizar despues de esto
+            if self.augmentation_cfg.get('gaussian_noise', 0) > 0:
+                for i in range(keypoints.shape[0]):
+                    keypoints[i] = self.random_gaussian_noise(
+                        keypoints[i],
+                        std=self.augmentation_cfg['gaussian_noise']
+                    )
+
         return keypoints
 
+
     # ------------------------------------------------------------------ #
-    #  Construcción del batch                                              #
+    #  Construcción del batch                                            #
     # ------------------------------------------------------------------ #
 
     def collate_fn(self, batch):
