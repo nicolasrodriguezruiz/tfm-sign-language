@@ -1,12 +1,16 @@
 import torch
 import torch.nn as nn
-import math
+
+# import torchaudio # decodeV2 (Full PyT)
+
+# Decode V1 (TF)
 import numpy as np
 import tensorflow as tf
-from copy import deepcopy
+from itertools import groupby
+
 from Tokenizer import GlossTokenizer_S2G
 from Visualhead import VisualHead
-from itertools import groupby
+import math
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +145,7 @@ class STAttentionBlock(nn.Module):
                  glo_reg_s=True, att_s=True, glo_reg_t=False, att_t=False,
                  use_temporal_att=False, use_spatial_att=True, attentiondrop=0.,
                  use_pes=True, use_pet=False):
-        super(STAttentionBlock, self).__init__()
+        # super(STAttentionBlock, self).__init__()
         self.inter_channels = inter_channels
         self.out_channels = out_channels
         self.in_channels = in_channels
@@ -482,6 +486,12 @@ class Recognition(nn.Module):
         self.fuse_method = cfg.get('fuse_method', 'empty')
         self.heatmap_cfg = cfg.get('heatmap_cfg', {})
 
+
+        # 'weighted' usa pesos aprendidos, 'uniform' usa el promedio simple original
+        self.ensemble_method = cfg.get('ensemble_method', 'uniform')
+        if self.ensemble_method == 'weighted':
+            self.stream_weights = nn.Parameter(torch.ones(4) / 4)
+
         if self.input_type == 'keypoint':
             # Backbone DSTA: extrae features espacio-temporales de los keypoints
             self.visual_backbone_keypoint = DSTA(
@@ -579,6 +589,32 @@ class Recognition(nn.Module):
             beam_size=beam_size,
         )
 
+        # def decode(self, gloss_logits, beam_size, input_lengths):
+        #     """
+        #     Decodifica logits CTC a secuencias de glosas usando beam search de torchaudio.
+        #     Ya no necesita reordenar el vocabulario ni salir a TensorFlow.
+        #     """
+        #     # torchaudio espera log-probabilidades en formato (T, B, V)
+        #     log_probs = gloss_logits.permute(1, 0, 2).log_softmax(2).cpu()
+        #
+        #     # beam search: blank=0 porque el token de silencio está en el índice 0
+        #     decoder = torchaudio.models.decoder.ctc_decoder(
+        #         lexicon=None,
+        #         tokens=list(self.gloss_tokenizer.id2gloss.values()),
+        #         blank_token=self.gloss_tokenizer.id2gloss[0],  # token de silencio
+        #         beam_size=beam_size,
+        #     )
+        #     hypotheses = decoder(log_probs, input_lengths.cpu())
+        #
+        #     # Extraer la mejor hipótesis de cada muestra del batch
+        #     decoded_gloss_sequences = []
+        #     for hyp in hypotheses:
+        #         decoded_gloss_sequences.append([t + 1 for t in hyp[0].tokens.tolist()]) # TensorFlow devolvía IDs con un +1 aplicado (por el desplazamiento del blank). La versión de torchaudio devuelve los IDs directamente sin ese desplazamiento, para evitar tener que cambiar todo sumamos 1
+        #
+        #     return decoded_gloss_sequences
+
+
+
     def forward(self, src_input):
         """
         Forward pass completo del recognition network.
@@ -609,16 +645,29 @@ class Recognition(nn.Module):
         left_head  = self.left_visual_head( x=left_output,  mask=mask, valid_len_in=lengths)
         right_head = self.right_visual_head(x=right_output, mask=mask, valid_len_in=lengths)
 
+
         # --- 3. Ensemble: promediar probabilidades de las 4 cabezas ---
-        # Se promedian probabilidades (no log-probabilidades) porque la suma de
-        # distribuciones de probabilidad es más estable que la suma de logs.
-        # Luego se aplica log para obtener log-probabilidades para CTC.
-        ensemble_probs = (
-            left_head['gloss_probabilities'] +
-            right_head['gloss_probabilities'] +
-            body_head['gloss_probabilities'] +
-            fuse_head['gloss_probabilities']
-        ).log()
+        if self.ensemble_method == 'weighted':
+            # Podenración por pesos aprendibles
+            weights = torch.softmax(self.stream_weights, dim=0)
+            ensemble_probs = (
+                weights[0] * left_head['gloss_probabilities'] +
+                weights[1] * right_head['gloss_probabilities'] +
+                weights[2] * body_head['gloss_probabilities'] +
+                weights[3] * fuse_head['gloss_probabilities']
+            ).log()
+        else:
+            # Promedio simple original
+            # Se promedian probabilidades (no log-probabilidades) porque la suma de
+            # distribuciones de probabilidad es más estable que la suma de logs.
+            # Luego se aplica log para obtener log-probabilidades para CTC.
+            ensemble_probs = (
+                left_head['gloss_probabilities'] +
+                right_head['gloss_probabilities'] +
+                body_head['gloss_probabilities'] +
+                fuse_head['gloss_probabilities']
+            ).log()
+
 
         head_outputs = {
             # Ensemble
@@ -686,4 +735,6 @@ class Recognition(nn.Module):
                 )
                 outputs['recognition_loss'] += outputs[f'{student}_distill_loss']
 
+        if self.ensemble_method == 'weighted':
+            outputs['stream_weights'] = torch.softmax(self.stream_weights, dim=0).detach()
         return outputs
