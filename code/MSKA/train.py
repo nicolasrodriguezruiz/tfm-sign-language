@@ -27,7 +27,7 @@ from metrics import wer_list, bleu, rouge
 from optimizer import build_optimizer, build_scheduler
 # Funciones de limpieza de texto específicas de cada variante del dataset Phoenix
 # (normalizan mayúsculas, puntuación, etc.) antes de calcular métricas
-# from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 (no se usan)
+from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 #(no se usan)
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -301,9 +301,25 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
 
         metric_logger.update(loss=loss_value)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+    if step % 50 == 0 and 'stream_weights' in output:
+        w = output['stream_weights']
+        print(f"Stream weights — left:{w[0]:.3f} right:{w[1]:.3f} body:{w[2]:.3f} fuse:{w[3]:.3f}")
 
-    if args.run:
+    if args.run and 'stream_weights' in output:
+        w = output['stream_weights']
+        args.run.log({
+            'epoch': epoch + 1,
+            'stream_weights/left':  w[0].item(),
+            'stream_weights/right': w[1].item(),
+            'stream_weights/body':  w[2].item(),
+            'stream_weights/fuse':  w[3].item(),
+            'epoch/train_loss':     loss_value,
+        })
+
+    elif args.run:
         args.run.log({'epoch': epoch + 1, 'epoch/train_loss': loss_value})
+
+
 
     print("Metricas medias:", metric_logger)
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
@@ -419,6 +435,8 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
             'epoch/dev_loss': output['recognition_loss'].item(),
             'wer': evaluation_results['wer'],
         })
+
+
 
     print("* Averaged stats:", metric_logger)
     print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.loss))
