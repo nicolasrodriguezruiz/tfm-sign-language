@@ -145,7 +145,7 @@ class STAttentionBlock(nn.Module):
                  glo_reg_s=True, att_s=True, glo_reg_t=False, att_t=False,
                  use_temporal_att=False, use_spatial_att=True, attentiondrop=0.,
                  use_pes=True, use_pet=False):
-        # super(STAttentionBlock, self).__init__()
+        super(STAttentionBlock, self).__init__()
         self.inter_channels = inter_channels
         self.out_channels = out_channels
         self.in_channels = in_channels
