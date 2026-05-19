@@ -301,9 +301,20 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
 
         metric_logger.update(loss=loss_value)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-    if step % 50 == 0 and 'stream_weights' in output:
-        w = output['stream_weights']
-        print(f"Stream weights — left:{w[0]:.3f} right:{w[1]:.3f} body:{w[2]:.3f} fuse:{w[3]:.3f}")
+
+        # --- Registrar los pesos en el metric_logger ---
+        if 'stream_weights' in output:
+            w = output['stream_weights']
+            metric_logger.update(
+                weight_left=w[0].item(),
+                weight_right=w[1].item(),
+                weight_body=w[2].item(),
+                weight_fuse=w[3].item()
+            )
+        # ------------------------------------------------------
+        if step % 50 == 0 and 'stream_weights' in output:
+            w = output['stream_weights']
+            print(f"Stream weights — left:{w[0]:.3f} right:{w[1]:.3f} body:{w[2]:.3f} fuse:{w[3]:.3f}")
 
     if args.run and 'stream_weights' in output:
         w = output['stream_weights']

@@ -9,7 +9,7 @@ import tensorflow as tf
 from itertools import groupby
 
 from Tokenizer import GlossTokenizer_S2G
-from Visualhead import VisualHead
+from VisualHead import VisualHead
 import math
 
 
@@ -711,12 +711,27 @@ class Recognition(nn.Module):
                 input_lengths=src_input['new_src_lengths'].cuda(),
             )
 
+        # Calcular la pérdida CTC para el ensemble mismo
+        # Esto forzará a stream_weights a actualizarse basándose en qué cabeza es más útil
+        if self.ensemble_method == 'weighted':
+            outputs['recognition_loss_ensemble'] = self.compute_recognition_loss(
+                gloss_labels=gloss_labels,
+                gloss_lengths=gloss_lengths,
+                gloss_probabilities_log=outputs['ensemble_last_gloss_probabilities_log'],
+                input_lengths=src_input['new_src_lengths'].cuda(),
+            )
+        else:
+            outputs['recognition_loss_ensemble'] = 0.0 # Si es promedio simple, no suma pérdida extra
+
+        # Modificamos la suma total para incluir la pérdida del ensemble
         outputs['recognition_loss'] = (
             outputs['recognition_loss_left'] +
             outputs['recognition_loss_right'] +
             outputs['recognition_loss_fuse'] +
-            outputs['recognition_loss_body']
+            outputs['recognition_loss_body'] +
+            outputs['recognition_loss_ensemble'] # Loss para los pesos "stream_weights"
         )
+
 
         # --- 5. Knowledge Distillation (opcional) ---
         # El ensemble actúa como "profesor" y cada cabeza individual como "alumno".
