@@ -1,0 +1,98 @@
+task: S2G
+device: cuda
+do_translation: False
+do_recognition: True
+data:
+  train_label_path: /home/user/work/Preprocessing/MSKA/Dataset/data/Phoenix-2014T.train.pkl # data/Phoenix-2014T/Phoenix-2014T.train
+  dev_label_path: /home/user/work/Preprocessing/MSKA/Dataset/data/Phoenix-2014T.dev.pkl # data/Phoenix-2014T/Phoenix-2014T.dev
+  test_label_path: /home/user/work/Preprocessing/MSKA/Dataset/data/Phoenix-2014T.test.pkl # data/Phoenix-2014T/Phoenix-2014T.test
+  max_length: 300
+  dataset_name: Phoenix-2014T
+  input_streams: keypoint
+  level: word #word or char
+  txt_lowercase: true
+  max_sent_length: 400
+  augmentation: # Para desactivar poner a 0
+    joint_dropout: 0     # 10% de articulaciones enmascaradas por muestra
+    gaussian_noise: 0   # ruido con std=0.01 sobre coordenadas normalizadas [-1,1]
+
+gloss:
+  gloss2id_file: data/Phoenix-2014T/gloss2ids.pkl
+testing:
+  recognition:
+    beam_size: 5
+  translation: {}
+training:
+  wandb: disabled # online or disabled
+  model_dir: outputs/Phoenix-2014T_SLR_uniform_no_dropout
+  validation:
+    recognition:
+      beam_size: 1
+    translation: {}
+  optimization:
+    optimizer: Adam
+    learning_rate:
+      default: 1.0e-3
+    weight_decay: 0.001
+    betas:
+      - 0.9
+      - 0.998
+    scheduler: cosineannealing
+    t_max: 100
+model:
+  RecognitionNetwork:
+    ensemble_method: weighted  # o 'uniform' para el comportamiento original
+    input_type: keypoint
+    DSTA-Net:
+      net: [[64, 64, 16, 7, 2], [64, 64, 16, 3, 1],
+            [64, 128, 32, 3, 1], [128, 128, 32, 3, 1],
+            [128, 256, 64, 3, 2], [256, 256, 64, 3, 1],
+            [256, 256, 64, 3, 1], [256, 256, 64, 3, 1],]
+      body: [0,1,2,3,4,5,6,7,8,9,10,
+               94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,
+               115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,
+               26,29,32,36,39,42,44,46,49,51,56,59,62,65,68,71,74,75,76,77,78,79,80,82,83,84]
+
+      left:  [0,1,3,5,7,9,
+                94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114]
+
+      right: [0,2,4,6,8,10,
+                115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135]
+
+      face:  [26,29,32,36,39,42,44,46,49,51,56,59,62,65,68,71,74,75,76,77,78,79,80,82,83,84]
+      mouth: [74,75,76,77,78,79,80,82,83,84]
+    GlossTokenizer:
+      gloss2id_file: data/Phoenix-2014T/gloss2ids.pkl
+    body_visual_head:
+      input_size: 256
+      hidden_size: 512
+      ff_size: 2048
+      pe: True
+      ff_kernelsize:
+        - 3
+        - 3
+    fuse_visual_head:
+      input_size: 1024
+      hidden_size: 512
+      ff_size: 2048
+      pe: True
+      ff_kernelsize:
+        - 3
+        - 3
+    left_visual_head:
+      input_size: 512
+      hidden_size: 512
+      ff_size: 2048
+      pe: True
+      ff_kernelsize:
+        - 3
+        - 3
+    right_visual_head:
+      input_size: 512
+      hidden_size: 512
+      ff_size: 2048
+      pe: True
+      ff_kernelsize:
+        - 3
+        - 3
+    cross_distillation: True
