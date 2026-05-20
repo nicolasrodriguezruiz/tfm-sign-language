@@ -28,7 +28,7 @@ gloss:
   gloss2id_file: data/Phoenix-2014T/gloss2ids.pkl
 training:
   wandb: disabled # online or disabled
-  model_dir: outputs/phoenix-2014T_SLT
+  model_dir: /home/user/work/data/outputs/phoenix-2014T_SLT_weighted_no_dropout
   validation:
     recognition:
       beam_size: 1
@@ -51,7 +51,7 @@ training:
 model:
   RecognitionNetwork:
     ensemble_method: weighted # o 'uniform' para el comportamiento original
-    pretrained_path: outputs/Phoenix-2014T_SLR/best_checkpoint.pth
+    pretrained_path: /home/user/work/data/outputs/Phoenix-2014T_SLR_weighted_no_dropout/best_checkpoint.pth
     input_type: keypoint
     DSTA-Net:
       net: [[64, 64, 16, 7, 2], [64, 64, 16, 3, 1],

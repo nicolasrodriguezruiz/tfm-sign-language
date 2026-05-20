@@ -24,7 +24,7 @@ testing:
   translation: {}
 training:
   wandb: disabled # online or disabled
-  model_dir: outputs/Phoenix-2014T_SLR
+  model_dir: /home/user/work/data/outputs/Phoenix-2014T_SLR
   validation:
     recognition:
       beam_size: 1
