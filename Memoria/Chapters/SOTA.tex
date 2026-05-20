@@ -1,9 +1,29 @@
 \chapter{Estado del Arte}
-Analizaremos en este capítulo el contexto general de la traducción de lengua de signos, desde su evolución hasta la actualidad. Finalemente estudiaremos el estado del arte especifico a los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
+Analizaremos en este capítulo el contexto general de la traducción de lengua de signos, desde su evolución hasta la actualidad.
+Finalemente estudiaremos el estado del arte especifico a los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
 
 \section{General (traducción en SL)}
+Como vimos en la itroducción, la traducción automática de la lengua de signos es un problema complejo que implica mapear una secuencia de vídeo continuo a una secuencia de texto en un lenguaje hablado, superando grandes barreras espaciales, sintácticas y gramaticales.
+A lo largo de los ultimos años ha habido grandes avances en las técnicas utilizadas.
+De similar forma a las tareas de traducción tradicionales se han preferido arquitecturas basadas en mecanismos de atención, \textit{vision transformers} o incluso \textit{LLM}.
 
-\subsection{Modelos basados en Glosas}
+%\subsection{Modelos basados en Glosas}
+Muchos de los intentos más exitosos y el paradigma hace unos años era utilizar las glosas como representación intermedia para la traducción.
+Este enfoque de dos etapas simplificaba el problema, pero sufría del cuello de botella de la propagación de errores.
+Esto es, cuando la parte del modelo encargada de traducir las glosas comete un error, la segunda parte, por muy buena que sea, al tener información equivocada cometerá un error en la traducción.
+
+\subsubsection*{\underline{STMC (Spatial-Temporal Multi-Cue)}}
+Aunque la lingüística ya reconocía el carácter fundamentalmente multimodal de la lengua de signos, los modelos STMC (Spatial-Temporal Multi-Cue) fueron pioneros en integrar esta premisa directamente en el diseño arquitectónico de una red neuronal entrenable de principio a fin.
+A diferencia de enfoques anteriores que dependían de algoritmos externos (como rastreadores de manos) o que simplemente concatenaban características perdiendo información, las redes \textbf{STMC}, propuestas por Zhou et al. \cite{STMC_CSLR}, procesan de forma conjunta diferentes señales visuales (forma de las manos, expresiones faciales, postura corporal) en dimensiones espaciales y temporales para mejorar el reconocimiento de glosas.
+Para lograr esto, la arquitectura del modelo se divide en dos componentes principales:
+\begin{itemize}
+    \item \textbf{Módulo Espacial Multiseñal (\textit{Spatial Multi-Cue})} que se encarga de la representación espacial en cada fotograma.
+     Incorpora una rama de estimación de pose integrada y diferenciable que permite recortar y extraer automáticamente las características visuales específicas de cada canal.
+
+     \item \textbf{Módulo Temporal Multiseñal (\textit{Temporal Multi-Cue})} que modela las dependencias temporales a lo largo del video a través de dos rutas paralelas.
+     La ruta intra-señal preserva las características únicas y la evolución temporal de cada canal de forma aislada, mientras que la ruta inter-señal explora la sinergia y colaboración entre todas las señales a diferentes escalas de tiempo.
+
+\end{itemize}
 \begin{itemize}
     \item STMC
     \item Transformers
@@ -15,9 +35,10 @@ Analizaremos en este capítulo el contexto general de la traducción de lengua d
     \item Sign2GPT (El Paradigma Gloss-based con LLM)
 \end{itemize}
 
-
+\subsection{LLMS para la traduccion de signos}
 
 \section{Uso de keypoints como entrada a modelos en SL}
 
 \section{Datasets}
-El paradigma en cuanto conjuntos de datos no es muy diferente al de hace unos años. Esto radica principalmente en la dificultad y el coste que existe en la traducción manual de miles de videos de legua de signos.
+El paradigma en cuanto conjuntos de datos no es muy diferente al de hace unos años.
+Esto radica principalmente en la dificultad y el coste que existe en la traducción manual de miles de videos de legua de signos.
