@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-
+import random
 # import torchaudio # decodeV2 (Full PyT)
 
 # Decode V1 (TF)
@@ -648,9 +648,28 @@ class Recognition(nn.Module):
 
         # --- 3. Ensemble: promediar probabilidades de las 4 cabezas ---
         if self.ensemble_method == 'weighted':
-            temperature = 2.0
-            # Podenración por pesos aprendibles
-            weights = torch.softmax(self.stream_weights/temperature, dim=0)
+            if False:
+                temperature = 2.0
+                # Podenración por pesos aprendibles
+                weights = torch.softmax(self.stream_weights/temperature, dim=0)
+            else:
+                branch_logits = self.stream_weights.clone()
+                # --- DropBranch Universal ---
+                if self.training:
+                    drop_probs = [0.10, 0.10, 0.10, 0.30] # left, right, body, fuse
+
+                    for i, p in enumerate(drop_probs):
+                        if random.random() < p:
+                            branch_logits[i] = -1e9
+
+                    # Si se apagaron todas, encendemos UNA al azar
+                    if (branch_logits == -1e9).all():
+                        random_idx = random.randint(0, 3)
+                        branch_logits[random_idx] = self.stream_weights[random_idx].clone()
+                # -----------------------------
+
+                weights = torch.softmax(branch_logits, dim=0)
+
             ensemble_probs = (
                 weights[0] * left_head['gloss_probabilities'] +
                 weights[1] * right_head['gloss_probabilities'] +
@@ -752,5 +771,5 @@ class Recognition(nn.Module):
                 outputs['recognition_loss'] += outputs[f'{student}_distill_loss']
 
         if self.ensemble_method == 'weighted':
-            outputs['stream_weights'] = torch.softmax(self.stream_weights/temperature, dim=0).detach()
+            outputs['stream_weights'] = torch.softmax(self.stream_weights, dim=0).detach()
         return outputs
