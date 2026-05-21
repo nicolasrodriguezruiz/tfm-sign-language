@@ -104,7 +104,7 @@ class PositionalEncoding(nn.Module):
         # Calcular los vectores sinusoidales para cada posición y canal
         pe = torch.zeros(self.time_len * self.joint_num, channel)  # (T*V, C)
         div_term = torch.exp(
-            torch.arange(0, channel, 2).float() * -(math.log(10000.0) / channel)
+            torch.arange(0, channel, 2).float() * - (math.log(10000.0) / channel)
         )  # factores de escala, shape (C/2,)
         pe[:, 0::2] = torch.sin(position * div_term)  # canales pares: seno
         pe[:, 1::2] = torch.cos(position * div_term)  # canales impares: coseno
