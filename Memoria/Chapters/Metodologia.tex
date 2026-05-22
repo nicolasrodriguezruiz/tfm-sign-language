@@ -59,9 +59,57 @@ D
 \section{Normalización de los Datos}
 
 \section{Multi Stream Keypoint Attention}
-En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma. Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, hace uso de las glosas como representación intermedia de la traducción, asegurando que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
+En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma.
+Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
 \subsection{Data Augmentation}
+Como suele ocurrir en aprendizaje profundo, la falta de datos es un muro contra el cual nos estrellamos siempre.
+Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
+Aunque ha habido muchos esfuerzos para solventar esta limitaciones, como la generación de glosas de forma automatica mediante utilizado, por ejemplo, LLMs \cite{guo2025bridgingsignspokenlanguages}, este problema no es fácil de solventar.
+Así, para compensar esta escasez de datos se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
+
+La postura y la ubicación del intérprete varían de forma natural al realizar un signo.
+Esto permite introducir variabilidad controlada en los datos sin corromper su semántica ni generar muestras inverosímiles.
+Entre las transformaciones espaciales más comunes y efectivas se encuentran las \textbf{rotaciones}, las \textbf{traslaciones} y los \textbf{cambios de escala (zoom)}. % lo de la escala no me convence
+
+\subsubsection*{Rotaciones}
+El objetivo es que el modelo sea robusto ante pequeñas variaciones en la inclinación o el ángulo del intérprete.
+Para lograrlo, se aplica una rotación aleatoria de $\alpha$ grados con una probabilidad $p$.
+Si una matriz $\mathbf{P} \in \mathbb{R}^{n \times 2}$ contiene las coordenadas $(x, y)$ de los puntos clave de un fotograma, la transformación se calcula mediante el siguiente producto matricial.
+\begin{equation*}
+\begin{bmatrix}
+x'_0 & y'_0\\
+x'_1 & y'_1 \\
+\vdots & \vdots\\
+x'_n & y'_n
+\end{bmatrix}
+=
+\begin{bmatrix}
+x_0 & y_0\\
+x_1 & y_1 \\
+\vdots & \vdots\\
+x_n & y_n
+\end{bmatrix}
+\cdot
+\underbrace{
+\begin{bmatrix}
+\cos(\theta) & \sin(\theta) \\
+-\sin(\theta) & \cos(\theta)
+\end{bmatrix}
+}_{\text{Matriz de rotaciones traspuesta}}
+\end{equation*}
+
+\begin{note}
+Al multiplicar la matriz de coordenadas (donde cada fila es un punto) por la derecha, necesitas la matriz de rotación traspuesta. La traspuesta de la matriz de rotación estándar para un ángulo $\alpha$ en sentido antihorario cambia el signo del seno inferior al seno superior.
+Esto nos permite realizar la rotación del fotograma en un paso.
+\end{note}
+
+Es importante acotar el rango de esta transformación; rotaciones extremas (por ejemplo, de $180^{\circ}$) carecen de sentido práctico, ya que introducen escenarios que el modelo jamás encontrará en un entorno real.
+
+\subsubsection*{Traslaciones}
+\subsubsection*{Escalado}
+\subsubsection*{\textit{Joint Dropout}}
+\subsubsection*{Ruido Gaussiano}
 
 \subsection{Arquitectura del Modelo de Reconocimiento}
 \subsubsection{Desacoplamiento de Keypoints}
