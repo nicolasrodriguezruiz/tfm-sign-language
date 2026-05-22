@@ -41,6 +41,11 @@ class SignLanguageModel(torch.nn.Module):
             self.text_tokenizer = None
 
         elif self.task == 'S2T':
+            # El recognition ya tiene buenos pesos preentrenados.
+            # Se congela para ahorrar VRAM y evitar que el entrenamiento
+            # de la traducción distorsione las features visuales aprendidas.
+            for param in self.recognition_network.parameters():
+                param.requires_grad = False
             self.recognition_weight = model_cfg.get('recognition_weight', 1)
             self.translation_weight = model_cfg.get('translation_weight', 1)
 
