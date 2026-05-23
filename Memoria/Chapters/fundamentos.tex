@@ -36,3 +36,7 @@ MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
 \text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
 \end{align*} donde $W^Q_i,W^K_i\in\mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i\in\mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O\in\mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son matrices de pesos entrenables. En particular las matrices $W$ son las proyecciones.
 \input{Chapters/diagramas/multiheadAttention.tex}
+
+
+\section{Connectionist Temporal Classification}
+\section{Self-Distillation}

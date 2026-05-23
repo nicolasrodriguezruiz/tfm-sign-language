@@ -112,8 +112,25 @@ Es importante acotar el rango de esta transformación; rotaciones extremas (por 
 \subsubsection*{Ruido Gaussiano}
 
 \subsection{Arquitectura del Modelo de Reconocimiento}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{MSKA/MSKA.pdf}
+    \caption{Esquema de la estructura del módulo de reconocimiento del modelo. Imagen de \cite{MSKA}}
+\end{figure}
+
 \subsubsection{Desacoplamiento de Keypoints}
+La lengua de signos no concentra el significado en una articulación sino que la distribuye a través de múltiples canales simultáneos, incluyendo las configuraciones manuales, las trayectorias de los brazos y las expresiones faciales.
+Para abordar esta alta complejidad, el modelo \textbf{MSKA-SLR} descarta el uso de un enfoque monolítico (un solo \text{stream}) en favor de una estrategia de desacoplamiento de puntos clave inspirada en los mecanismos de percepción humanos.
+
+Esta estrategia consiste en dividir la secuencia global de puntos clave extraída del video en cuatro sub-secuencias o flujos (streams) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
+
 \subsubsection{Módulo de Atención de Keypoints}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
+    \caption{Esquema del módulo de atención de \textit{keypoints}. Imagen de \cite{MSKA}}
+\end{figure}
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
 \subsubsection{Aprendizaje por Auto-destilación}
 \subsubsection{Función de Pérdida de Reconocimiento}
