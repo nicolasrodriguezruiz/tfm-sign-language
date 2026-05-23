@@ -112,7 +112,10 @@ Es importante acotar el rango de esta transformación; rotaciones extremas (por 
 \subsubsection*{Ruido Gaussiano}
 
 \subsection{Arquitectura del Modelo de Reconocimiento}
+En lugar de procesar el esqueleto como una única entidad monolítica, la secuencia de puntos clave se desacopla en cuatro flujos de información independientes: mano izquierda, mano derecha, rostro y cuerpo entero.
+Apoyándose en un mecanismo de autoatención pura, sin necesidad de recurrir a diseños manuales de reglas o topologías de grafos complejas, el sistema procesa cada flujo de forma aislada para, posteriormente, asimilar y fusionar las características extraídas mediante estrategias de destilación de conocimiento.
 
+En los siguientes subapartados se desglosa la arquitectura interna de este subsistema, detallando desde el preprocesamiento espacial de los puntos clave hasta la estrategia matemática de optimización que permite el aprendizaje conjunto de los múltiples flujos.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA.pdf}
@@ -122,15 +125,72 @@ Es importante acotar el rango de esta transformación; rotaciones extremas (por 
 \subsubsection{Desacoplamiento de Keypoints}
 La lengua de signos no concentra el significado en una articulación sino que la distribuye a través de múltiples canales simultáneos, incluyendo las configuraciones manuales, las trayectorias de los brazos y las expresiones faciales.
 Para abordar esta alta complejidad, el modelo \textbf{MSKA-SLR} descarta el uso de un enfoque monolítico (un solo \text{stream}) en favor de una estrategia de desacoplamiento de puntos clave inspirada en los mecanismos de percepción humanos.
-
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.2\textwidth]{MSKA/MSKA_SKEL.png}
+    \caption{Esquema de la división de las extremidades. Imagen de \cite{MSKA}}
+\end{figure}
 Esta estrategia consiste en dividir la secuencia global de puntos clave extraída del video en cuatro sub-secuencias o flujos (streams) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
 
+Al procesar los diferentes componentes por separado, el modelo puede captar con mucha más atención y precisión las características clave exclusivas de cada región anatómica.
+En un enfoque monolítico, los movimientos amplios del cuerpo pueden eclipsar las variaciones sutiles pero semánticamente importantes de los dedos o de la boca.
+La separación asegura que los detalles finos no se pierdan en la representación global.
+
+Además, el procesamiento independiente permite que la red asigne implícitamente la importancia adecuada a cada fuente de información durante la etapa posterior de fusión.
+
+Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
+
 \subsubsection{Módulo de Atención de Keypoints}
+Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
-    \caption{Esquema del módulo de atención de \textit{keypoints}. Imagen de \cite{MSKA}}
+    \caption{Esquema del módulo de atención de \textit{keypoints} del cuerpo. Imagen de \cite{MSKA}}
+    \label{fig:att_body}
 \end{figure}
+
+El flujo de datos comienza con una secuencia de puntos clave que se estructura como un tensor multidimensional $X \in \mathbb{R}^{C \times T \times N}$.
+Donde,
+\begin{itemize}
+  \item $C$ son los \textbf{canales de entrada}.
+  Cada elemento en $C$ está compuesto por el vector $[x_t^n, y_t^n, c_t^n]$. Aquí, $(x_t^n, y_t^n)$ denotan las coordenadas espaciales bidimensionales y $c_t^n$ representa el nivel de confianza otorgado por el estimador de pose para el punto clave $n$ en el instante $t$.
+  \item $T$ es la dimensión temporal (número total de fotogramas).
+  \item $N$ es el número total de puntos clave específicos de ese flujo.
+\end{itemize}
+
+Dado que no existe una secuencia o estructura predeterminada para cada elemento del tensor, necesitamos un mecanismo de codificación posicional que proporcione una etiqueta única para cada articulación.
+El tensor de entrada $X$ se enriquece sumándole una matriz de codificación posicional ($PE$).
+A diferencia de los modelos NLP clásicos, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial (los $N$ puntos clave), ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
+
+\subsubsection*{MOVER A FUNDAMENTOS?}
+
+Las funciones de codificación utilizan ondas sinusoidales y cosenoidales de diferentes frecuencias.
+Denotando $p$ a la posición de la articulación en la secuencia, $i$ a la dimensión específica del vector de codificación posicional y $C_{in}$ la profundidad del canal de entrada la codificación posicional se calcula mediante las siguientes fórmulas.
+\begin{align*}
+  PE(p, 2i) = \sin(p / 10000^{2i / C_{in}})\\
+  PE(p, 2i+1) = \cos(p / 10000^{2i / C_{in}})
+\end{align*}
+
+La naturaleza periódica proporciona diferentes representaciones para cada posición, lo que permite al modelo comprender mejor las relaciones posicionales relativas entre los elementos de la secuencia.
+Las articulaciones dentro de un mismo fotograma se codifican secuencialmente, mientras que las articulaciones idénticas en diferentes fotogramas comparten una codificación común.
+
+Una vez sumada la codificación posicional al tensor de entrada, la matriz resultante se proyecta mediante dos funciones de mapeo lineal independientes.
+Esto reduce la dimensión del canal espacial a un nuevo tamaño $C_e$, obteniendo representaciones en $\mathbb{R}^{C_e \times T \times N}$.
+La reducción a $C_e$ (que es menor que los canales de salida $C_{out}$) es una decisión de diseño para mitigar la redundancia de características y aliviar la complejidad computacional.
+
+Como vimos en la sección \ref{sub:attention} la formulación clásica de atención computa el producto escalar y aplica una función \textit{softmax}.
+Sin embargo, este modelo introduce un cambio muy interesante, sustituye la función \textit{softmax} por la tangente hiperbólica ($\tanh$) al calcular el mapa de atención.
+\begin{equation*}
+  \text{Attention}(Q, K, V) = \tanh(\frac{QK^T}{\sqrt{C}})V
+\end{equation*}
+
+La justificación matemática de esto es que, mientras \textit{softmax} acota los pesos en el rango $(0, 1)$ obligando a que las relaciones sean estrictamente positivas y sumen $1$, la función $\tanh$ mapea los valores al rango $(-1, 1)$.
+Esto permite que el modelo codifique correlaciones negativas entre articulaciones, brindando una flexibilidad topológica mucho mayor.
+
+Para evitar el sobreajuste y enseñar al modelo la anatomía básica (las distancias físicas reales y consistentes entre articulaciones), el mapa de atención se somete a una normalización global espacial.
+
+Matemáticamente, esto se logra añadiendo una matriz de atención global parametrizada de tamaño $N \times N$.
+Esta matriz, denotada en el esquema arquitectónico como $SGR$, encapsula las relaciones estructurales universales de las articulaciones del cuerpo humano y se comparte entre todas las instancias de datos, optimizándose de manera conjunta con los demás parámetros de la red durante el retropropagación.
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
 \subsubsection{Aprendizaje por Auto-destilación}
 \subsubsection{Función de Pérdida de Reconocimiento}

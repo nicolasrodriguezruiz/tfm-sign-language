@@ -20,7 +20,7 @@ Es natural plantearse si esta habilidad y facilidad que presentan los transoform
 
 \subsection{Codificación Posicional} % \textit{Positional Encoding}}
 
-\subsection{Mecanismo de Auto-atención} % \textit{Self-Attention Mechanism}
+\subsection{Mecanismo de Atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
 La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
 
 La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$. En la práctica, sacando provecho de que la multiplicación entre matrices está muy optimizada, estas operaciones se hacen mediante matrices, obteniendo la siguiente fórmula.
@@ -42,3 +42,4 @@ MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
 
 \section{Connectionist Temporal Classification}
 \section{Self-Distillation}
+\section{Conexiones Residuales}
