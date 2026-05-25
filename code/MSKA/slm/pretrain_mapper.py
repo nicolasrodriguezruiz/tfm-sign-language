@@ -117,23 +117,28 @@ def alignment_loss(visual_features, gloss_embeddings, visual_lengths, gloss_leng
 # Una época de preentrenamiento
 # ---------------------------------------------------------------------------
 
-
 def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
                        data_loader, optimizer, device, epoch, args):
     """
-    Entrena el VLMapper durante una época usando utils.MetricLogger.
+    Entrena el VLMapper durante una época.
+
+    Recognition y Qwen están congelados, solo el VLMapper recibe gradientes.
     """
     model.train()
-    # Asegurarse de que recognition y Qwen están en eval
+    # Asegurarse de que recognition y Qwen están en eval (afecta a BatchNorm y Dropout)
     model.recognition_network.eval()
     model.translation_network.eval()
 
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = f'Pretrain Epoch: [{epoch}/{args.epochs}]'
 
+    # total_loss = 0
+    # n_batches = 0
+    # start = time.time()
+
     for step, src_input in enumerate(metric_logger.log_every(data_loader, print_freq=50, header=header)):
 
-        # --- 1. Recognition (congelado) ---
+        # --- 1. Recognition (sin gradientes, está congelado) ---
         with torch.no_grad():
             recognition_outputs = model.recognition_network(src_input)
 
@@ -148,11 +153,15 @@ def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
             # Las glosas son strings como "HEUTE WETTER KALT"
             gloss_texts = src_input['gloss']
             encoded = qwen_tokenizer(
-                gloss_texts, padding=True, truncation=True,
-                max_length=64, return_tensors='pt',
+                gloss_texts,
+                padding=True,
+                truncation=True,
+                max_length=64,
+                return_tensors='pt',
             ).to(device)
-            gloss_embs = qwen_embeddings(encoded['input_ids'])
-            gloss_lengths = encoded['attention_mask'].sum(dim=1)
+            # Obtener los embeddings de entrada de Qwen para esos tokens
+            gloss_embs = qwen_embeddings(encoded['input_ids'])  # (B, G, D_qwen)
+            gloss_lengths = encoded['attention_mask'].sum(dim=1)  # (B,) longitudes reales
 
         # --- 4. Loss de alineación ---
         visual_lengths = src_input['new_src_lengths'].to(device)
@@ -167,6 +176,16 @@ def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        # total_loss += loss.item()
+        # n_batches += 1
+
+        # if step % 50 == 0:
+        #     elapsed = time.time() - start
+        #     remaining = elapsed / (step + 1) * (len(data_loader) - step - 1)
+        #     print(f"Pretrain Epoch [{epoch}]  [{step}/{len(data_loader)}]"
+        #           f"  loss: {loss.item():.4f} ({total_loss / n_batches:.4f})"
+        #           f"  eta: {datetime.timedelta(seconds=int(remaining))}")
 
         # --- Logging ---
         metric_logger.update(loss=loss.item())
@@ -186,11 +205,11 @@ def validate_alignment(model, qwen_embeddings, qwen_tokenizer, data_loader, devi
     Útil para detectar si el VLMapper está sobreajustando al train.
     """
     model.eval()
-    total_loss = 0
-    n_batches = 0
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    header = 'Validación Pretrain:'
 
     with torch.no_grad():
-        for src_input in data_loader:
+        for step, src_input in enumerate(metric_logger.log_every(data_loader, print_freq=50, header=header)):
             recognition_outputs = model.recognition_network(src_input)
             visual_features = model.vl_mapper(visual_outputs=recognition_outputs)
 
@@ -204,12 +223,10 @@ def validate_alignment(model, qwen_embeddings, qwen_tokenizer, data_loader, devi
             visual_lengths = src_input['new_src_lengths'].to(device)
 
             loss = alignment_loss(visual_features, gloss_embs, visual_lengths, gloss_lengths)
-            total_loss += loss.item()
-            n_batches += 1
+            metric_logger.update(val_loss=loss.item())
 
-    avg_loss = total_loss / n_batches
-    print(f"Validación alineación — loss: {avg_loss:.4f}")
-    return avg_loss
+    print(f"Validación alineación completada — Métricas: {metric_logger}")
+    return metric_logger.meters['val_loss'].global_avg
 
 
 # ---------------------------------------------------------------------------
