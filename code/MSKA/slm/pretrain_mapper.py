@@ -49,10 +49,8 @@ import argparse
 import yaml
 import numpy as np
 import random
-import time
-import datetime
 from pathlib import Path
-
+import json
 
 # ---------------------------------------------------------------------------
 # Argumentos
@@ -192,7 +190,7 @@ def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
 
     print(f"Pretrain Epoch [{epoch}] completada — Métricas: {metric_logger}")
-    return metric_logger.meters['loss'].global_avg
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -223,10 +221,10 @@ def validate_alignment(model, qwen_embeddings, qwen_tokenizer, data_loader, devi
             visual_lengths = src_input['new_src_lengths'].to(device)
 
             loss = alignment_loss(visual_features, gloss_embs, visual_lengths, gloss_lengths)
-            metric_logger.update(val_loss=loss.item())
+            metric_logger.update(loss=loss.item())
 
     print(f"Validación alineación completada — Métricas: {metric_logger}")
-    return metric_logger.meters['val_loss'].global_avg
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -325,10 +323,9 @@ def main(args):
     print(f"Objetivo: alinear features visuales con embeddings de glosas de Qwen\n")
 
     best_val_loss = float('inf')
-    train_losses = []
 
     for epoch in range(args.epochs):
-        train_loss = pretrain_one_epoch(
+        train_stats = pretrain_one_epoch(
             model=model,
             qwen_embeddings=qwen_embeddings,
             qwen_tokenizer=qwen_tokenizer,
@@ -338,36 +335,56 @@ def main(args):
             epoch=epoch,
             args=args,
         )
-        train_losses.append(train_loss)
 
-        val_loss = validate_alignment(
+        test_stats = validate_alignment(
             model=model,
             qwen_embeddings=qwen_embeddings,
             qwen_tokenizer=qwen_tokenizer,
             data_loader=dev_dataloader,
             device=device,
         )
-        # --- WANDB LOGGING ---
+        # --- GUARDAR EN WANDB (Opcional, si está activado) ---
         if args.run:
             args.run.log({
                 'epoch': epoch + 1,
-                'pretrain/train_loss': train_loss,
-                'pretrain/val_loss': val_loss,
-                'pretrain/lr': scheduler.get_last_lr()[0]
+                **{f'pretrain/train_{k}': v for k, v in train_stats.items()},
+                **{f'pretrain/test_{k}': v for k, v in test_stats.items()},
             })
 
         scheduler.step()
 
         # Guardar el mejor mapper según la loss de validación
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        # Ahora accedemos a la loss así: test_stats['loss']
+        if test_stats['loss'] < best_val_loss:
+            best_val_loss = test_stats['loss']
             torch.save(
                 model.vl_mapper.state_dict(),
                 output_dir / 'pretrained_mapper.pth',
             )
-            print(f"  → Nuevo mejor mapper guardado (val_loss={val_loss:.4f})")
+            print(f"  → Nuevo mejor mapper guardado (val_loss={best_val_loss:.4f})")
 
-        print(f"Época {epoch}: train={train_loss:.4f}  val={val_loss:.4f}"
+        # --- EL LOG.TXT COMO LO PEDISTE ---
+
+        log_stats = {
+            **{f'train_{k}': v for k, v in train_stats.items()},
+            **{f'test_{k}': v for k, v in test_stats.items()},
+            'epoch': epoch,
+            'n_parameters': round(n_trainable, 4),
+        }
+
+        with (output_dir / "log_pre.txt").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(log_stats) + "\n")
+
+        # Guardar el mejor mapper según la loss de validación
+        if test_stats['loss'] < best_val_loss:
+            best_val_loss = test_stats['loss']
+            torch.save(
+                model.vl_mapper.state_dict(),
+                output_dir / 'pretrained_mapper.pth',
+            )
+            print(f"  → Nuevo mejor mapper guardado (val_loss={best_val_loss:.4f})")
+
+        print(f"Época {epoch}: train={train_stats["loss"]:.4f}  val={test_stats["loss"]:.4f}"
               f"  lr={scheduler.get_last_lr()[0]:.6f}\n")
 
     print(f"\nPreentrenamiento completado.")
