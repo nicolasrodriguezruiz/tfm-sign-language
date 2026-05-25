@@ -330,12 +330,12 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
             w = output['stream_weights']
             print(f"Stream weights — left:{w[0]:.3f} right:{w[1]:.3f} body:{w[2]:.3f} fuse:{w[3]:.3f}")
 
-        if step == 10:
-            print("\n"*2)
-            for name, param in model.named_parameters():
-                if param.requires_grad and param.grad is not None:
-                    print(f"{name}: grad_norm={param.grad.norm():.4f}")
-            print("\n"*2)
+        # if step == 10:
+        #     print("\n"*2)
+        #     for name, param in model.named_parameters():
+        #         if param.requires_grad and param.grad is not None:
+        #             print(f"{name}: grad_norm={param.grad.norm():.4f}")
+        #     print("\n"*2)
 
     if args.run and 'stream_weights' in output:
         w = output['stream_weights']
