@@ -275,7 +275,11 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
                     device: torch.device, epoch: int):
     model.train()  # activa dropout, batch norm en modo entrenamiento, etc.
     metric_logger = utils.MetricLogger(delimiter="  ")
-    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+
+    for group in optimizer.param_groups:
+        group_name = group.get('name', 'default')
+        metric_logger.add_meter(f'lr_{group_name}', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+
     header = f'Epoca: [{epoch}/{args.epochs}]'
 
     for step, (batch) in enumerate(metric_logger.log_every(data_loader, print_freq=10, header=header)):
