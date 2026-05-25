@@ -247,6 +247,15 @@ def main(args):
     output_dir = Path(config['training']['model_dir'])
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- INICIALIZAR WANDB ---
+    use_wandb = config.get('training', {}).get('wandb', 'disabled') == 'online'
+    if use_wandb:
+        import wandb
+        wandb.init(project="MSKA-Pretrain-VLMapper", config=config)
+        args.run = wandb
+    else:
+        args.run = None
+
     # --- Datasets ---
     print("Cargando datasets...")
     tokenizer = GlossTokenizer_S2G(config['gloss'])
@@ -338,6 +347,14 @@ def main(args):
             data_loader=dev_dataloader,
             device=device,
         )
+        # --- WANDB LOGGING ---
+        if args.run:
+            args.run.log({
+                'epoch': epoch + 1,
+                'pretrain/train_loss': train_loss,
+                'pretrain/val_loss': val_loss,
+                'pretrain/lr': scheduler.get_last_lr()[0]
+            })
 
         scheduler.step()
 
@@ -356,10 +373,10 @@ def main(args):
     print(f"\nPreentrenamiento completado.")
     print(f"Mejor val_loss: {best_val_loss:.4f}")
     print(f"Mapper guardado en: {output_dir}/pretrained_mapper.pth")
-    print(f"\nAhora añade al config YAML:")
-    print(f"  model:")
-    print(f"    VLMapper:")
-    print(f"      pretrained_mapper: {output_dir}/pretrained_mapper.pth")
+    # print(f"\nAhora añade al config YAML:")
+    # print(f"  model:")
+    # print(f"    VLMapper:")
+    # print(f"      pretrained_mapper: {output_dir}/pretrained_mapper.pth")
 
 
 if __name__ == '__main__':
