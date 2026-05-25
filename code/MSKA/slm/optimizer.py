@@ -60,35 +60,61 @@ def build_gradient_clipper(config: dict) -> Optional[Callable]:
 # ---------------------------------------------------------------------------
 
 def build_optimizer(config: dict, model) -> Optimizer:
-    optimizer_name = config.get("optimizer", "adam").lower()
-    weight_decay   = config.get("weight_decay", 0)
+    optimizer_name = config.get("optimizer", "adamw").lower()
+    weight_decay   = config.get("weight_decay", 0.01) # 0.01 es típico para AdamW
     eps            = config.get("eps", 1.0e-8)
     betas          = config.get("betas", (0.9, 0.999))
     amsgrad        = config.get("amsgrad", False)
 
     base_lr = config['learning_rate'].pop('default')
-    lr_map  = config['learning_rate']  # resto de claves después del pop
+    lr_map  = config['learning_rate']   # resto de claves después del pop
+
+    # 1. Crear listas separadas para cada grupo de red
+    groups = {
+        'lora': {'params': [], 'lr': lr_map.get('translation', base_lr)},
+        'mapper': {'params': [], 'lr': lr_map.get('mapper', base_lr)},
+        'recognition': {'params': [], 'lr': lr_map.get('recognition', base_lr)},
+        'default': {'params': [], 'lr': base_lr}
+    }
 
     # Agrupar parámetros por nombre para asignar lr individualmente.
     # El orden de comprobación importa: lora_ va antes que translation_network
     # porque los parámetros LoRA tienen ambas cadenas en su nombre.
-    parameters = []
     for name, param in model.named_parameters():
         if not param.requires_grad:
-            continue  # parámetros congelados: no se pasan al optimizador
+            continue
 
-        if 'lora_' in name:
-            lr_ = lr_map.get('lora', base_lr)
-        elif 'vl_mapper' in name:
-            lr_ = lr_map.get('mapper', base_lr)
-        elif 'gloss_embedding' in name:
-            lr_ = lr_map.get('gloss_embedding', base_lr)
-        elif 'recognition_network' in name:
-            lr_ = lr_map.get('recognition', base_lr)
+
+        if 'lora_' in name or 'TranslationNetwork' in name:
+            groups['lora']['params'].append(param)
+            # print(f"\n\n\n{name}\n\n\n")
+            # if 'TranslationNetwork' in name:
+            #     _ = input("wait")
+        elif 'vl_mapper' in name or 'VLMapper' in name:
+            groups['mapper']['params'].append(param)
+            # print(f"\n\n\n{name}\n\n\n")
+            # if 'VLMapper' in name:
+            #     _ = input("wait")
+        elif 'recognition_network' in name or 'RecognitionNetwork' in name:
+            groups['recognition']['params'].append(param)
+            # print(f"\n\n\n{name}\n\n\n")
+            # if 'RecognitionNetwork' in name:
+            #     _ = input("wait")
         else:
-            lr_ = base_lr
+            groups['default']['params'].append(param)
 
-        parameters.append({'params': [param], 'lr': lr_})
+    # 3. Filtrar grupos vacíos (por si acaso) y preparar la lista final
+    parameters = []
+    for group_name, group_data in groups.items():
+        if len(group_data['params']) > 0:
+            parameters.append({
+                'params': group_data['params'],
+                'lr': group_data['lr'],
+                'name': group_name # Guardamos el nombre para poder loguearlo luego
+            })
+
+    #print(parameters)
+
 
     if optimizer_name == "adam":
         return torch.optim.Adam(
@@ -99,8 +125,7 @@ def build_optimizer(config: dict, model) -> Optimizer:
         # AdamW: igual que Adam pero con weight decay desacoplado.
         # En Adam estándar el weight decay interactúa con la adaptación del lr,
         # lo que reduce su efecto real. AdamW lo aplica directamente a los pesos.
-        # NOTA: hay un bug aquí, usa torch.optim.Adam en lugar de torch.optim.AdamW.
-        return torch.optim.Adam(
+        return torch.optim.AdamW(
             params=parameters, lr=base_lr, betas=betas,
             eps=eps, weight_decay=weight_decay, amsgrad=amsgrad,
         )

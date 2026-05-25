@@ -24,14 +24,17 @@ class VLMapper(torch.nn.Module):
         self.type = cfg.get('type', 'projection')
 
         if self.type == 'projection':
-            # MLP de dos capas con GELU (estándar en modelos multimodales como LLaVA).
-            # La capa intermedia tiene la misma dimensión que la salida.
-            # GELU es más suave que ReLU y funciona mejor con LLMs preentrenados.
+            # Arquitectura estándar VLM (inspirada en LLaVA/Qwen-VL)
             self.mapping = nn.Sequential(
                 nn.Linear(in_features, out_features),
                 nn.GELU(),
                 nn.Linear(out_features, out_features),
+                nn.LayerNorm(out_features, eps=1e-6) # eps estándar para estabilidad
             )
+
+            # Inicialización para alinear la magnitud inicial con los embeddings de Qwen
+            nn.init.normal_(self.mapping[2].weight, mean=0.0, std=0.02)
+            nn.init.zeros_(self.mapping[2].bias)
 
         elif self.type == 'embedding':
             # Matriz lineal sin bias donde cada columna corresponde a una glosa.
