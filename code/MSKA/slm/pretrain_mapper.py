@@ -384,7 +384,7 @@ def main(args):
             )
             print(f"  → Nuevo mejor mapper guardado (val_loss={best_val_loss:.4f})")
 
-        print(f"Época {epoch}: train={train_stats["loss"]:.4f}  val={test_stats["loss"]:.4f}"
+        print(f"Época {epoch}: train={train_stats['loss']:.4f}  val={test_stats['loss']:.4f}"
               f"  lr={scheduler.get_last_lr()[0]:.6f}\n")
 
     print(f"\nPreentrenamiento completado.")
