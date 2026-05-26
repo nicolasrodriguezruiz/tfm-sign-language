@@ -74,6 +74,12 @@ class SignLanguageModel(torch.nn.Module):
                 gls2embed=getattr(self.translation_network, 'gls2embed', None),
             )
 
+            # Cargar pesos preentrenados del VLMapper si existen (Fase 1 → Fase 2)
+            pretrained_mapper = model_cfg['VLMapper'].get('pretrained_mapper', None)
+            if pretrained_mapper:
+                self.vl_mapper.load_state_dict(torch.load(pretrained_mapper, map_location='cpu'))
+                print(f"VLMapper cargado desde preentrenamiento: {pretrained_mapper}")
+
     def forward(self, src_input, **kwargs):
         """
         Forward pass del modelo.
