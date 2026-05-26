@@ -13,8 +13,8 @@ data:
   max_sent_length: 400
   dataset_name: Phoenix-2014T
   augmentation: # Para desactivar poner a 0
-    joint_dropout: 0.15     # 10% de articulaciones enmascaradas por muestra
-    gaussian_noise: 0   # ruido con std=0.01 sobre coordenadas normalizadas [-1,1]
+    joint_dropout: 0
+    gaussian_noise: 0
   text_max_length: 128
 
 testing:
@@ -41,8 +41,8 @@ training:
     optimizer: Adam
     learning_rate:
       default: 1.0e-05
-      mapper: 1.0e-3        # VLMapper: aprende desde cero
-      lora: 1.0e-3          # LoRA: sobre preentrenado
+      mapper: 1.0e-4        # VLMapper: ahora preentrenado
+      lora: 2.0e-4          # LoRA: sobre preentrenado
       gloss_embedding: 5.0e-4  # tabla de embeddings de glosas
       recognition: 1.0e-06  # recognition: prácticamente congelado
     weight_decay: 0.001
@@ -121,7 +121,7 @@ model:
     lora:
       r: 16
       alpha: 32
-      dropout: 0.1
+      dropout: 0.05
       target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
 
 
