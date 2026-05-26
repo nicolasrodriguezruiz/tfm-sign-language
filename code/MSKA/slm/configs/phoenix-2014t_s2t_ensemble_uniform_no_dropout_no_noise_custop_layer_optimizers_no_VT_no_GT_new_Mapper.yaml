@@ -139,5 +139,4 @@ model:
       type: projection
       # in_features se infiere automáticamente de fuse_visual_head.hidden_size (512)
       # out_features se infiere de translation_network.input_dim (hidden_size de Qwen)
-
-
+      pretrained_mapper: /home/user/work/data/outputs/phoenix-2014t_s2t_ensemble_uniform_no_dropout_no_noise_custop_layer_optimizers_no_VT_no_GT_new_Mapper/pretrained_mapper.pth
