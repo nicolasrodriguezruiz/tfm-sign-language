@@ -6,6 +6,8 @@ from peft import get_peft_model, LoraConfig, TaskType
 from Tokenizer import GlossTokenizer_G2T
 import math
 
+import csv
+import os
 
 class TranslationNetwork(torch.nn.Module):
     """
@@ -99,6 +101,17 @@ class TranslationNetwork(torch.nn.Module):
         # Cargar checkpoint propio si se especifica
         if 'load_ckpt' in cfg:
             self.load_from_pretrained_ckpt(cfg['load_ckpt'])
+        # --- INICIO DEL DIAGNÓSTICO TEMPORAL ---
+        # Definir la ruta del archivo CSV (puedes ajustarla si quieres)
+        self.diagnostic_file = 'temporal_diagnostics.csv'
+
+        # Escribir los encabezados si el archivo no existe o queremos empezar de cero
+        # Usamos 'w' la primera vez para crear/limpiar el archivo
+        with open(self.diagnostic_file, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Batch_Size', 'Visual_Frames_Max', 'Visual_Frames_Avg', 'Text_Tokens_Max', 'Text_Tokens_Avg'])
+        # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
+
 
     def load_from_pretrained_ckpt(self, pretrained_ckpt):
         """Carga pesos del TranslationNetwork desde un checkpoint del proyecto."""
@@ -215,6 +228,30 @@ class TranslationNetwork(torch.nn.Module):
         """
         B = input_feature.shape[0]
         device = input_feature.device
+
+        # --- DIAGNÓSTICO TEMPORAL (Escribiendo en CSV) ---
+        # Calculamos los datos reales del lote actual
+        if input_feature is not None:
+            max_visual_frames = input_lengths.max().item()
+            avg_visual_frames = input_lengths.float().mean().item()
+
+            # Para el texto, contamos los tokens que NO son padding (-100)
+            valid_text_tokens = (labels != -100).sum(dim=1)
+            max_text_tokens = valid_text_tokens.max().item()
+            avg_text_tokens = valid_text_tokens.float().mean().item()
+
+            # Abrimos el archivo en modo 'a' (append) para añadir la nueva fila
+            with open(self.diagnostic_file, mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow([
+                    B,
+                    max_visual_frames,
+                    round(avg_visual_frames, 2),
+                    max_text_tokens,
+                    round(avg_text_tokens, 2)
+                ])
+        # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
+
 
         # --- 1. Construir el prefijo visual/glosa ---
         # En entrenamiento con gloss_source='ground_truth' se usan las glosas reales.
