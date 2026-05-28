@@ -32,6 +32,7 @@ from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 #(no se
 import warnings
 warnings.filterwarnings("ignore")
 
+import csv
 # ---------------------------------------------------------------------------
 # Argumentos de línea de comandos
 # ---------------------------------------------------------------------------
@@ -416,6 +417,29 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
                     transformer_inputs=output['transformer_inputs'],
                     generate_cfg=generate_cfg,
                 )
+                #print(generate_cfg)
+                # --- INICIO DEL REGISTRO EN CSV ---
+                # Definir la ruta del archivo (se guardará en la carpeta actual o puedes especificar una ruta)
+                csv_file = 'predictions_sample_5.csv'
+
+                # Si el archivo no existe, creamos los encabezados
+                file_exists = os.path.isfile(csv_file)
+                with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    if not file_exists:
+                        writer.writerow(['Video_Name', 'Ground_Truth', 'Prediction'])
+
+                    # Iterar sobre el batch y guardar en el diccionario y en el CSV
+                    for name, txt_hyp, txt_ref in zip(src_input['name'],
+                                                      generate_output['decoded_sequences'],
+                                                      src_input['text']):
+                        results[name]['txt_hyp'] = txt_hyp
+                        results[name]['txt_ref'] = txt_ref
+
+                        # Escribir la fila en el CSV
+                        writer.writerow([name, txt_ref, txt_hyp])
+                # --- FIN DEL REGISTRO EN CSV ---
+
                 for name, txt_hyp, txt_ref in zip(src_input['name'],
                                                    generate_output['decoded_sequences'],
                                                    src_input['text']):

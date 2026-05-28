@@ -229,28 +229,28 @@ class TranslationNetwork(torch.nn.Module):
         B = input_feature.shape[0]
         device = input_feature.device
 
-        # --- DIAGNÓSTICO TEMPORAL (Escribiendo en CSV) ---
-        # Calculamos los datos reales del lote actual
-        if input_feature is not None:
-            max_visual_frames = input_lengths.max().item()
-            avg_visual_frames = input_lengths.float().mean().item()
+#         # --- DIAGNÓSTICO TEMPORAL (Escribiendo en CSV) ---
+#         # Calculamos los datos reales del lote actual
+#         if input_feature is not None:
+#             max_visual_frames = input_lengths.max().item()
+#             avg_visual_frames = input_lengths.float().mean().item()
 
-            # Para el texto, contamos los tokens que NO son padding (-100)
-            valid_text_tokens = (labels != -100).sum(dim=1)
-            max_text_tokens = valid_text_tokens.max().item()
-            avg_text_tokens = valid_text_tokens.float().mean().item()
+#             # Para el texto, contamos los tokens que NO son padding (-100)
+#             valid_text_tokens = (labels != -100).sum(dim=1)
+#             max_text_tokens = valid_text_tokens.max().item()
+#             avg_text_tokens = valid_text_tokens.float().mean().item()
 
-            # Abrimos el archivo en modo 'a' (append) para añadir la nueva fila
-            with open(self.diagnostic_file, mode='a', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                writer.writerow([
-                    B,
-                    max_visual_frames,
-                    round(avg_visual_frames, 2),
-                    max_text_tokens,
-                    round(avg_text_tokens, 2)
-                ])
-        # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
+#             # Abrimos el archivo en modo 'a' (append) para añadir la nueva fila
+#             with open(self.diagnostic_file, mode='a', newline='', encoding='utf-8') as file:
+#                 writer = csv.writer(file)
+#                 writer.writerow([
+#                     B,
+#                     max_visual_frames,
+#                     round(avg_visual_frames, 2),
+#                     max_text_tokens,
+#                     round(avg_text_tokens, 2)
+#                 ])
+#         # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
 
 
         # --- 1. Construir el prefijo visual/glosa ---
@@ -304,8 +304,7 @@ class TranslationNetwork(torch.nn.Module):
         }
         return output_dict
 
-    def generate(self, prefix_embeds, prefix_mask,
-                 num_beams=4, max_new_tokens=100, length_penalty=1.0, **kwargs):
+    def generate(self, prefix_embeds, prefix_mask, **kwargs):
         """
         Generación de texto en evaluación mediante beam search.
 
@@ -319,15 +318,25 @@ class TranslationNetwork(torch.nn.Module):
             max_new_tokens: máximo de tokens nuevos a generar (no cuenta el prefijo).
             length_penalty: >1 favorece frases largas, <1 cortas.
         """
+
+        # Para evitar tener que refractorizar
+        gen_kwargs = {
+            "max_new_tokens": 100,
+            "num_beams": 4,
+            "length_penalty": 1.0
+        }
+
+        #  Sobrescribir con todo lo que llegue desde YAML
+        gen_kwargs.update(kwargs)
+
+        #  La llamada a Qwen (HuggingFace)
         output = self.model.generate(
             inputs_embeds=prefix_embeds.to('cuda'),
             attention_mask=prefix_mask.to('cuda'),
-            num_beams=num_beams,
-            max_new_tokens=max_new_tokens,
-            length_penalty=length_penalty,
             eos_token_id=self.eos_index,
             pad_token_id=self.pad_index,
             return_dict_in_generate=True,
+            **gen_kwargs
         )
 
         # Decodificar los IDs generados a texto legible
