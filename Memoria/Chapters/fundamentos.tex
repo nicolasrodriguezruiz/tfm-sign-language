@@ -19,6 +19,20 @@ Además, los transformers incorporan mecanismos como las codificaciones posicion
 Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
 
 \subsection{Codificación Posicional} % \textit{Positional Encoding}}
+\begin{equation}\label{eq:PE_sin}
+PE(p,2i)=\sin(p/10000^{2i/C_{in}})
+\end{equation}
+
+\begin{equation}\label{eq:PE_cos}
+PE(p,2i + 1)=\cos(p/10000^{2i/C_{in}})
+\end{equation}
+
+Donde,
+\begin{itemize}
+	\item $p$ es la posición del elemento en la secuencia.
+	\item $i$ es la dimensión del vector de codificación.
+	\item $C_{in}$ es el número de canales de entrada.
+\end{itemize}
 
 \subsection{Mecanismo de Atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
 La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
@@ -43,3 +57,102 @@ MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
 \section{Connectionist Temporal Classification}
 \section{Self-Distillation}
 \section{Conexiones Residuales}
+
+\section{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}
+Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes $RNN$ o $CNN$) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.
+El problema es que estos diseños manuales no siempre son óptimos y limitan la generalización del modelo.
+
+Para solucionar esto, \textbf{Lei Shi et al.} en \cite{DSTA} proponen un enfoque basado exclusivamente en mecanismos de atención inspirado en los \textit{transformers} vistos en la sección \ref{}.
+Esto permite que la red aprenda automáticamente las dependencias espaciales y temporales entre las articulaciones sin necesidad de conocer sus posiciones exactas o conexiones anatómicas previas, además implementan una técnica de separación de datos para captar distintos tipos de movimientos.
+
+\subsection{Módulos de atención espacial y temporal}
+Si recordamos en la sección anterior de \textit{transformers} que la entrada de datos es una secuencia bidimensional: una matriz $X\in \mathbb{R}^{N\times C}$, donde $N$ es el número de elementos y $C$ es el número de canales.
+
+Sin embargo, los datos dinámicos del esqueleto tienen tres dimensiones: \textbf{espacio}, \textbf{tiempo} y \textbf{canales}.
+Podemos representarlos como un tensor de tercer orden: $X\in \mathbb{R}^{N\times T\times C}$, donde $N$ es el número de articulaciones, $T$ es el número de fotogramas (frames) y $C$ son los canales de coordenadas.
+
+La froma ingénua de representar los datos, ya probado por otros autores anteriores, es aplanar el espacio y el tiempo en una sola dimensión $\hat{N} = NT$, convirtiendo el tensor de tercer orden en $X\in \mathbb{R}^{\hat{N}\times C}$.
+Este enfoque presentaba varias desventajas, a priori, estaban tratando el espacio y el tiempo como si fueran lo mismo y compartieran estructura, lo cual fisicamente no tiene sentido.
+Por otra parte, el coste computacinal de este enfoque es muy alto en tiempo y en memoria.
+
+Este papel propone tres métodos para este desacoplamiento.
+Los explicaremos brevemente utilizando como ejemplo la atención espacial.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{DSTA/strategy.pdf}
+    \caption{Las tres estrategias propuestas en \cite{DSTA}. Grafico sacado de ese papel.}
+\end{figure}
+
+\subsubsection*{Estrategia (a)}
+Aquí se calcula un mapa de atención único para cada fotograma de manera independiente.
+\begin{equation*}
+Attention_t = softmax(\sigma(X_t)\phi(X_t)'),
+\end{equation*}
+donde, $Attention_t\in\mathbb{R}{N\times N}$ es el mapa de atención para el fotograma $t$; $X_t\in\mathbb{R}^{N\times C}$ son los datos de ese fotograma; y, $\sigma$ y $\phi$ denotan funciones de \textit{embedding}.
+
+Este método no solo tiene un alto coste computacional sino que, además, es incapaz de modelar las relaciones fuera de un mismo fotograma, carece de contexto global.
+
+\subsubsection*{Estrategia (b)}
+En un giro de $180^{\circ}$ los autores proponen otro método.
+En vez de restringirnos en un fotograma, calculamos las relaciones entre todas las articulaciones a lo largo de todos los fotogramas de forma simultánea.
+El mapa de atención resultante se comparte para todos los fotogramas.
+
+\begin{equation*}
+Attention = softmax(\sum_t^T\sum_\tau^T(\sigma(X_t)\phi(X_\tau)')).
+\end{equation*}
+
+Aunque es \textbf{muy} potente, este método es aún más computacionalmente pesado.
+
+\subsubsection*{Estrategia (c)}
+La estrategia que finalmetente propone el papel consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
+\begin{equation*}
+Attention = softmax(\sum_t^T(\sigma(X_t)\phi(X_t)')).
+\end{equation*}
+
+Si en lugar de tener $T$ matrices separadas de tamaño $N\times C$ creamos una nueva matriz $M$ de tamaño $N\times TC$ concatenando horizontalmente las matrices de cada fotograma,
+\begin{equation*}
+\begin{pmatrix}
+X_0 \cdots X_T
+\end{pmatrix},
+\end{equation*}
+por las propiedades de las multiplicaciones de las matrices por bloques, al realizar el producto por su traspuesta obtenemos una matriz cuadrada $N\times N$.
+
+Esa única operación produce matemáticamente el mismo resultado exacto que si hubieramos multiplicado y sumado cada fotograma por separado. Pasamos de hacer $T$ operaciones a hacer una sola operación (que está muy optimizada en las máquinas modernas).
+
+
+\subsection{Codificación Posicional}
+
+Como ocurre en otros modelos de atención pura, las articulaciones del esqueleto se organizan en forma de tensor para poder introducirlas en las redes neuronales.
+Estos tensores carecen de orden o estructura que indique por sí mismo qué representa cada uno (por ejemplo, el índice de la articulación o el índice del fotograma), es necesario usar un módulo de codificación posicional que asigne un identificador único a cada articulación.
+
+Ahora bien, en texto, las palabras van una detrás de otra (1D).
+Pero los datos del esqueleto tienen dos dimensiones, el espacio (las diferentes articulaciones) y el tiempo (los fotogramas).
+
+Una estrategia ingenua de codificación unificaría estas dimensiones, asignando el valor $p$ de forma secuencial a través de todo el tensor aplanado.
+Por ejemplo, con $N = 3$, en el fotograma $t = 1$, sus posiciones serían $1$, $2$, $3$ y en el fotograma $t = 2$, serían $4$, $5$, $6$.
+El problema de esta topología es que la red no puede distinguir adecuadamente la misma articulación en fotogramas diferentes, ya que la articulación $n = 1$ recibe representaciones posicionales matemáticamente dispares ($PE(1)$ vs $PE(4)$).
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-PE.pdf}
+    \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
+\end{figure}
+
+Le estamos añadiendo dificultad a la red a la hora de aprender que la articulación $1$ y la articulación $4$ son, en realidad, la misma parte del cuerpo en diferentes momentos.
+
+Así, para preservar la semántica del esqueleto, los autores proponen separar el proceso en codificación espacial y codificación temporal.
+
+\subsubsection*{Codificación de Posición Espacial}
+Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-SPE.pdf}
+    \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
+\end{figure}
+
+\subsubsection*{Codificación de Posición Temporal}
+Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-TPE.pdf}
+    \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
+\end{figure}

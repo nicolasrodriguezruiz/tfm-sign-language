@@ -111,6 +111,8 @@ Es importante acotar el rango de esta transformación; rotaciones extremas (por 
 \subsubsection*{\textit{Joint Dropout}}
 \subsubsection*{Ruido Gaussiano}
 
+\subsection{Tokenizador}
+
 \subsection{Arquitectura del Modelo de Reconocimiento}
 En lugar de procesar el esqueleto como una única entidad monolítica, la secuencia de puntos clave se desacopla en cuatro flujos de información independientes: mano izquierda, mano derecha, rostro y cuerpo entero.
 Apoyándose en un mecanismo de autoatención pura, sin necesidad de recurrir a diseños manuales de reglas o topologías de grafos complejas, el sistema procesa cada flujo de forma aislada para, posteriormente, asimilar y fusionar las características extraídas mediante estrategias de destilación de conocimiento.
@@ -191,6 +193,10 @@ Para evitar el sobreajuste y enseñar al modelo la anatomía básica (las distan
 
 Matemáticamente, esto se logra añadiendo una matriz de atención global parametrizada de tamaño $N \times N$.
 Esta matriz, denotada en el esquema arquitectónico como $SGR$, encapsula las relaciones estructurales universales de las articulaciones del cuerpo humano y se comparte entre todas las instancias de datos, optimizándose de manera conjunta con los demás parámetros de la red durante el retropropagación.
+
+
+
+
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
 \subsubsection{Aprendizaje por Auto-destilación}
 \subsubsection{Función de Pérdida de Reconocimiento}
