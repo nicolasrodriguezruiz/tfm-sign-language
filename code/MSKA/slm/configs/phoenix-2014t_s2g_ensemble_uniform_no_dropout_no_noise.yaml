@@ -9,12 +9,12 @@ data:
   max_length: 300
   dataset_name: Phoenix-2014T
   input_streams: keypoint
-  level: word #word or char
+  level: word # word or char
   txt_lowercase: true
   max_sent_length: 400
   augmentation: # Para desactivar poner a 0
-    joint_dropout: 0     # 10% de articulaciones enmascaradas por muestra
-    gaussian_noise: 0   # ruido con std=0.01 sobre coordenadas normalizadas [-1,1]
+    joint_dropout: 0.15     # 15% de articulaciones enmascaradas por muestra
+    gaussian_noise: 0.05   # ruido con std=0.05 sobre coordenadas normalizadas [-1,1]
 
 gloss:
   gloss2id_file: data/Phoenix-2014T/gloss2ids.pkl
@@ -24,7 +24,7 @@ testing:
   translation: {}
 training:
   wandb: disabled # online or disabled
-  model_dir: /home/user/work/data/outputs/Phoenix-2014T_SLR
+  model_dir: /home/user/work/data/outputs/Phoenix-2014T_SLR_noise_and_dropout
   validation:
     recognition:
       beam_size: 1
