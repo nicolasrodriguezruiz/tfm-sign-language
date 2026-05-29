@@ -264,6 +264,7 @@ class S2T_Dataset(Dataset.Dataset):
     def _tokenize_text_for_qwen(self, text_batch):
         """
         Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
+        Asegura explícitamente que cada frase termina con el token <|endoftext|> (eos).
 
         A diferencia de MBart, Qwen es decoder-only y no necesita:
           - shift_tokens_right (lo gestiona HuggingFace internamente con labels)
@@ -277,6 +278,51 @@ class S2T_Dataset(Dataset.Dataset):
             labels:            IDs del texto con -100 en posiciones de padding. (B, L)
             decoder_input_ids: IDs del texto con pad_token_id en posiciones de padding. (B, L)
                                Qwen los usa para teacher forcing internamente.
+
+
+        """
+        # Asegurar que todas las frases terminen explícitamente con el token EOS
+        # Añadimos el string del token eos al final de cada frase antes de tokenizar
+        eos_str = self.text_tokenizer.eos_token
+        text_batch_with_eos = [text + eos_str for text in text_batch]
+
+        # 2. Tokenizar
+        encoded = self.text_tokenizer(
+            text_batch_with_eos,
+            padding='longest',
+            truncation=True,
+            max_length=self.text_max_length,
+            return_tensors='pt',
+        )
+        input_ids = encoded['input_ids']  # (B, L)
+
+        # labels: -100 donde hay padding (PyTorch ignora estos en la loss)
+        labels = input_ids.clone()
+        labels[labels == self.text_tokenizer.pad_token_id] = -100
+
+        return {
+            'labels':            labels,
+            'decoder_input_ids': input_ids,
+        }
+
+
+    def _tokenize_text_for_qwen_(self, text_batch):
+        """
+        Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
+
+        A diferencia de MBart, Qwen es decoder-only y no necesita:
+          - shift_tokens_right (lo gestiona HuggingFace internamente con labels)
+          - pruneids (Qwen ya tiene un vocabulario apropiado)
+          - token de idioma al inicio (no es un modelo multilingüe encoder-decoder)
+
+        Los tokens de padding se marcan con -100 en labels para que la loss
+        no se calcule sobre ellos.
+
+        Returns:
+            labels:            IDs del texto con -100 en posiciones de padding. (B, L)
+            decoder_input_ids: IDs del texto con pad_token_id en posiciones de padding. (B, L)
+                               Qwen los usa para teacher forcing internamente.
+
         """
         encoded = self.text_tokenizer(
             text_batch,
