@@ -65,7 +65,7 @@ El problema es que estos diseños manuales no siempre son óptimos y limitan la 
 Para solucionar esto, \textbf{Lei Shi et al.} en \cite{DSTA} proponen un enfoque basado exclusivamente en mecanismos de atención inspirado en los \textit{transformers} vistos en la sección \ref{}.
 Esto permite que la red aprenda automáticamente las dependencias espaciales y temporales entre las articulaciones sin necesidad de conocer sus posiciones exactas o conexiones anatómicas previas, además implementan una técnica de separación de datos para captar distintos tipos de movimientos.
 
-\subsection{Módulos de atención espacial y temporal}
+\subsection{Módulos de atención espacial y temporal}\label{seq:STA}
 Si recordamos en la sección anterior de \textit{transformers} que la entrada de datos es una secuencia bidimensional: una matriz $X\in \mathbb{R}^{N\times C}$, donde $N$ es el número de elementos y $C$ es el número de canales.
 
 Sin embargo, los datos dinámicos del esqueleto tienen tres dimensiones: \textbf{espacio}, \textbf{tiempo} y \textbf{canales}.
@@ -133,7 +133,7 @@ Por ejemplo, con $N = 3$, en el fotograma $t = 1$, sus posiciones serían $1$, $
 El problema de esta topología es que la red no puede distinguir adecuadamente la misma articulación en fotogramas diferentes, ya que la articulación $n = 1$ recibe representaciones posicionales matemáticamente dispares ($PE(1)$ vs $PE(4)$).
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-PE.pdf}
+    \includegraphics[width=0.5\textwidth]{DSTA/DSTA-PE.pdf}
     \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
 \end{figure}
 
@@ -145,14 +145,41 @@ Así, para preservar la semántica del esqueleto, los autores proponen separar e
 Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-SPE.pdf}
+    \includegraphics[width=0.5\textwidth]{DSTA/DSTA-SPE.pdf}
     \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
 \end{figure}
+Utilizar esta codificación permite que, sin importar el fotograma, una articulación siempre tenga el mismo vector de identidad espacial.
 
 \subsubsection*{Codificación de Posición Temporal}
+Es el proceso análogo e inverso.
 Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{DSTA/DSTA-TPE.pdf}
+    \includegraphics[width=0.5\textwidth]{DSTA/DSTA-TPE.pdf}
     \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
 \end{figure}
+
+\subsection{\textit{Spatial Global Regularization} (SGR) }
+En el procesamiento de imágenes, las redes convolucionales (CNNs) aprovechan que los píxeles cercanos forman bordes y formas, compartiendo pesos locales para encontrar patrones en cualquier parte de la imagen.
+
+En los datos esqueléticos, tenemos un tipo diferente de ventaja, en su mayoría, la anatomía humana es \textbf{universal} y \textbf{constante}.
+El \textit{keypoint} que representa la ``mano derecha'' tiene un significado físico y semántico específico, el cual se mantiene fijo para todos los fotogramas de un video y es consistente a lo largo de todos los sujetos en la base de datos.
+
+Basándose en este conocimiento previo, los autores de la \textbf{DSTA} proponen esta regularización para obligar al modelo a aprender atenciones espaciales más generales y aplicables a diferentes muestras.
+
+Para ello, se crea una matriz entrenable o mapa de atención global de tamaño $N\times N$, compartida para todas las muestras de datos.
+Esta matriz actua como una plantilla que representa los patrones de relaciones que poseen las distintas articulaciones humanas entre sí, que normalmente se mantienen constantes.
+
+Finalmente, este nuevo mapa de atención se combina con el obtenido en la \textit{Sección} \ref{seq:STA} junto con un factor $\alpha$ que se encarga de controlar la potencia de esta regularización.
+
+Esta regularización se aplica única y exclusivamente a la dimensión espacial, pues la dimensión temporal no posee esta característica de alineación semántica.
+Forzar a la red a aprender un patrón unificado global para el tiempo carece de sentido lógico y, como demostraron empíricamente en sus estudios de ablación, perjudicaría el rendimiento del modelo.
+
+El siguiente diagrama muestra la estructura completa del módulo de atención espacial.
+La atención temporal es análoga salvo por los matices mencionados.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{DSTA/attention.pdf}
+    \caption{Esquema del módulo de atención \textbf{espacial}. Obtenido de \cite{DSTA}}
+\end{figure}
+
