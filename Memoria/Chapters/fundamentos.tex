@@ -103,7 +103,7 @@ Attention = softmax(\sum_t^T\sum_\tau^T(\sigma(X_t)\phi(X_\tau)')).
 
 Aunque es \textbf{muy} potente, este método es aún más computacionalmente pesado.
 
-\subsubsection*{Estrategia (c)}
+\subsubsection*{Estrategia (c)}\hypertarget{est:c}{c}
 La estrategia que finalmetente propone el papel consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
 \begin{equation*}
 Attention = softmax(\sum_t^T(\sigma(X_t)\phi(X_t)')).
@@ -183,3 +183,10 @@ La atención temporal es análoga salvo por los matices mencionados.
     \caption{Esquema del módulo de atención \textbf{espacial}. Obtenido de \cite{DSTA}}
 \end{figure}
 
+Así, en resumen, a la matriz de entrada $X\in\mathbb{R}^{N\times TC_{in}}$ se le suma la codificación de posición espacial. Luego, se procesa mediante dos funciones de mapeo lineal para proyectarla a un espacio con dimensiones $N\times TC_e$.
+Utilizar un número de canales ($C_e$) menor al de salida ayuda a eliminar la redundancia de características y disminuye el coste computacional de la red.
+
+A continuación, se calcula el mapa de atención utilizando la \hyperlink{est:c}{\textit{estrategia} (c)} y se le añade la regularización global espacial.
+Un detalle muy interesante es el uso de la función de activación $Tanh$ en lugar de la habitual $Softmax$ para generar este mapa.
+La razón que dan los autores de este modelo es que la función $Tanh$ no restringe los valores a números positivos, lo que otorga al modelo mucha más flexibilidad al permitirle capturar y generar relaciones ``negativas'' entre las articulaciones.
+Por último, este mapa de atención resultante se multiplica matricialmente con los datos de la entrada original para obtener las características de salida finales.
