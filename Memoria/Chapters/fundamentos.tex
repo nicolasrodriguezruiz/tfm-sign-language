@@ -190,3 +190,17 @@ A continuación, se calcula el mapa de atención utilizando la \hyperlink{est:c}
 Un detalle muy interesante es el uso de la función de activación $Tanh$ en lugar de la habitual $Softmax$ para generar este mapa.
 La razón que dan los autores de este modelo es que la función $Tanh$ no restringe los valores a números positivos, lo que otorga al modelo mucha más flexibilidad al permitirle capturar y generar relaciones ``negativas'' entre las articulaciones.
 Por último, este mapa de atención resultante se multiplica matricialmente con los datos de la entrada original para obtener las características de salida finales.
+
+Para que el modelo pueda analizar los datos desde múltiples perspectivas simultáneamente, no utiliza una sola cabeza de atención, sino un total de $S$ cabezas independientes dentro del mismo módulo.
+Los resultados de todas estas cabezas se concatenan y se procesan a través de una capa lineal para proyectarlos al espacio de salida final $R^{N\times TC_{out}}$.
+Al igual que en el \textit{transformer} original, el proceso termina pasando por una capa \textit{feed-forward} que utiliza \textit{leaky ReLU} como función de activación.
+Además, se incluyen dos conexiones residuales a lo largo del módulo para estabilizar el entrenamiento de la red e integrar mejor las diferentes características extraídas.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{DSTA/pipeline.pdf}
+    \caption{Esquema de la red. Obtenido de \cite{DSTA}}
+\end{figure}
+
+La arquitectura \textbf{DSTA-Net} organiza este proceso apilando un total de $L$ capas.
+En cada una de estas capas, el tensor de entrada se procesa secuencialmente: primero entra al módulo de atención espacial (tratando los datos como $N$ articulaciones) para aprender la estructura física, y luego la matriz resultante se transpone para entrar al módulo de atención temporal (tratando los datos como $T$ fotogramas) para aprender el movimiento.
+Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
