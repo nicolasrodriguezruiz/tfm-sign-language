@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from Tokenizer import GlossTokenizer_S2G
 from model import SignLanguageModel
 import utils as utils
-from datasets import S2T_Dataset
+from S2T_Dataset import S2T_Dataset
 import os
 import time
 import argparse, json, datetime
@@ -191,7 +191,7 @@ def main(args, config):
         torch.save({
             'model': model.state_dict(),
             'scheduler': scheduler.state_dict(),
-            #'optimizer': optimizer.state_dict(), # FIXME No guardo el optimizer pq andamos justo de espacio
+            'optimizer': optimizer.state_dict(),
             'epoch': epoch,
         }, output_dir / 'checkpoint.pth')
 
@@ -204,8 +204,8 @@ def main(args, config):
         # Guardar el mejor checkpoint según la métrica de la tarea
         best_checkpoint = {
             'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'scheduler': scheduler.state_dict(),
+            #'optimizer': optimizer.state_dict(), # FIXME No guardo el optimizer pq andamos justo de espacio
+            #'scheduler': scheduler.state_dict(), # FIXME No guardo el optimizer pq andamos justo de espacio
             'epoch': epoch,
         }
         if config['task'] == "S2T":
@@ -287,6 +287,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
         optimizer.zero_grad()        # limpiar gradientes del paso anterior
 
         output = model(batch)    # forward pass: calcula predicciones y loss
+
 
         # set_detect_anomaly detecta NaNs/Infs durante el backward e indica exactamente
         # dónde ocurrieron. Útil para depurar pero tiene coste de rendimiento;
@@ -417,28 +418,28 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
                     transformer_inputs=output['transformer_inputs'],
                     generate_cfg=generate_cfg,
                 )
-                #print(generate_cfg)
+                #print(generate_output)
                 # --- INICIO DEL REGISTRO EN CSV ---
-                # Definir la ruta del archivo (se guardará en la carpeta actual o puedes especificar una ruta)
-                csv_file = 'predictions_sample_5.csv'
+#                 # Definir la ruta del archivo (se guardará en la carpeta actual o puedes especificar una ruta)
+#                 csv_file = 'predictions_sample_20.csv'
 
-                # Si el archivo no existe, creamos los encabezados
-                file_exists = os.path.isfile(csv_file)
-                with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
-                    writer = csv.writer(f)
-                    if not file_exists:
-                        writer.writerow(['Video_Name', 'Ground_Truth', 'Prediction'])
+#                 # Si el archivo no existe, creamos los encabezados
+#                 file_exists = os.path.isfile(csv_file)
+#                 with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
+#                     writer = csv.writer(f)
+#                     if not file_exists:
+#                         writer.writerow(['Video_Name', 'Ground_Truth', 'Prediction'])
 
-                    # Iterar sobre el batch y guardar en el diccionario y en el CSV
-                    for name, txt_hyp, txt_ref in zip(src_input['name'],
-                                                      generate_output['decoded_sequences'],
-                                                      src_input['text']):
-                        results[name]['txt_hyp'] = txt_hyp
-                        results[name]['txt_ref'] = txt_ref
+#                     # Iterar sobre el batch y guardar en el diccionario y en el CSV
+#                     for name, txt_hyp, txt_ref in zip(src_input['name'],
+#                                                       generate_output['decoded_sequences'],
+#                                                       src_input['text']):
+#                         results[name]['txt_hyp'] = txt_hyp
+#                         results[name]['txt_ref'] = txt_ref
 
-                        # Escribir la fila en el CSV
-                        writer.writerow([name, txt_ref, txt_hyp])
-                # --- FIN DEL REGISTRO EN CSV ---
+#                         # Escribir la fila en el CSV
+#                         writer.writerow([name, txt_ref, txt_hyp])
+# #                 # --- FIN DEL REGISTRO EN CSV ---
 
                 for name, txt_hyp, txt_ref in zip(src_input['name'],
                                                    generate_output['decoded_sequences'],
@@ -502,7 +503,8 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
 
 
     print("* Averaged stats:", metric_logger)
-    print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.loss))
+    #print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.loss))
+    print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.meters['loss']))
 
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
