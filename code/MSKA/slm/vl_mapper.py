@@ -31,7 +31,7 @@ class VLMapper(torch.nn.Module):
                 nn.Linear(out_features, out_features),
                 nn.LayerNorm(out_features, eps=1e-6) # eps estándar para estabilidad
             )
-
+            
             # Inicialización para alinear la magnitud inicial con los embeddings de Qwen
             nn.init.normal_(self.mapping[2].weight, mean=0.0, std=0.02)
             nn.init.zeros_(self.mapping[2].bias)

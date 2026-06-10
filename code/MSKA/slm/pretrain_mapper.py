@@ -1,8 +1,6 @@
 """
 pretrain_mapper.py
 ------------------
-Fase 1 del entrenamiento en dos fases para el sistema con Qwen.
-
 PROBLEMA QUE RESUELVE:
     Qwen fue preentrenado con texto. Cuando le damos features visuales como prefijo,
     no las "entiende" porque están en un espacio vectorial completamente distinto
@@ -26,7 +24,7 @@ SOLUCIÓN:
         - VLMapper: SE ENTRENA
 
 USO:
-    python pretrain_mapper.py --config configs/phoenix14t_s2t.yaml --epochs 30 --batch-size 8
+    TOKENIZERS_PARALLELISM=false python pretrain_mapper.py --config configs/phoenix14t_s2t.yaml --epochs 30 --batch-size 8
 
     Después del preentrenamiento, el checkpoint del mapper se guarda en:
         {model_dir}/pretrained_mapper.pth
@@ -44,7 +42,7 @@ from torch.utils.data import DataLoader
 from Tokenizer import GlossTokenizer_S2G
 from model import SignLanguageModel
 import utils as utils
-from datasets import S2T_Dataset
+from S2T_Dataset import S2T_Dataset
 import argparse
 import yaml
 import numpy as np
@@ -52,6 +50,9 @@ import random
 from pathlib import Path
 import json
 
+
+import warnings
+warnings.filterwarnings("ignore")
 # ---------------------------------------------------------------------------
 # Argumentos
 # ---------------------------------------------------------------------------

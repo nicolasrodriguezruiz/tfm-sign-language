@@ -104,15 +104,15 @@ class TranslationNetwork(torch.nn.Module):
         # --- INICIO DEL DIAGNÓSTICO TEMPORAL ---
         # Definir la ruta del archivo CSV (puedes ajustarla si quieres)
         self.diagnostic_file = 'temporal_diagnostics.csv'
-
+        
         # Escribir los encabezados si el archivo no existe o queremos empezar de cero
         # Usamos 'w' la primera vez para crear/limpiar el archivo
         with open(self.diagnostic_file, mode='w', newline='', encoding='utf-8') as file:
             writer = csv.writer(file)
             writer.writerow(['Batch_Size', 'Visual_Frames_Max', 'Visual_Frames_Avg', 'Text_Tokens_Max', 'Text_Tokens_Avg'])
         # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
-
-
+        
+        
     def load_from_pretrained_ckpt(self, pretrained_ckpt):
         """Carga pesos del TranslationNetwork desde un checkpoint del proyecto."""
         checkpoint = torch.load(pretrained_ckpt, map_location='cpu')['model_state']
@@ -228,31 +228,31 @@ class TranslationNetwork(torch.nn.Module):
         """
         B = input_feature.shape[0]
         device = input_feature.device
-
+        
 #         # --- DIAGNÓSTICO TEMPORAL (Escribiendo en CSV) ---
 #         # Calculamos los datos reales del lote actual
 #         if input_feature is not None:
 #             max_visual_frames = input_lengths.max().item()
 #             avg_visual_frames = input_lengths.float().mean().item()
-
+            
 #             # Para el texto, contamos los tokens que NO son padding (-100)
 #             valid_text_tokens = (labels != -100).sum(dim=1)
 #             max_text_tokens = valid_text_tokens.max().item()
 #             avg_text_tokens = valid_text_tokens.float().mean().item()
-
+            
 #             # Abrimos el archivo en modo 'a' (append) para añadir la nueva fila
 #             with open(self.diagnostic_file, mode='a', newline='', encoding='utf-8') as file:
 #                 writer = csv.writer(file)
 #                 writer.writerow([
-#                     B,
-#                     max_visual_frames,
-#                     round(avg_visual_frames, 2),
-#                     max_text_tokens,
+#                     B, 
+#                     max_visual_frames, 
+#                     round(avg_visual_frames, 2), 
+#                     max_text_tokens, 
 #                     round(avg_text_tokens, 2)
 #                 ])
 #         # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
-
-
+            
+            
         # --- 1. Construir el prefijo visual/glosa ---
         # En entrenamiento con gloss_source='ground_truth' se usan las glosas reales.
         # En evaluación (o si gloss_source='predicted') se usan las predichas por CTC.
@@ -318,29 +318,138 @@ class TranslationNetwork(torch.nn.Module):
             max_new_tokens: máximo de tokens nuevos a generar (no cuenta el prefijo).
             length_penalty: >1 favorece frases largas, <1 cortas.
         """
-
+        
         # Para evitar tener que refractorizar
         gen_kwargs = {
             "max_new_tokens": 100,
             "num_beams": 4,
             "length_penalty": 1.0
         }
-
-        #  Sobrescribir con todo lo que llegue desde YAML
+        
+        #  Sobrescribir con todo lo que llegue desde YAML 
         gen_kwargs.update(kwargs)
 
-        #  La llamada a Qwen (HuggingFace)
+#         #  La llamada a Qwen (HuggingFace)
+#         output = self.model.generate(
+#             inputs_embeds=prefix_embeds.to('cuda'),
+#             attention_mask=prefix_mask.to('cuda'),
+#             eos_token_id=self.eos_index,
+#             pad_token_id=self.pad_index,
+#             return_dict_in_generate=True,
+#             **gen_kwargs
+#         )
+        
+#         generated_ids = output.sequences
+        
+        
+        prompt_str = (
+            "<|im_start|>user\n"
+            "Übersetze diese Gebärdensprache exakt ins Deutsche.<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
+
+        # Tokenizamos el prompt (sin añadir especiales para mantener control total)
+        prompt_ids = self.tokenizer(
+            prompt_str, 
+            return_tensors="pt", 
+            add_special_tokens=False
+        ).input_ids.to(prefix_embeds.device)
+
+        # Convertimos los IDs del prompt a vectores usando el cerebro de Qwen
+        # Dependiendo de tu wrapper de HuggingFace, suele ser get_input_embeddings()
+        prompt_embeds = self.model.get_input_embeddings()(prompt_ids)  # Shape: (1, L_prompt, D)
+
+        # Expandimos el prompt para que coincida con el número de videos en tu batch
+        B = prefix_embeds.shape[0]
+        prompt_embeds = prompt_embeds.expand(B, -1, -1)  # Shape: (B, L_prompt, D)
+        
+        # Creamos una máscara de 1s para el prompt (es información útil)
+        prompt_mask = torch.ones(
+            B, prompt_embeds.shape[1], 
+            dtype=prefix_mask.dtype, 
+            device=prefix_mask.device
+        )
+
+        # UNIMOS EL VIDEO Y EL PROMPT
+        full_prefix_embeds = torch.cat([prefix_embeds, prompt_embeds], dim=1)
+        full_prefix_mask = torch.cat([prefix_mask, prompt_mask], dim=1)
+        # ---------------------------------------------------------
+
+        # La llamada a Qwen (HuggingFace) usando el prefix COMPLETO
         output = self.model.generate(
-            inputs_embeds=prefix_embeds.to('cuda'),
-            attention_mask=prefix_mask.to('cuda'),
-            eos_token_id=self.eos_index,
-            pad_token_id=self.pad_index,
+            inputs_embeds=full_prefix_embeds.to('cuda'),
+            attention_mask=full_prefix_mask.to('cuda'),  
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
             return_dict_in_generate=True,
             **gen_kwargs
         )
 
-        # Decodificar los IDs generados a texto legible
+        # (Opcional) El log de depuración del EOS.
+        # Recuerda que HuggingFace SIEMPRE inyecta un falso EOS en la posición 0 
+        # al usar inputs_embeds. Por eso ignoramos seq[0] en la búsqueda:
+        eos_id = self.tokenizer.eos_token_id
+        for i, seq in enumerate(output.sequences):
+            # Buscamos el EOS a partir de la posición 1
+            if len(seq) > 1 and (seq[1:] == eos_id).any().item():
+                pass # Aquí sí ha generado el punto final correctamente
+
         decoded = self.tokenizer.batch_decode(
             output.sequences, skip_special_tokens=True
         )
+    
+# # #         # ===== Estadísticas útiles =====
+
+#         eos_id = self.tokenizer.eos_token_id
+#         pad_id = self.tokenizer.pad_token_id
+#         generated_ids = output.sequences
+#         eos_count = 0
+#         lengths = []
+
+#         for seq in generated_ids:
+#             seq = seq.cpu()
+
+#             # Longitud sin padding
+#             length = (seq != pad_id).sum().item()
+#             lengths.append(length)
+
+#             # ¿Contiene EOS?
+#             if (seq == eos_id).any().item():
+#                 eos_count += 1
+
+#         print(f"EOS rate: {eos_count}/{len(generated_ids)} ({100*eos_count/len(generated_ids):.2f}%)")
+#         print(f"Avg generated length: {sum(lengths)/len(lengths):.2f}")
+#         print(f"Min length: {min(lengths)}")
+#         print(f"Max length: {max(lengths)}")
+
+#         # Opcional: mostrar ejemplos
+#         for i in range(min(1, len(generated_ids))):
+#             print(f"\n--- SAMPLE {i} ---")
+#             print("Length:", lengths[i])
+#             print("Has EOS:", (generated_ids[i] == eos_id).any().item())
+#         print("Sequences shape:", generated_ids.shape)
+#         print("Prefix shape:", full_prefix_embeds.shape)
+
+#         for i in range(min(1, len(generated_ids))):
+#             seq = generated_ids[i]
+
+#             eos_positions = (seq == eos_id).nonzero(as_tuple=True)[0]
+
+#             print(f"\nSample {i}")
+#             print("Seq len:", len(seq))
+#             print("EOS positions:", eos_positions.tolist())
+            
+            
+#             print(self.tokenizer.decode(
+#             generated_ids[i],
+#             skip_special_tokens=False))
+#         print("="*20)    
+#         print(output.sequences.shape)
+#         print(full_prefix_embeds.shape)
+#         print(output.sequences[0][:20])
+#         print(output.sequences[0][-20:])
+#         # Decodificar los IDs generados a texto legible
+#         decoded = self.tokenizer.batch_decode(
+#             output.sequences, skip_special_tokens=True
+#         )
         return {'sequences': output.sequences, 'decoded_sequences': decoded}

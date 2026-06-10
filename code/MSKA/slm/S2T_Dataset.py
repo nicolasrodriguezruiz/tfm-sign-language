@@ -260,12 +260,12 @@ class S2T_Dataset(Dataset.Dataset):
     # ------------------------------------------------------------------ #
     #  Construcción del batch                                              #
     # ------------------------------------------------------------------ #
-
-    def _tokenize_text_for_qwen(self, text_batch):
+    
+    def _tokenize_text_for_qwen__(self, text_batch):
         """
         Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
         Asegura explícitamente que cada frase termina con el token <|endoftext|> (eos).
-
+        
         A diferencia de MBart, Qwen es decoder-only y no necesita:
           - shift_tokens_right (lo gestiona HuggingFace internamente con labels)
           - pruneids (Qwen ya tiene un vocabulario apropiado)
@@ -278,8 +278,8 @@ class S2T_Dataset(Dataset.Dataset):
             labels:            IDs del texto con -100 en posiciones de padding. (B, L)
             decoder_input_ids: IDs del texto con pad_token_id en posiciones de padding. (B, L)
                                Qwen los usa para teacher forcing internamente.
-
-
+        
+        
         """
         # Asegurar que todas las frases terminen explícitamente con el token EOS
         # Añadimos el string del token eos al final de cada frase antes de tokenizar
@@ -304,8 +304,8 @@ class S2T_Dataset(Dataset.Dataset):
             'labels':            labels,
             'decoder_input_ids': input_ids,
         }
-
-
+    
+    
     def _tokenize_text_for_qwen_(self, text_batch):
         """
         Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
@@ -341,7 +341,142 @@ class S2T_Dataset(Dataset.Dataset):
             'labels':            labels,
             'decoder_input_ids': input_ids,
         }
+    
+    def _tokenize_text_for_qwen___(self, text_batch):
+        """
+        Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
+        Inyecta un prompt textual antes de la traducción y asegura el token EOS al final.
+        """
+        # El Prompt
+        # Usamos alemán ("Übersetze diese Gebärdensprache ins Deutsche") para no mezclar idiomas
+        prompt_str = "<|im_start|>user\nÜbersetze diese Gebärdensprache ins Deutsche.<|im_end|>\n<|im_start|>assistant\n"
+        eos_str = self.text_tokenizer.eos_token
+        
+        # Ensamblar la secuencia completa: Prompt + Traducción Real + EOS
+        text_batch_with_prompt_and_eos = [prompt_str + text + eos_str for text in text_batch]
 
+        # Tokenizar todo el bloque
+        # Aseguramos que el padding se aplique a la derecha (estándar para entrenamiento)
+        encoded = self.text_tokenizer(
+            text_batch_with_prompt_and_eos,
+            padding='longest',
+            truncation=True,
+            max_length=self.text_max_length,
+            return_tensors='pt',
+        )
+        input_ids = encoded['input_ids']  # Shape: (Batch, Longitud)
+        labels = input_ids.clone()
+
+        # 4. Enmascarar el padding (-100)
+        labels[labels == self.text_tokenizer.pad_token_id] = -100
+
+        # --- Enmascarar el prompt ---
+        # Tokenizamos el prompt aislado para saber exactamente cuántos tokens ocupa
+        prompt_length = len(self.text_tokenizer(prompt_str)['input_ids'])
+        
+        # Sobrescribimos con -100 las 'labels' correspondientes al prompt en todo el batch.
+        # Como las secuencias están alineadas a la izquierda (el padding va al final), 
+        # el prompt siempre ocupa exactamente desde el índice 0 hasta prompt_length.
+        labels[:, :prompt_length] = -100
+
+        return {
+            'labels':            labels,
+            'decoder_input_ids': input_ids,
+        }
+    
+#     def _tokenize_text_for_qwen(self, text_batch):
+#         """
+#         Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
+#         Arregla el bug del EOS y añade el Prompt enmascarado para evitar el colapso.
+#         """
+#         # El Prompt y el EOS
+#         prompt_str = "<|im_start|>user\nÜbersetze diese Gebärdensprache exakt ins Deutsche.<|im_end|>\n<|im_start|>assistant\n"
+#         eos_str = self.text_tokenizer.eos_token
+        
+#         # Juntamos todo: Prompt + Texto GT + EOS
+#         text_batch_with_prompt_and_eos = [prompt_str + text + eos_str for text in text_batch]
+
+#         # 2. Tokenizar
+#         encoded = self.text_tokenizer(
+#             text_batch_with_prompt_and_eos,
+#             padding='longest',
+#             truncation=True,
+#             max_length=self.text_max_length,
+#             return_tensors='pt',
+#         )
+#         input_ids = encoded['input_ids']
+#         attention_mask = encoded['attention_mask'] # Arreglo para el EOS
+
+#         #  Enmascarar el Padding de forma SEGURA
+#         labels = input_ids.clone()
+#         # Ponemos -100 SOLO donde la attention_mask es 0 (el padding real)
+#         # El EOS original, que está justo antes del padding, tiene attention_mask = 1 y se salva.
+#         labels[attention_mask == 0] = -100
+
+#         # Enmascarar el Prompt (Para que Qwen solo aprenda a traducir, no a escribir el prompt)
+#         prompt_length = len(self.text_tokenizer(prompt_str)['input_ids'])
+#         labels[:, :prompt_length] = -100
+
+#         return {
+#             'labels':            labels,
+#             'decoder_input_ids': input_ids,
+#         }
+    
+    def _tokenize_text_for_qwen(self, text_batch):
+        """
+        Tokeniza un batch de frases en alemán.
+        Usa el formato ChatML y añade el EOS numéricamente para garantizar la señal de parada.
+        """
+        # 1. El Prompt (Sin añadir el EOS como texto)
+        prompt_str = "<|im_start|>user\nÜbersetze diese Gebärdensprache exakt ins Deutsche.<|im_end|>\n<|im_start|>assistant\n"
+        
+        # Juntamos Prompt + Texto
+        texts = [prompt_str + text for text in text_batch]
+
+        # Tokenizar (Dejamos margen de 1 token para inyectar el EOS luego)
+        # return_tensors='pt' lo quitamos temporalmente para manipular las listas fácilmente
+        encoded = self.text_tokenizer(
+            texts,
+            truncation=True,
+            max_length=self.text_max_length - 1, 
+            add_special_tokens=False 
+        )
+        
+        input_ids_list = encoded['input_ids']
+        attention_mask_list = encoded['attention_mask']
+        
+        eos_id = self.text_tokenizer.eos_token_id
+        pad_id = self.text_tokenizer.pad_token_id
+
+        # Inyectar el EOS matemáticamente al final de cada secuencia
+        max_len_in_batch = 0
+        for i in range(len(input_ids_list)):
+            input_ids_list[i].append(eos_id)      # El ID real y garantizado
+            attention_mask_list[i].append(1)      # Es un token válido, le damos atención 1
+            max_len_in_batch = max(max_len_in_batch, len(input_ids_list[i]))
+
+        # 4. Acolchar (Padding) manualmente para que todos tengan la misma longitud
+        for i in range(len(input_ids_list)):
+            pad_length = max_len_in_batch - len(input_ids_list[i])
+            input_ids_list[i].extend([pad_id] * pad_length)
+            attention_mask_list[i].extend([0] * pad_length) # El padding tiene atención 0
+
+        # Convertimos a tensores
+        input_ids = torch.tensor(input_ids_list)
+        attention_mask = torch.tensor(attention_mask_list)
+
+        # Enmascarar el Padding de forma SEGURA (-100)
+        labels = input_ids.clone()
+        labels[attention_mask == 0] = -100 # El EOS se salva porque su atención es 1
+
+        # Enmascarar el Prompt
+        prompt_length = len(self.text_tokenizer(prompt_str)['input_ids'])
+        labels[:, :prompt_length] = -100
+
+        return {
+            'labels':            labels,
+            'decoder_input_ids': input_ids,
+        }
     def collate_fn(self, batch):
         """
         Función llamada por el DataLoader para unir muestras en un batch.

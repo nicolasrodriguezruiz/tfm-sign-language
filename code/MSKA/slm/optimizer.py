@@ -60,8 +60,8 @@ def build_gradient_clipper(config: dict) -> Optional[Callable]:
 # ---------------------------------------------------------------------------
 
 def build_optimizer(config: dict, model) -> Optimizer:
-    optimizer_name = config.get("optimizer", "adamw").lower()
-    weight_decay   = config.get("weight_decay", 0.01) # 0.01 es típico para AdamW
+    optimizer_name = config.get("optimizer", "adam").lower()
+    weight_decay   = config.get("weight_decay", 0.00)
     eps            = config.get("eps", 1.0e-8)
     betas          = config.get("betas", (0.9, 0.999))
     amsgrad        = config.get("amsgrad", False)
@@ -71,7 +71,7 @@ def build_optimizer(config: dict, model) -> Optimizer:
 
     # 1. Crear listas separadas para cada grupo de red
     groups = {
-        'lora': {'params': [], 'lr': lr_map.get('translation', base_lr)},
+        'lora': {'params': [], 'lr': lr_map.get('lora', base_lr)},
         'mapper': {'params': [], 'lr': lr_map.get('mapper', base_lr)},
         'recognition': {'params': [], 'lr': lr_map.get('recognition', base_lr)},
         'default': {'params': [], 'lr': base_lr}
@@ -82,23 +82,23 @@ def build_optimizer(config: dict, model) -> Optimizer:
     # porque los parámetros LoRA tienen ambas cadenas en su nombre.
     for name, param in model.named_parameters():
         if not param.requires_grad:
-            continue
+            continue  
 
-
+        
         if 'lora_' in name or 'TranslationNetwork' in name:
             groups['lora']['params'].append(param)
             # print(f"\n\n\n{name}\n\n\n")
-            # if 'TranslationNetwork' in name:
+            # if 'TranslationNetwork' in name: 
             #     _ = input("wait")
         elif 'vl_mapper' in name or 'VLMapper' in name:
             groups['mapper']['params'].append(param)
             # print(f"\n\n\n{name}\n\n\n")
-            # if 'VLMapper' in name:
+            # if 'VLMapper' in name: 
             #     _ = input("wait")
         elif 'recognition_network' in name or 'RecognitionNetwork' in name:
             groups['recognition']['params'].append(param)
             # print(f"\n\n\n{name}\n\n\n")
-            # if 'RecognitionNetwork' in name:
+            # if 'RecognitionNetwork' in name: 
             #     _ = input("wait")
         else:
             groups['default']['params'].append(param)
@@ -108,7 +108,7 @@ def build_optimizer(config: dict, model) -> Optimizer:
     for group_name, group_data in groups.items():
         if len(group_data['params']) > 0:
             parameters.append({
-                'params': group_data['params'],
+                'params': group_data['params'], 
                 'lr': group_data['lr'],
                 'name': group_name # Guardamos el nombre para poder loguearlo luego
             })
