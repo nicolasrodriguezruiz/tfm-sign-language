@@ -184,7 +184,7 @@ class STAttentionBlock(nn.Module):
                 self.in_nets = nn.Conv2d(in_channels, 2 * num_subset * inter_channels, 1, bias=True)
                 # alpha: escala aprendida que controla cuánto peso tiene la atención dinámica
                 # frente a la global. Inicializado a 1 (igual peso inicial).
-                self.alphas = nn.Parameter(torch.ones(1, num_subset, 1, 1), requires_grad=True)
+                self.alphas = nn.Parameter(torch.zeros(1, num_subset, 1, 1), requires_grad=True) # LO PONGO A 0 COMO SUELEN SUGERRIR
 
             if glo_reg_s:
                 # Matriz de atención global aprendida: igual para todas las muestras del batch.
@@ -450,10 +450,15 @@ class DSTA(nn.Module):
         left  = left.mean(3)
         right = right.mean(3)
 
-        # Concatenar representaciones en la dimensión de canales
-        output       = torch.cat([left, face, right, body], dim=-1)  # todas las partes
-        left_output  = torch.cat([left, face], dim=-1)               # mano izq + cara
-        right_output = torch.cat([right, face], dim=-1)              # mano der + cara
+        # # Concatenar representaciones en la dimensión de canales
+        # output       = torch.cat([left, face, right, body], dim=-1)  # todas las partes
+        # left_output  = torch.cat([left, face], dim=-1)               # mano izq + cara
+        # right_output = torch.cat([right, face], dim=-1)              # mano der + cara
+
+        output       = self.drop_out(torch.cat([left, face, right, body], dim=-1)) # AÑADO DROPOUT
+        left_output  = self.drop_out(torch.cat([left, face], dim=-1))
+        right_output = self.drop_out(torch.cat([right, face], dim=-1))
+        body         = self.drop_out(body)
 
         return output, left_output, right_output, body
 
