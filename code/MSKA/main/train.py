@@ -241,24 +241,29 @@ def main(args, config):
                 torch.save(best_checkpoint, output_dir / 'best_checkpoint.pth')
             print(f"* DEV wer {test_stats['wer']:.3f} Min DEV WER {min_wer}")
 
-        # Loggear métricas en wandb
-        if args.run:
-            args.run.log({
-                'epoch': epoch + 1,
-                'training/train_loss': train_stats['loss'],
-                'dev/dev_loss': test_stats['loss'],
-                'dev/min_loss': min_wer,
-            })
-
-        # Guardar estadísticas de la época en log.txt
+        # Preparar todas las estadísticas de la época
         log_stats = {
             **{f'train_{k}': v for k, v in train_stats.items()},
             **{f'test_{k}': v for k, v in test_stats.items()},
             'epoch': epoch,
             'n_parameters': n_parameters,
         }
+
+        # Guardar en log.txt
         with (output_dir / "log.txt").open("a") as f:
             f.write(json.dumps(log_stats) + "\n")
+
+        # Loggear en wandb TODO lo que va al log.txt + métricas personalizadas previas
+        if args.run:
+            wandb_logs = {
+                'epoch': epoch + 1,
+                'training/train_loss': train_stats.get('loss', 0),
+                'dev/dev_loss': test_stats.get('loss', 0),
+                'dev/min_loss': min_wer,
+            }
+            # Fusionamos log_stats dentro del diccionario de wandb
+            wandb_logs.update(log_stats)
+            args.run.log(wandb_logs)
 
         metric = test_stats['wer'] if config['task'] == 'S2G' else test_stats['bleu4']
         if early_stopping(metric):
@@ -282,11 +287,22 @@ def main(args, config):
                           do_translation=config['do_translation'], do_recognition=config['do_recognition'])
     print(f"Test loss de la red en los {len(test_dataloader)} test videos: {test_stats['loss']:.3f}")
 
+    # Recopilar métricas finales del mejor modelo
+    final_stats = {}
+    if config['do_recognition']:
+        final_stats.update({'Dev WER': dev_stats['wer'], 'Test WER': test_stats['wer']})
+    if config['do_translation']:
+        final_stats.update({'Dev Bleu-4': dev_stats['bleu4'], 'Test Bleu-4': test_stats['bleu4']})
+
+    # Guardar en log.txt
     with (output_dir / "log.txt").open("a") as f:
-        if config['do_recognition']:
-            f.write(json.dumps({'Dev WER:': dev_stats['wer'], 'Test WER:': test_stats['wer']}) + "\n")
-        if config['do_translation']:
-            f.write(json.dumps({'Dev Bleu-4:': dev_stats['bleu4'], 'Test Bleu-4:': test_stats['bleu4']}) + "\n")
+        f.write(json.dumps(final_stats) + "\n")
+
+    # Enviar las métricas finales a wandb
+    if args.run:
+        # Añadimos un prefijo "final/" para diferenciarlas de las métricas por época
+        wandb_final_logs = {f"final/{k}": v for k, v in final_stats.items()}
+        args.run.log(wandb_final_logs)
 
     total_time_str = str(datetime.timedelta(seconds=int(time.time() - start_time)))
     print('Training time {}'.format(total_time_str))
