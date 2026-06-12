@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from Tokenizer import GlossTokenizer_S2G
 from model import SignLanguageModel
 import utils as utils
+from utils import EarlyStopping
 from S2T_Dataset import S2T_Dataset
 import os
 import time
@@ -86,6 +87,13 @@ def main(args, config):
     random.seed(args.seed)
     # benchmark=False garantiza resultados deterministas a costa de algo de velocidad
     cudnn.benchmark = False
+
+    early_stopping = EarlyStopping(
+    patience=config['training'].get('early_stopping_patience', 15),
+    mode='min' if config['task'] == 'S2G' else 'max',
+    min_delta=config['training'].get('early_stopping_min_delta', 0.0),
+    )
+
 
     # --- Datasets y DataLoaders ---
     print("Creating dataset:")
@@ -239,6 +247,11 @@ def main(args, config):
         }
         with (output_dir / "log.txt").open("a") as f:
             f.write(json.dumps(log_stats) + "\n")
+
+        metric = test_stats['wer'] if config['task'] == 'S2G' else test_stats['bleu4']
+        if early_stopping(metric):
+            print(f"Early stopping en época {epoch}. Mejor: {early_stopping.best:.4f}")
+            break
 
     # --- Evaluación final con el mejor checkpoint ---
     # Al terminar el bucle, recargar el mejor modelo y evaluar en dev y test
