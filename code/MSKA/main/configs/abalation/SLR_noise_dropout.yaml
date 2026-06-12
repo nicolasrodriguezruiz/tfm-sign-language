@@ -25,6 +25,8 @@ testing:
 training:
   wandb: online # online or disabled
   model_dir: /home/user/work/data/outputs_final/SLR_noise_dropout
+  early_stopping_patience: 15   # épocas sin mejora
+  early_stopping_min_delta: 0.1 # para BLEU: solo cuenta si sube ≥ 0.1
   validation:
     recognition:
       beam_size: 1
