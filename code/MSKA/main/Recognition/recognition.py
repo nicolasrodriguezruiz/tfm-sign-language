@@ -9,59 +9,9 @@ import numpy as np
 # import tensorflow as tf
 from itertools import groupby
 
-from Tokenizer import GlossTokenizer_S2G
-from VisualHead import VisualHead
+from Recognition.Tokenizer import GlossTokenizer_S2G
+from Recognition.VisualHead import VisualHead
 import math
-
-
-# ---------------------------------------------------------------------------
-# Decodificación CTC con beam search (usando TensorFlow)
-# ---------------------------------------------------------------------------
-
-# def ctc_decode_func(tf_gloss_logits, input_lengths, beam_size):
-#     """
-#     Decodifica logits CTC a secuencias de glosas usando beam search de TensorFlow.
-
-#     Se usa TF en lugar de PyTorch porque cuando se escribió este código PyTorch # FIXME Cambiart a Pytorch
-#     no tenía una implementación eficiente de CTC beam search.
-
-#     Args:
-#         tf_gloss_logits: logits shape (T, B, V), con el token de silencio al final
-#                          (ver reordenamiento en Recognition.decode).
-#         input_lengths:   longitudes reales de cada secuencia, shape (B,).
-#         beam_size:       número de hipótesis que mantiene el beam search.
-#                          Mayor beam = más preciso pero más lento.
-
-#     Returns:
-#         Lista de listas: decoded_gloss_sequences[b] = lista de IDs de glosas para la muestra b.
-#     """
-#     ctc_decode, _ = tf.nn.ctc_beam_search_decoder(
-#         inputs=tf_gloss_logits,
-#         sequence_length=input_lengths.cpu().detach().numpy(),
-#         beam_width=beam_size,
-#         top_paths=1,
-#     )
-#     ctc_decode = ctc_decode[0]  # top-1 path (SparseTensor de TF)
-
-#     # Reconstruir las secuencias desde el formato SparseTensor de TF.
-#     # ctc_decode.indices contiene pares (batch_idx, posicion) de cada token decodificado.
-#     # ctc_decode.values contiene el ID del token en cada posición.
-#     tmp_gloss_sequences = [[] for i in range(input_lengths.shape[0])]
-#     for (value_idx, dense_idx) in enumerate(ctc_decode.indices):
-#         tmp_gloss_sequences[dense_idx[0]].append(
-#             ctc_decode.values[value_idx].numpy() + 1
-#             # +1 porque TF indexa el vocabulario desde 0 internamente,
-#             # pero en este sistema los tokens reales empiezan en 1 (0 es el silencio/blank)
-#         )
-
-#     # Eliminar repeticiones consecutivas del mismo token (comportamiento estándar de CTC).
-#     # CTC puede producir [A, A, B, A] que se colapsa a [A, B, A] con groupby.
-#     decoded_gloss_sequences = []
-#     for seq_idx in range(len(tmp_gloss_sequences)):
-#         decoded_gloss_sequences.append(
-#             [x[0] for x in groupby(tmp_gloss_sequences[seq_idx])]
-#         )
-#     return decoded_gloss_sequences
 
 
 # ---------------------------------------------------------------------------
@@ -564,36 +514,6 @@ class Recognition(nn.Module):
         loss = loss / gloss_probabilities_log.shape[0]
         return loss
 
-#     def decode(self, gloss_logits, beam_size, input_lengths):
-#         """
-#         Decodifica logits a secuencias de glosas en modo evaluación (sin gradientes).
-
-#         Reordena el vocabulario antes de pasarlo a TF porque TF-CTC espera el token
-#         blank al final, pero en PyTorch está al inicio (índice 0).
-
-#         Args:
-#             gloss_logits:  logits del modelo, shape (B, T, V).
-#             beam_size:     tamaño del beam para la búsqueda.
-#             input_lengths: longitudes reales de cada secuencia, shape (B,).
-
-#         Returns:
-#             Lista de listas con IDs de glosas decodificadas por muestra.
-#         """
-#         # Reordenar: mover el índice 0 (blank) al final para compatibilidad con TF
-#         # De: [blank, glosa_1, glosa_2, ..., glosa_V]
-#         # A:  [glosa_1, glosa_2, ..., glosa_V, blank]
-#         gloss_logits = gloss_logits.permute(1, 0, 2)  # (B, T, V) → (T, B, V)
-#         gloss_logits = gloss_logits.cpu().detach().numpy()
-#         tf_gloss_logits = np.concatenate(
-#             (gloss_logits[:, :, 1:],           # tokens reales (índices 1 en adelante)
-#              gloss_logits[:, :, 0, None]),      # blank (índice 0) al final
-#             axis=-1,
-#         )
-#         return ctc_decode_func(
-#             tf_gloss_logits=tf_gloss_logits,
-#             input_lengths=input_lengths,
-#             beam_size=beam_size,
-#         )
 
     def decode(self, gloss_logits, beam_size, input_lengths):
         """
@@ -616,7 +536,7 @@ class Recognition(nn.Module):
         # Extraer la mejor hipótesis de cada muestra del batch
         decoded_gloss_sequences = []
         for hyp in hypotheses:
-            decoded_gloss_sequences.append([t for t in hyp[0].tokens.tolist()]) # TensorFlow devolvía IDs con un +1 aplicado (por el desplazamiento del blank). La versión de torchaudio devuelve los IDs directamente sin ese desplazamiento, para evitar tener que cambiar todo sumamos 1
+            decoded_gloss_sequences.append([t for t in hyp[0].tokens.tolist()])
 
         return decoded_gloss_sequences
 

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import get_peft_model, LoraConfig, TaskType
-from Tokenizer import GlossTokenizer_G2T
+from Recognition.Tokenizer import GlossTokenizer_G2T
 import math
 
 import csv

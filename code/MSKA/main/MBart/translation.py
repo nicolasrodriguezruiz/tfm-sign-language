@@ -1,7 +1,7 @@
 import torch
 from transformers import MBartForConditionalGeneration, MBartTokenizer, MBartConfig
-from utils import XentLoss
-from Tokenizer import GlossTokenizer_G2T, TextTokenizer
+from aux.utils import XentLoss
+from Recognition.Tokenizer import GlossTokenizer_G2T, TextTokenizer
 import pickle
 import math
 

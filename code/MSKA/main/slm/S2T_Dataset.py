@@ -2,11 +2,11 @@ import random
 
 import torchvision
 import torch
-import utils as utils
+import aux.utils as utils
 import torch.utils.data.dataset as Dataset
 from PIL import Image
 import os
-from Tokenizer import GlossTokenizer_S2G
+from Recognition.Tokenizer import GlossTokenizer_S2G
 from transformers import AutoTokenizer
 import numpy as np
 

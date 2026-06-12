@@ -1,7 +1,7 @@
 import torch
-from recognition import Recognition
-from translation import TranslationNetwork
-from vl_mapper import VLMapper
+from Recognition.recognition import Recognition
+from MBart.translation import TranslationNetwork
+from MBart.vl_mapper import VLMapper
 
 
 class SignLanguageModel(torch.nn.Module):

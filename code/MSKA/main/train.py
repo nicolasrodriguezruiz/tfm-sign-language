@@ -1,11 +1,10 @@
 import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
-from Tokenizer import GlossTokenizer_S2G
-from model import SignLanguageModel
-import utils as utils
-from utils import EarlyStopping
-from S2T_Dataset import S2T_Dataset
+
+import aux.utils as utils
+from aux.utils import EarlyStopping
+from Recognition.Tokenizer import GlossTokenizer_S2G
 import os
 import time
 import argparse, json, datetime
@@ -24,11 +23,11 @@ from loguru import logger
 #   wer_list → Word Error Rate (para reconocimiento de glosas, cuanto menor mejor)
 #   bleu     → BLEU-1/2/3/4 (para traducción de texto, cuanto mayor mejor)
 #   rouge    → ROUGE (para traducción de texto, cuanto mayor mejor)
-from metrics import wer_list, bleu, rouge
-from optimizer import build_optimizer, build_scheduler
+from aux.metrics import wer_list, bleu, rouge
+from aux.optimizer import build_optimizer, build_scheduler
 # Funciones de limpieza de texto específicas de cada variante del dataset Phoenix
 # (normalizan mayúsculas, puntuación, etc.) antes de calcular métricas
-from phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014 #(no se usan)
+from aux.phoenix_cleanup import clean_phoenix_2014_trans, clean_phoenix_2014
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -70,6 +69,8 @@ def get_args_parser():
     parser.add_argument("--entity", type=str, help="entidad de wandb")
     parser.add_argument("--project", type=str, default='VLP', help="proyecto de wandb")
 
+    parser.add_argument('--slm', action='store_true', help='Activa el modo SLM')
+
     return parser
 
 
@@ -93,6 +94,14 @@ def main(args, config):
     mode='min' if config['task'] == 'S2G' else 'max',
     min_delta=config['training'].get('early_stopping_min_delta', 0.0),
     )
+
+    if args.slm:
+        from slm.S2T_Dataset import S2T_Dataset
+        from slm.model_slm import SignLanguageModel
+
+    else:
+        from MBart.datasets import S2T_Dataset
+        from MBart.model_MBart import SignLanguageModel
 
 
     # --- Datasets y DataLoaders ---

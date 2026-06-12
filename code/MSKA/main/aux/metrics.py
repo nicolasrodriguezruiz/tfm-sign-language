@@ -2890,7 +2890,9 @@ def get_alignment(r, h, d):
         alignlist[::-1],
         {"align_ref": align_ref, "align_hyp": align_hyp, "alignment": alignment},
     )
-import sacrebleu, Rouge
+import aux.sacrebleu as sacrebleu
+import aux.Rouge as Rouge
+
 def bleu(references, hypotheses, level='word'):
     """
     Raw corpus BLEU from sacrebleu (without tokenization)
