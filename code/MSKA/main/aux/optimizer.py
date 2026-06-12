@@ -59,6 +59,7 @@ def build_gradient_clipper(config: dict) -> Optional[Callable]:
 # Optimizador con learning rates por módulo
 # ---------------------------------------------------------------------------
 
+
 def build_optimizer(config: dict, model) -> Optimizer:
     optimizer_name = config.get("optimizer", "adam").lower()
     weight_decay   = config.get("weight_decay", 0.00)
@@ -69,52 +70,53 @@ def build_optimizer(config: dict, model) -> Optimizer:
     base_lr = config['learning_rate'].pop('default')
     lr_map  = config['learning_rate']   # resto de claves después del pop
 
-    # 1. Crear listas separadas para cada grupo de red
+    # Palabras clave de parámetros que NO deben llevar weight decay
+    # Atrapamos sesgos (bias) y capas de normalización (LayerNorm, BatchNorm)
+    no_decay_keywords = ['bias', 'LayerNorm', 'BatchNorm', 'GroupNorm']
+
+    # Crear listas separadas: Módulo (LR) + Subgrupo (Decay / No Decay)
     groups = {
-        'lora': {'params': [], 'lr': lr_map.get('lora', base_lr)},
-        'mapper': {'params': [], 'lr': lr_map.get('mapper', base_lr)},
-        'recognition': {'params': [], 'lr': lr_map.get('recognition', base_lr)},
-        'default': {'params': [], 'lr': base_lr}
+        'lora':           {'params': [], 'lr': lr_map.get('lora', base_lr),        'weight_decay': weight_decay},
+        'lora_nd':        {'params': [], 'lr': lr_map.get('lora', base_lr),        'weight_decay': 0.0},
+        'mapper':         {'params': [], 'lr': lr_map.get('mapper', base_lr),      'weight_decay': weight_decay},
+        'mapper_nd':      {'params': [], 'lr': lr_map.get('mapper', base_lr),      'weight_decay': 0.0},
+        'recognition':    {'params': [], 'lr': lr_map.get('recognition', base_lr), 'weight_decay': weight_decay},
+        'recognition_nd': {'params': [], 'lr': lr_map.get('recognition', base_lr), 'weight_decay': 0.0},
+        'default':        {'params': [], 'lr': base_lr,                            'weight_decay': weight_decay},
+        'default_nd':     {'params': [], 'lr': base_lr,                            'weight_decay': 0.0}
     }
 
-    # Agrupar parámetros por nombre para asignar lr individualmente.
-    # El orden de comprobación importa: lora_ va antes que translation_network
-    # porque los parámetros LoRA tienen ambas cadenas en su nombre.
+    # Agrupar parámetros por nombre para asignar lr y decay individualmente.
     for name, param in model.named_parameters():
         if not param.requires_grad:
-            continue  
+            continue
 
-        
+        # Comprobar si el parámetro debe ignorar el weight_decay
+        has_no_decay = any(nd in name for nd in no_decay_keywords)
+        suffix = '_nd' if has_no_decay else ''
+
         if 'lora_' in name or 'TranslationNetwork' in name:
-            groups['lora']['params'].append(param)
-            # print(f"\n\n\n{name}\n\n\n")
-            # if 'TranslationNetwork' in name: 
-            #     _ = input("wait")
+            groups['lora' + suffix]['params'].append(param)
         elif 'vl_mapper' in name or 'VLMapper' in name:
-            groups['mapper']['params'].append(param)
-            # print(f"\n\n\n{name}\n\n\n")
-            # if 'VLMapper' in name: 
-            #     _ = input("wait")
+            groups['mapper' + suffix]['params'].append(param)
         elif 'recognition_network' in name or 'RecognitionNetwork' in name:
-            groups['recognition']['params'].append(param)
-            # print(f"\n\n\n{name}\n\n\n")
-            # if 'RecognitionNetwork' in name: 
-            #     _ = input("wait")
+            groups['recognition' + suffix]['params'].append(param)
         else:
-            groups['default']['params'].append(param)
+            groups['default' + suffix]['params'].append(param)
 
-    # 3. Filtrar grupos vacíos (por si acaso) y preparar la lista final
+    # Filtrar grupos vacíos (por si acaso) y preparar la lista final para PyTorch
     parameters = []
     for group_name, group_data in groups.items():
         if len(group_data['params']) > 0:
             parameters.append({
-                'params': group_data['params'], 
+                'params': group_data['params'],
                 'lr': group_data['lr'],
-                'name': group_name # Guardamos el nombre para poder loguearlo luego
+                'weight_decay': group_data['weight_decay'],
+                # Quitamos el sufijo '_nd' del nombre al guardarlo.
+                # Así tu train.py seguirá logueando en consola y en WandB
+                # un único y limpio 'lr_recognition' en lugar de duplicarlo.
+                'name': group_name.replace('_nd', '')
             })
-
-    #print(parameters)
-
 
     if optimizer_name == "adam":
         return torch.optim.Adam(
@@ -125,6 +127,8 @@ def build_optimizer(config: dict, model) -> Optimizer:
         # AdamW: igual que Adam pero con weight decay desacoplado.
         # En Adam estándar el weight decay interactúa con la adaptación del lr,
         # lo que reduce su efecto real. AdamW lo aplica directamente a los pesos.
+        # PyTorch respetará el 'weight_decay' específico que hemos metido
+        # dentro de cada diccionario en `parameters` (ignorando el global para los subgrupos _nd).
         return torch.optim.AdamW(
             params=parameters, lr=base_lr, betas=betas,
             eps=eps, weight_decay=weight_decay, amsgrad=amsgrad,
@@ -166,7 +170,6 @@ def build_optimizer(config: dict, model) -> Optimizer:
         )
     else:
         raise ValueError("Optimizador desconocido: {}.".format(optimizer_name))
-
 
 # ---------------------------------------------------------------------------
 # Schedulers de learning rate

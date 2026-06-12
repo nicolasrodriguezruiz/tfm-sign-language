@@ -19,7 +19,7 @@ class SignLanguageModel(torch.nn.Module):
 
     def __init__(self, cfg, args):
         super().__init__()
-        self.args = args
+        self.args   = args
         self.task   = cfg['task']    # 'S2G' o 'S2T'
         self.device = cfg['device']
         model_cfg   = cfg['model']
