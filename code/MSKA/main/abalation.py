@@ -2,6 +2,7 @@ import os
 import json
 import subprocess
 import sys
+import yaml
 
 # SECRETOS wandb Key
 WANDB_API_KEY= ''
@@ -13,7 +14,7 @@ except:
 	print("[INFO] WANDB_API_KEY no encontrada")
 
 # Configuracion
-PROGRESS_FILE = ".SLR_ablation_progress.json"
+PROGRESS_FILE = "./SLR_ablation_progress.json"
 
 # Rutas a todos tus archivos de configuracion del ablation study
 CONFIG_FILES = [
@@ -35,6 +36,18 @@ def save_progress(completed_configs):
     with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
         json.dump(completed_configs, f, indent=4)
 
+def info_config_SLR(config):
+	with open(config, "r") as f:
+	    cfg = yaml.safe_load(f)
+
+	print("=== Configuración ===")
+	print(f"do_translation: {cfg['do_translation']}")
+	print(f"do_recognition: {cfg['do_recognition']}")
+	print(f"model_dir: {cfg['training']['model_dir']}")
+
+	print("\n=== Data Augmentation ===")
+	print(cfg['data']['augmentation'])
+
 def main():
     completed_configs = load_progress()
     total = len(CONFIG_FILES)
@@ -47,9 +60,10 @@ def main():
             continue
 
         print(f"\n[{i}/{total}] Iniciando entrenamiento con: {config}")
+        info_config_SLR(config)
         print("-" * 60)
 
-        command = ["python", "train.py", "--config", config]
+        command = ["python", "train.py", "--config", config, "--entity", "nicrodrui-universidad-de-sevilla", "--project", "slm", "--name", f"{config[18:-5]}"]
 
         try:
             subprocess.run(command, check=True)
