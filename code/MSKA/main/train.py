@@ -71,6 +71,7 @@ def get_args_parser():
     # Parámetros de Weights & Biases
     parser.add_argument("--entity", type=str, help="entidad de wandb")
     parser.add_argument("--project", type=str, default='VLP', help="proyecto de wandb")
+    parser.add_argument("--name", type=str, default=None, help="nombre de la ejecución (run) en wandb")
 
     parser.add_argument('--slm', action='store_true', help='Activa el modo SLM')
 
@@ -564,6 +565,7 @@ def setup_run(args, config):
     run = wandb.init(
         entity=args.entity,
         project=args.project,
+        name=args.name,
         config=config,
     )
     run.define_metric("epoch")
