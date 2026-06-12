@@ -33,6 +33,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import csv
+
+#TODO ICL bien hecho.
+
 # ---------------------------------------------------------------------------
 # Argumentos de línea de comandos
 # ---------------------------------------------------------------------------
@@ -46,7 +49,7 @@ def get_args_parser():
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--num_workers', default=4, type=int)
-    parser.add_argument('--config', type=str, default='configs/csl-daily_s2g.yaml')
+    parser.add_argument('--config', type=str, default='')
 
     # Gestión de checkpoints:
     # --finetune: carga pesos preentrenados de forma parcial (strict=False),
