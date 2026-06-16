@@ -96,6 +96,7 @@ def build_optimizer(config: dict, model) -> Optimizer:
         suffix = '_nd' if has_no_decay else ''
 
         if 'lora_' in name or 'TranslationNetwork' in name:
+            print(f"{name}")
             groups['lora' + suffix]['params'].append(param)
         elif 'vl_mapper' in name or 'VLMapper' in name:
             groups['mapper' + suffix]['params'].append(param)

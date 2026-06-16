@@ -66,24 +66,32 @@ class TranslationNetwork(torch.nn.Module):
             trust_remote_code=True,
         )
 
-        # --- Aplicar LoRA ---
-        # LoRA añade matrices de bajo rango (r) a las capas de atención.
-        # Solo estas matrices pequeñas se entrenan; el resto de Qwen queda congelado.
-        # r=16: rango de las matrices LoRA. Mayor r = más capacidad pero más parámetros.
-        # lora_alpha=32: factor de escala. Convención habitual: alpha = 2*r.
-        # lora_dropout=0.1: regularización dentro de los adaptadores.
-        # target_modules: capas donde se insertan los adaptadores (proyecciones de atención).
-        lora_cfg = cfg.get('lora', {})
-        lora_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            r=lora_cfg.get('r', 16),
-            lora_alpha=lora_cfg.get('alpha', 32),
-            lora_dropout=lora_cfg.get('dropout', 0.1),
-            target_modules=lora_cfg.get('target_modules', ['q_proj', 'v_proj', 'k_proj', 'o_proj']),
-            bias='none',
-        )
-        self.model = get_peft_model(self.model, lora_config)
-        self.model.print_trainable_parameters()  # para ver cuántos parámetros se entrenan
+        if "lora" in cfg:
+            print("Utilizando LoRA")
+            # --- Aplicar LoRA ---
+            # LoRA añade matrices de bajo rango (r) a las capas de atención.
+            # Solo estas matrices pequeñas se entrenan; el resto de Qwen queda congelado.
+            # r=16: rango de las matrices LoRA. Mayor r = más capacidad pero más parámetros.
+            # lora_alpha=32: factor de escala. Convención habitual: alpha = 2*r.
+            # lora_dropout=0.1: regularización dentro de los adaptadores.
+            # target_modules: capas donde se insertan los adaptadores (proyecciones de atención).
+            lora_cfg = cfg.get('lora', {})
+            lora_config = LoraConfig(
+                task_type=TaskType.CAUSAL_LM,
+                r=lora_cfg.get('r', 16),
+                lora_alpha=lora_cfg.get('alpha', 32),
+                lora_dropout=lora_cfg.get('dropout', 0.1),
+                target_modules=lora_cfg.get('target_modules', ['q_proj', 'v_proj', 'k_proj', 'o_proj']),
+                bias='none',
+            )
+            self.model = get_peft_model(self.model, lora_config)
+            self.model.print_trainable_parameters()  # para ver cuántos parámetros se entrenan
+        else:
+            # Fine-tuning: todos los parámetros son entrenables
+            for param in self.model.parameters():
+                param.requires_grad = True
+            n_params = sum(p.numel() for p in self.model.parameters()) / 1e6
+            print(f"Fine-tuning: {n_params:.1f}M parámetros entrenables en Qwen")
 
         # Dimensión oculta de Qwen: es la dimensión que espera el proyector visual
         self.input_dim = self.model.config.hidden_size
@@ -101,18 +109,20 @@ class TranslationNetwork(torch.nn.Module):
         # Cargar checkpoint propio si se especifica
         if 'load_ckpt' in cfg:
             self.load_from_pretrained_ckpt(cfg['load_ckpt'])
-        # --- INICIO DEL DIAGNÓSTICO TEMPORAL ---
-        # Definir la ruta del archivo CSV (puedes ajustarla si quieres)
-        self.diagnostic_file = 'temporal_diagnostics.csv'
-        
-        # Escribir los encabezados si el archivo no existe o queremos empezar de cero
-        # Usamos 'w' la primera vez para crear/limpiar el archivo
-        with open(self.diagnostic_file, mode='w', newline='', encoding='utf-8') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Batch_Size', 'Visual_Frames_Max', 'Visual_Frames_Avg', 'Text_Tokens_Max', 'Text_Tokens_Avg'])
-        # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
-        
-        
+
+
+        # # --- INICIO DEL DIAGNÓSTICO TEMPORAL ---
+        # # Definir la ruta del archivo CSV (puedes ajustarla si quieres)
+        # self.diagnostic_file = 'temporal_diagnostics.csv'
+        #
+        # # Escribir los encabezados si el archivo no existe o queremos empezar de cero
+        # # Usamos 'w' la primera vez para crear/limpiar el archivo
+        # with open(self.diagnostic_file, mode='w', newline='', encoding='utf-8') as file:
+        #     writer = csv.writer(file)
+        #     writer.writerow(['Batch_Size', 'Visual_Frames_Max', 'Visual_Frames_Avg', 'Text_Tokens_Max', 'Text_Tokens_Avg'])
+        # # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
+
+
     def load_from_pretrained_ckpt(self, pretrained_ckpt):
         """Carga pesos del TranslationNetwork desde un checkpoint del proyecto."""
         checkpoint = torch.load(pretrained_ckpt, map_location='cpu')['model_state']
@@ -338,10 +348,9 @@ class TranslationNetwork(torch.nn.Module):
 #             return_dict_in_generate=True,
 #             **gen_kwargs
 #         )
-        
 #         generated_ids = output.sequences
-        
-        
+
+
         prompt_str = (
             "<|im_start|>user\n"
             "Übersetze diese Gebärdensprache exakt ins Deutsche.<|im_end|>\n"
@@ -362,7 +371,7 @@ class TranslationNetwork(torch.nn.Module):
         # Expandimos el prompt para que coincida con el número de videos en tu batch
         B = prefix_embeds.shape[0]
         prompt_embeds = prompt_embeds.expand(B, -1, -1)  # Shape: (B, L_prompt, D)
-        
+
         # Creamos una máscara de 1s para el prompt (es información útil)
         prompt_mask = torch.ones(
             B, prompt_embeds.shape[1], 
@@ -397,7 +406,7 @@ class TranslationNetwork(torch.nn.Module):
         decoded = self.tokenizer.batch_decode(
             output.sequences, skip_special_tokens=True
         )
-    
+
 # # #         # ===== Estadísticas útiles =====
 
 #         eos_id = self.tokenizer.eos_token_id
@@ -438,8 +447,8 @@ class TranslationNetwork(torch.nn.Module):
 #             print(f"\nSample {i}")
 #             print("Seq len:", len(seq))
 #             print("EOS positions:", eos_positions.tolist())
-            
-            
+
+
 #             print(self.tokenizer.decode(
 #             generated_ids[i],
 #             skip_special_tokens=False))
