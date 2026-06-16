@@ -32,7 +32,7 @@ testing:
 gloss:
   gloss2id_file: data/gloss2ids.pkl
 training:
-  wandb: disabled # online or disabled
+  wandb: online # online or disabled
   model_dir: /home/user/work/data/outputs_final/SLT_SLM_ALL
   validation:
     recognition:
