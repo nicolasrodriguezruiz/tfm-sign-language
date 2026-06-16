@@ -94,9 +94,7 @@ def build_optimizer(config: dict, model) -> Optimizer:
         # Comprobar si el parámetro debe ignorar el weight_decay
         has_no_decay = any(nd in name for nd in no_decay_keywords)
         suffix = '_nd' if has_no_decay else ''
-
-        if 'lora_' in name or 'TranslationNetwork' in name:
-            print(f"{name}")
+        if 'lora_' in name or 'translation_network' in name:
             groups['lora' + suffix]['params'].append(param)
         elif 'vl_mapper' in name or 'VLMapper' in name:
             groups['mapper' + suffix]['params'].append(param)
