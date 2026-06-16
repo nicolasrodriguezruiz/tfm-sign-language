@@ -10,7 +10,6 @@ data:
   dataset_name: Phoenix-2014T
   input_streams: keypoint
   level: word # word or char
-  txt_lowercase: true
   max_sent_length: 400
   augmentation: # Para desactivar poner a 0
     joint_dropout: 0     # 0% de articulaciones enmascaradas por muestra

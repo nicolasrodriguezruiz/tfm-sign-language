@@ -212,7 +212,7 @@ def main(args, config):
         torch.save({
             'model': model.state_dict(),
             'scheduler': scheduler.state_dict(),
-            'optimizer': optimizer.state_dict(), 
+            'optimizer': optimizer.state_dict(),
             'epoch': epoch,
         }, output_dir / 'checkpoint.pth')
 
@@ -318,18 +318,18 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
                     device: torch.device, epoch: int):
     model.train()  # activa dropout, batch norm en modo entrenamiento, etc.
     metric_logger = utils.MetricLogger(delimiter="  ")
-    
+
     for group in optimizer.param_groups:
         group_name = group.get('name', 'default')
         metric_logger.add_meter(f'lr_{group_name}', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-        
+
     header = f'Epoca: [{epoch}/{args.epochs}]'
 
     for step, (batch) in enumerate(metric_logger.log_every(data_loader, print_freq=10, header=header)):
         optimizer.zero_grad()        # limpiar gradientes del paso anterior
 
         output = model(batch)    # forward pass: calcula predicciones y loss
-        
+
 
         # set_detect_anomaly detecta NaNs/Infs durante el backward e indica exactamente
         # dónde ocurrieron. Útil para depurar pero tiene coste de rendimiento;
@@ -349,12 +349,12 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
 
         metric_logger.update(loss=loss_value)
         #metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-        
+
         # Extraemos el lr actual de cada grupo del optimizador
         current_lrs = {}
         for group in optimizer.param_groups:
             # Usamos el nombre que le dimos en build_optimizer (si existe)
-            group_name = group.get('name', 'default') 
+            group_name = group.get('name', 'default')
             lr_val = group["lr"]
             current_lrs[f"lr_{group_name}"] = lr_val
             # Actualizamos el logger de texto en consola
@@ -373,7 +373,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
         if step % 50 == 0 and 'stream_weights' in output:
             w = output['stream_weights']
             print(f"Stream weights — left:{w[0]:.3f} right:{w[1]:.3f} body:{w[2]:.3f} fuse:{w[3]:.3f}")
-            
+
         # if step == 10:
         #     print("\n"*2)
         #     for name, param in model.named_parameters():
@@ -396,7 +396,7 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
         wandb_logs = {
             'epoch': epoch + 1,
             'epoch/train_loss': loss_value,}
-        
+
         # Añadimos los LRs al diccionario de wandb
         for group_name, lr_val in current_lrs.items():
             wandb_logs[f'epoch/{group_name}'] = lr_val
@@ -464,25 +464,25 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
                 # --- INICIO DEL REGISTRO EN CSV ---
 #                 # Definir la ruta del archivo (se guardará en la carpeta actual o puedes especificar una ruta)
 #                 csv_file = 'predictions_sample_20.csv'
-                
+
 #                 # Si el archivo no existe, creamos los encabezados
 #                 file_exists = os.path.isfile(csv_file)
 #                 with open(csv_file, mode='a', newline='', encoding='utf-8') as f:
 #                     writer = csv.writer(f)
 #                     if not file_exists:
 #                         writer.writerow(['Video_Name', 'Ground_Truth', 'Prediction'])
-                    
+
 #                     # Iterar sobre el batch y guardar en el diccionario y en el CSV
 #                     for name, txt_hyp, txt_ref in zip(src_input['name'],
 #                                                       generate_output['decoded_sequences'],
 #                                                       src_input['text']):
 #                         results[name]['txt_hyp'] = txt_hyp
 #                         results[name]['txt_ref'] = txt_ref
-                        
+
 #                         # Escribir la fila en el CSV
 #                         writer.writerow([name, txt_ref, txt_hyp])
 # #                 # --- FIN DEL REGISTRO EN CSV ---
-                
+
                 for name, txt_hyp, txt_ref in zip(src_input['name'],
                                                    generate_output['decoded_sequences'],
                                                    src_input['text']):
@@ -547,7 +547,7 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
     print("* Averaged stats:", metric_logger)
     #print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.loss))
     print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.meters['loss']))
-    
+
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
@@ -594,3 +594,6 @@ if __name__ == '__main__':
     Path(config['training']['model_dir']).mkdir(parents=True, exist_ok=True)
 
     main(args, config)
+
+    if args.run is not None:
+        args.run.finish()
