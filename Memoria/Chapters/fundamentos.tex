@@ -1,9 +1,121 @@
 \chapter{Fundamentos}
 
 \section{Medidas de precisión en traducción}
-Implementacion de \cite{SBleu}.
+A diferencia de las tareas de aprendizaje automático tradicional, como la clasificación o la regresión, donde el rendimiento puede medirse de forma exacta mediante métricas como el accuracy o el error cuadrático medio, la traducción de lenguaje natural carece de una única respuesta correcta.
+
+El lenguaje humano es inherentemente complejo, subjetivo y altamente combinatorio.
+Ante una tarea de traducción, resumen o generación de texto, existen múltiples formas válidas de expresar la misma idea utilizando diferentes estructuras sintácticas o sinónimos.
+Esta flexibilidad hace que comparar la salida de un modelo algorítmico con un texto de referencia sea un problema no trivial.
+
+Históricamente, el estándar de oro para evaluar la calidad del texto generado ha sido la evaluación humana.
+Contar con lingüistas o hablantes nativos que juzguen la fluidez, la coherencia y la adecuación de un texto garantiza resultados fiables.
+No obstante, la evaluación manual es un proceso costoso, lento y difícilmente escalable.
+En el contexto actual, donde los modelos de lenguaje requieren iteraciones constantes y pruebas sobre conjuntos de datos masivos, depender exclusivamente del juicio humano resulta inviable.
+
+En este contexto surgen, entre otras, las medidas aquí expuestas, buscando obtener la mayor correlacción con el criterio de un evaluador humano.
+
+
+
+\subsection{WER}
+La métrica \textbf{\textit{Word Error Rate} (WER)} tiene su origen en la evaluación de los primeros sistemas de \textbf{Reconocimiento Automático de Habla} (\textit{ASR}, por sus siglas en inglés) desarrollados entre las décadas de $1980$ y $1990$.
+Ante la necesidad de cuantificar el rendimiento de los modelos ocultos de Markov (\textit{HMM}) en la transcripción de voz a texto, la comunidad científica adoptó y adaptó la \textbf{distancia de Levenshtein}.
+Mientras que Levenshtein medía la distancia de edición a nivel de caracteres, el WER elevó esta abstracción al nivel de palabras (o tokens), convirtiéndose en la métrica estándar para medir la robustez de las secuencias decodificadas frente a una transcripción de referencia.
+
+\subsubsection*{Funcionamiento}
+El WER se define como la distancia de edición mínima (a nivel de palabra) requerida para alinear la secuencia producida por el modelo con la secuencia de referencia (la transcripción real o \textit{ground truth}), normalizada por la longitud de la referencia.
+
+Matemáticamente, se basa en la suma de tres tipos de errores de edición.
+Si denotamos la secuencia de referencia como $R$ y la secuencia de hipótesis (la salida del modelo) como $H$, el cálculo se realiza mediante programación dinámica para encontrar la alineación óptima que minimice la siguiente función.
+\begin{equation*}
+WER = \frac{S+D+I}{N},
+\end{equation*}
+donde,
+\begin{itemize}
+    \item \textbf{S} es el número de palabras en la referencia que han sido reemplazadas por una palabra incorrecta en la hipótesis,
+    \item \textbf{D} es el número de palabras presentes en la referencia que el modelo ha omitido,
+    \item \textbf{I} es el número de palabras añadidas por el modelo que no existen en la referencia, y,
+    \item \textbf{N} es el número total de palabras en la secuencia de referencia.
+\end{itemize}
+
+A pesar de su adopción generalizada, el WER presenta grandes deficiencias al evaluar lenguajes humanos.
+Su principal limitación es la absoluta ausencia de comprensión semántica, ya que penaliza por igual errores menores (como omitir una partícula) y sustituciones que alteran completamente el significado de la frase.
+Además, resulta hipersensible al reordenamiento y carece de un límite superior acotado, permitiendo valores por encima del $100\%$ que dificultan su interpretación intuitiva frente a otras métricas de precisión.
+
+
+A pesar de estas limitaciones, el WER es la métrica indispensable en reconocimiento de signos por su naturaleza secuencial y por exigencia empírica.
+A nivel teórico, la extracción de glosas es un problema de alineamiento temporal similar al reconocimiento automático de voz, donde esa hipersensibilidad a ligeros cambios en el orden de las glosas no es un defecto, ya que una glosa fuera de tiempo indica un error real de segmentación del modelo.
+
 \subsection{BLEU}
+Propuesta en 2002, \textbf{BLEU} (\textit{BiLingual Evaluation Understudy}) \cite{BLEU} es una de las métricas más utilizadas para evaluar la calidad de una traducción automática.
+Su premisa fundamental consiste en medir la similitud entre el texto generado por un modelo y una o varias traducciones humanas de referencia.
+Para ello, BLEU no evalúa palabras aisladas, sino secuencias de $n$ palabras, conocidas como $n$-gramas.
+Esto permite cuantificar simultáneamente la adecuación (si se usa el vocabulario correcto) y la fluidez (si el orden y la coherencia son adecuados).
+
+Para evitar que un modelo obtenga una puntuación artificialmente alta repitiendo una misma palabra correcta, BLEU utiliza una precisión modificada o “recortada” (\textit{clipped}).
+Esto significa que el número de veces que se contabiliza un acierto para un $n$-grama en la traducción generada se limita al número máximo total de veces que dicho $n$-grama aparece en la referencia.
+
+BLEU es una métrica a nivel de \textbf{corpus}, el cálculo no se promedia independientemente frase por frase, sino que se suman los aciertos recortados de todas las oraciones y se dividen por el número total de $n$-gramas generados en todo el texto candidato.
+\begin{equation*}
+	p_n = \frac{\sum_{C \in \{\text{Candidatos}\}} \sum_{n\text{-grama} \in C} \text{Count}_{\text{clip}}(n\text{-grama})}{\sum_{C' \in \{\text{Candidatos}\}} \sum_{n\text{-grama}' \in C'} \text{Count}(n\text{-grama}')}
+\end{equation*}
+
+Sin embargo, basarse únicamente en esta precisión presenta un sesgo ya que las traducciones extremadamente cortas podrían obtener puntuaciones perfectas omitiendo información difícil de traducir.
+Para contrarrestar esta tendencia, la métrica introduce la penalización por brevedad $BP$.
+Esta penalización reduce la puntuación final si la longitud total $c$ de las traducciones generadas es menor o igual a la longitud total $r$ del corpus de referencia.
+\begin{equation*}
+	\text{BP} =
+	\begin{cases}
+		1                   & \ \text{si } c > r \\
+		e^{1 - \frac{r}{c}} & \ \text{si } c \leq r
+	\end{cases}
+\end{equation*}
+Finalmente, la puntuación total de BLEU se obtiene combinando la penalización por brevedad con las precisiones de los $n$-gramas, ponderadas por pesos uniformes $w_n = 1/N$
+\begin{equation*}
+	\text{BLEU} = \text{BP} \cdot \exp\!\left( \sum_{n=1}^{N} w_n \log P_n \right)
+\end{equation*}
+
+El resultado final de BLEU es un valor entre $0$ y $1$ (o $0$ y $100$), donde un valor más cercano a $1$ (o $100$) indica una mayor calidad global de la traducción.
+
+Al basarse estrictamente en la coincidencia léxica exacta, no comprende sinónimos ni parafraseos.
+Una traducción perfectamente válida que utilice vocabulario diferente al de la referencia obtendrá una puntuación BLEU muy baja.
+Además, no tiene en cuenta la estructura gramatical o el significado global de la frase.
+
+Implementacion de \cite{SBleu}.
+
 \subsection{ROUGE}
+Introducida en $2004$, \textbf{ROUGE} (\textit{Recall-Oriented Understudy for Gisting Evaluation}) \cite{ROUGE}.
+Su formulación matemática se centra en la exhaustividad (\textit{recall}).
+El objetivo principal es verificar cuánta de la información crucial, presente en los resúmenes de referencia humanos, ha sido capturada por el modelo.
+
+Aunque ROUGE es una familia de métricas, las formulaciones más relevantes se dividen en dos enfoques principales: el conteo de $n$-gramas (ROUGE-N) y la subsecuencia común más larga (ROUGE-L).
+
+\textbf{ROUGE-N} mide el solapamiento de $n$-gramas entre el resumen candidato (generado por la máquina) y los resúmenes de referencia.
+Se calcula con la siguiente fórmula.
+\begin{equation*}
+	\text{ROUGE-N}_{\textit{Recall}} = \frac{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}_{\text{match}}(n\text{-grama})}{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}(n\text{-grama})},
+\end{equation*}
+donde $\text{Count}_{\text{match}}(n\text{-grama})$ es el número máximo de $n$-gramas que coocurren tanto en el resumen candidato como en el conjunto de resúmenes de referencia, y el denominador es el número total de $n$-gramas presentes en las referencias.
+
+Sin embargo, para evitar que un modelo genere un texto excesivamente largo que contenga todas las palabras del diccionario (lo que daría una exhaustividad del 100 \%), las implementaciones modernas de ROUGE también calculan la \textbf{precisión}, cambiando el denominador para contar los $n$-gramas del texto candidato.
+\begin{equation*}
+	\text{ROUGE-N}_{\textit{Precision}} = \frac{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}_{\text{match}}(n\text{-grama})}{\sum_{n\text{-grama} \in \text{Candidato}} \text{Count}(n\text{-grama})}
+\end{equation*}
+
+Finalmente, se combinan ambas métricas utilizando el $F_1$-\textit{score} (la media armónica).
+\begin{equation*}
+	F_1 = 2 \, \frac{\textit{Precision} \cdot \textit{Recall}}{\textit{Precision} + \textit{Recall}}
+\end{equation*}
+
+Por su parte, \textbf{ROUGE-L} evalúa la similitud entre textos mediante la \textbf{subsecuencia común más larga} (LCS).
+Para entender qué es una subsecuencia, conviene distinguirla de una subcadena, mientras que una subcadena exige que las palabras sean consecutivas, una \textbf{subsecuencia} solo exige que aparezcan en el mismo orden relativo, aunque haya otras palabras intercaladas.
+
+BLEU castiga que el modelo invente texto mediante la precisión, y utiliza la penalización por brevedad para evitar textos excesivamente cortos.
+ROUGE, en cambio, castiga que el modelo omita información clave mediante la exhaustividad, y confía en la puntuación $F_1$ para penalizar indirectamente a los modelos que generan textos excesivamente largos.
+
+Al igual que BLEU, ROUGE sufre de la misma limitación semántica, al basarse en solapamientos léxicos directos, no es capaz de puntuar correctamente el uso de sinónimos o paráfrasis.
+
+
+
 \section{Transformers}
 La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje.
 La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
