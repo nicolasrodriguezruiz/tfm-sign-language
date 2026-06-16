@@ -76,7 +76,7 @@ class SignLanguageModel(torch.nn.Module):
 
             # Cargar pesos preentrenados del VLMapper si existen (Fase 1 → Fase 2)
             pretrained_mapper = model_cfg['VLMapper'].get('pretrained_mapper', None)
-            if pretrained_mapper and not args.eval:
+            if pretrained_mapper and not getattr(args, "eval", False):
                 self.vl_mapper.load_state_dict(torch.load(pretrained_mapper, map_location='cpu'))
                 print(f"VLMapper cargado desde preentrenamiento: {pretrained_mapper}")
 
