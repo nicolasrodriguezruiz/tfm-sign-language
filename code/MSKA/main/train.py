@@ -207,8 +207,6 @@ def main(args, config):
         train_stats = train_one_epoch(args, model, tokenizer, train_dataloader, optimizer, device, epoch)
 
         # Guardar checkpoint de la época actual (se sobreescribe cada vez).
-        # El optimizador está omitido intencionalmente para reducir el tamaño del fichero;
-        # solo se guarda completo en best_checkpoint más abajo.
         torch.save({
             'model': model.state_dict(),
             'scheduler': scheduler.state_dict(),
@@ -545,7 +543,6 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
 
 
     print("* Averaged stats:", metric_logger)
-    #print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.loss))
     print('* DEV loss {losses.global_avg:.3f}'.format(losses=metric_logger.meters['loss']))
 
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
@@ -567,6 +564,7 @@ def setup_run(args, config):
         project=args.project,
         name=args.name,
         config=config,
+        tags=[config['task']],
     )
     run.define_metric("epoch")
     run.define_metric("training/*", step_metric="epoch")
