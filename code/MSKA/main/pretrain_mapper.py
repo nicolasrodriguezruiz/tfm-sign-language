@@ -39,10 +39,10 @@ import torch
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
-from Tokenizer import GlossTokenizer_S2G
-from model import SignLanguageModel
-import utils as utils
-from S2T_Dataset import S2T_Dataset
+from Recognition.Tokenizer import GlossTokenizer_S2G
+from slm.model_slm import SignLanguageModel
+import aux.utils as utils
+from slm.S2T_Dataset import S2T_Dataset
 import argparse
 import yaml
 import numpy as np
@@ -131,10 +131,6 @@ def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
     metric_logger = utils.MetricLogger(delimiter="  ")
     header = f'Pretrain Epoch: [{epoch}/{args.epochs}]'
 
-    # total_loss = 0
-    # n_batches = 0
-    # start = time.time()
-
     for step, src_input in enumerate(metric_logger.log_every(data_loader, print_freq=50, header=header)):
 
         # --- 1. Recognition (sin gradientes, está congelado) ---
@@ -175,16 +171,6 @@ def pretrain_one_epoch(model, qwen_embeddings, qwen_tokenizer,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
-        # total_loss += loss.item()
-        # n_batches += 1
-
-        # if step % 50 == 0:
-        #     elapsed = time.time() - start
-        #     remaining = elapsed / (step + 1) * (len(data_loader) - step - 1)
-        #     print(f"Pretrain Epoch [{epoch}]  [{step}/{len(data_loader)}]"
-        #           f"  loss: {loss.item():.4f} ({total_loss / n_batches:.4f})"
-        #           f"  eta: {datetime.timedelta(seconds=int(remaining))}")
 
         # --- Logging ---
         metric_logger.update(loss=loss.item())
@@ -247,13 +233,13 @@ def main(args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # --- INICIALIZAR WANDB ---
-    use_wandb = config.get('training', {}).get('wandb', 'disabled') == 'online'
-    if use_wandb:
-        import wandb
-        wandb.init(project="MSKA-Pretrain-VLMapper", config=config)
-        args.run = wandb
-    else:
-        args.run = None
+    # use_wandb = config.get('training', {}).get('wandb', 'disabled') == 'online'
+    # if use_wandb:
+    #     import wandb
+    #     wandb.init(project="MSKA-Pretrain-VLMapper", config=config)
+    #     args.run = wandb
+    # else:
+    #     args.run = None
 
     # --- Datasets ---
     print("Cargando datasets...")
@@ -300,7 +286,9 @@ def main(args):
     # get_input_embeddings() devuelve la capa Embedding de Qwen.
     # La usamos para convertir IDs de glosas a vectores densos.
     # No se entrena: es nuestra "diana" fija hacia la que apunta el VLMapper.
-    qwen_embeddings = model.translation_network.model.get_base_model().model.embed_tokens
+    if False:
+        qwen_embeddings = model.translation_network.model.get_base_model().model.embed_tokens
+    qwen_embeddings = model.translation_network.model.model.embed_tokens
     qwen_embeddings.eval()
     for param in qwen_embeddings.parameters():
         param.requires_grad = False
@@ -325,6 +313,12 @@ def main(args):
 
     best_val_loss = float('inf')
 
+    early_stopping = utils.EarlyStopping(
+    patience=config['training'].get('early_stopping_patience', 15),
+    mode='min',
+    min_delta=config['training'].get('early_stopping_min_delta', 0.0),
+    )
+
     for epoch in range(args.epochs):
         train_stats = pretrain_one_epoch(
             model=model,
@@ -344,13 +338,13 @@ def main(args):
             data_loader=dev_dataloader,
             device=device,
         )
-        # --- GUARDAR EN WANDB (Opcional, si está activado) ---
-        if args.run:
-            args.run.log({
-                'epoch': epoch + 1,
-                **{f'pretrain/train_{k}': v for k, v in train_stats.items()},
-                **{f'pretrain/test_{k}': v for k, v in test_stats.items()},
-            })
+        # # --- GUARDAR EN WANDB (Opcional, si está activado) ---
+        # if args.run:
+        #     args.run.log({
+        #         'epoch': epoch + 1,
+        #         **{f'pretrain/train_{k}': v for k, v in train_stats.items()},
+        #         **{f'pretrain/test_{k}': v for k, v in test_stats.items()},
+        #     })
 
         scheduler.step()
 
@@ -364,7 +358,7 @@ def main(args):
             )
             print(f"  → Nuevo mejor mapper guardado (val_loss={best_val_loss:.4f})")
 
-        # --- EL LOG.TXT COMO LO PEDISTE ---
+        # --- EL LOG.TXT ---
 
         log_stats = {
             **{f'train_{k}': v for k, v in train_stats.items()},
@@ -388,13 +382,13 @@ def main(args):
         print(f"Época {epoch}: train={train_stats['loss']:.4f}  val={test_stats['loss']:.4f}"
               f"  lr={scheduler.get_last_lr()[0]:.6f}\n")
 
+        if early_stopping(test_stats['loss']):
+            print(f"Early stopping en época {epoch}. Mejor: {early_stopping.best:.4f}")
+            break
+
     print(f"\nPreentrenamiento completado.")
     print(f"Mejor val_loss: {best_val_loss:.4f}")
     print(f"Mapper guardado en: {output_dir}/pretrained_mapper.pth")
-    # print(f"\nAhora añade al config YAML:")
-    # print(f"  model:")
-    # print(f"    VLMapper:")
-    # print(f"      pretrained_mapper: {output_dir}/pretrained_mapper.pth")
 
 
 if __name__ == '__main__':
