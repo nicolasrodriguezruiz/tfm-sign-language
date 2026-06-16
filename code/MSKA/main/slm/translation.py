@@ -238,31 +238,31 @@ class TranslationNetwork(torch.nn.Module):
         """
         B = input_feature.shape[0]
         device = input_feature.device
-        
+
 #         # --- DIAGNÓSTICO TEMPORAL (Escribiendo en CSV) ---
 #         # Calculamos los datos reales del lote actual
 #         if input_feature is not None:
 #             max_visual_frames = input_lengths.max().item()
 #             avg_visual_frames = input_lengths.float().mean().item()
-            
+
 #             # Para el texto, contamos los tokens que NO son padding (-100)
 #             valid_text_tokens = (labels != -100).sum(dim=1)
 #             max_text_tokens = valid_text_tokens.max().item()
 #             avg_text_tokens = valid_text_tokens.float().mean().item()
-            
+
 #             # Abrimos el archivo en modo 'a' (append) para añadir la nueva fila
 #             with open(self.diagnostic_file, mode='a', newline='', encoding='utf-8') as file:
 #                 writer = csv.writer(file)
 #                 writer.writerow([
-#                     B, 
-#                     max_visual_frames, 
-#                     round(avg_visual_frames, 2), 
-#                     max_text_tokens, 
+#                     B,
+#                     max_visual_frames,
+#                     round(avg_visual_frames, 2),
+#                     max_text_tokens,
 #                     round(avg_text_tokens, 2)
 #                 ])
 #         # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
-            
-            
+
+
         # --- 1. Construir el prefijo visual/glosa ---
         # En entrenamiento con gloss_source='ground_truth' se usan las glosas reales.
         # En evaluación (o si gloss_source='predicted') se usan las predichas por CTC.
@@ -277,7 +277,14 @@ class TranslationNetwork(torch.nn.Module):
 
         # --- 2. Embeddings del texto de referencia (para teacher forcing) ---
         # get_input_embeddings() devuelve la tabla de embeddings de Qwen
-        text_embeds = self.model.get_base_model().model.embed_tokens(
+        # Preparado para LoRA y para FineTunning
+
+        if hasattr(self.model, "get_base_model"):
+            base_model = self.model.get_base_model()
+        else:
+            base_model = self.model
+
+        text_embeds = base_model.model.embed_tokens(
             decoder_input_ids.to(device)
         ).to(torch.bfloat16)  # (B, L, hidden_size)
 
@@ -328,15 +335,15 @@ class TranslationNetwork(torch.nn.Module):
             max_new_tokens: máximo de tokens nuevos a generar (no cuenta el prefijo).
             length_penalty: >1 favorece frases largas, <1 cortas.
         """
-        
+
         # Para evitar tener que refractorizar
         gen_kwargs = {
             "max_new_tokens": 100,
             "num_beams": 4,
             "length_penalty": 1.0
         }
-        
-        #  Sobrescribir con todo lo que llegue desde YAML 
+
+        #  Sobrescribir con todo lo que llegue desde YAML
         gen_kwargs.update(kwargs)
 
 #         #  La llamada a Qwen (HuggingFace)
@@ -359,8 +366,8 @@ class TranslationNetwork(torch.nn.Module):
 
         # Tokenizamos el prompt (sin añadir especiales para mantener control total)
         prompt_ids = self.tokenizer(
-            prompt_str, 
-            return_tensors="pt", 
+            prompt_str,
+            return_tensors="pt",
             add_special_tokens=False
         ).input_ids.to(prefix_embeds.device)
 
@@ -374,8 +381,8 @@ class TranslationNetwork(torch.nn.Module):
 
         # Creamos una máscara de 1s para el prompt (es información útil)
         prompt_mask = torch.ones(
-            B, prompt_embeds.shape[1], 
-            dtype=prefix_mask.dtype, 
+            B, prompt_embeds.shape[1],
+            dtype=prefix_mask.dtype,
             device=prefix_mask.device
         )
 
@@ -387,7 +394,7 @@ class TranslationNetwork(torch.nn.Module):
         # La llamada a Qwen (HuggingFace) usando el prefix COMPLETO
         output = self.model.generate(
             inputs_embeds=full_prefix_embeds.to('cuda'),
-            attention_mask=full_prefix_mask.to('cuda'),  
+            attention_mask=full_prefix_mask.to('cuda'),
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
             return_dict_in_generate=True,
@@ -395,7 +402,7 @@ class TranslationNetwork(torch.nn.Module):
         )
 
         # (Opcional) El log de depuración del EOS.
-        # Recuerda que HuggingFace SIEMPRE inyecta un falso EOS en la posición 0 
+        # Recuerda que HuggingFace SIEMPRE inyecta un falso EOS en la posición 0
         # al usar inputs_embeds. Por eso ignoramos seq[0] en la búsqueda:
         eos_id = self.tokenizer.eos_token_id
         for i, seq in enumerate(output.sequences):
@@ -452,7 +459,7 @@ class TranslationNetwork(torch.nn.Module):
 #             print(self.tokenizer.decode(
 #             generated_ids[i],
 #             skip_special_tokens=False))
-#         print("="*20)    
+#         print("="*20)
 #         print(output.sequences.shape)
 #         print(full_prefix_embeds.shape)
 #         print(output.sequences[0][:20])

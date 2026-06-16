@@ -286,9 +286,14 @@ def main(args):
     # get_input_embeddings() devuelve la capa Embedding de Qwen.
     # La usamos para convertir IDs de glosas a vectores densos.
     # No se entrena: es nuestra "diana" fija hacia la que apunta el VLMapper.
-    if False:
-        qwen_embeddings = model.translation_network.model.get_base_model().model.embed_tokens
-    qwen_embeddings = model.translation_network.model.model.embed_tokens
+    if hasattr(model, "get_base_model"):
+        base_model = model.translation_network.model.get_base_model() # Para LoRA
+    else:
+        base_model = model.translation_network.model
+
+    qwen_embeddings = base_model.model.embed_tokens
+
+
     qwen_embeddings.eval()
     for param in qwen_embeddings.parameters():
         param.requires_grad = False
