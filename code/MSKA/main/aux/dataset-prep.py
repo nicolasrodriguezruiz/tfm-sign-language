@@ -103,7 +103,7 @@ def process_video(args):
 # ==========================================
 def main():
     # ---------------------------------------------------------
-    # 1. RUTAS DE TUS DATOS (¡Ajusta esto según tus carpetas!)
+    # RUTAS DE LOS DATOS
     # ---------------------------------------------------------
     # El CSV de Phoenix suele tener un delimitador de barra vertical '|'
     ANNOTATIONS_CSV = "/home/user/work/data/PHOENIX-2014-T-release-v3/PHOENIX-2014-T/annotations/manual/PHOENIX-2014-T.train.corpus.csv"
@@ -137,7 +137,7 @@ def main():
     logger.info(f"Se procesarán {total_videos} videos usando {cpu_count()} núcleos.")
 
     # ---------------------------------------------------------
-    # 2. PROCESAMIENTO EN PARALELO
+    # PROCESAMIENTO EN PARALELO
     # ---------------------------------------------------------
     dataset_dict = {}
 
@@ -155,7 +155,7 @@ def main():
                 logger.info(f"Progreso: {i}/{total_videos} videos procesados.")
 
     # ---------------------------------------------------------
-    # 3. GUARDADO DEL DATASET
+    # GUARDADO DEL DATASET
     # ---------------------------------------------------------
     os.makedirs(os.path.dirname(OUTPUT_PKL), exist_ok=True)
     logger.info(f"Guardando dataset empaquetado en {OUTPUT_PKL}...")

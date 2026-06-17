@@ -1,8 +1,25 @@
+[
+ // Primera persona, primera imagen
+ {
+    "image_id" : string, image_1_name,
+    "category_id" : int, 1 for person
+    "keypoints" : [x1,y1,c1,...,xk,yk,ck],
+    "score" : float,
+ },
+ // Segunda persona, primera imagen
+ {
+    "image_id" : string, image_1_name,
+    "category_id" : int, 1 for person
+    "keypoints" : [x1,y1,c1,...,xk,yk,ck],
+    "score" : float,
+ },
+ ...
+ // Igual para la segunda imagen
 {
-    "version": "alphapose_halpe136",
-    "people": [{
-    "pose_keypoints_2d": [x0,y0,c0, x1,y1,c1, ..., x135,y135,c135],
-    "box": [...],
-    "score": float
-    }]
-}
+    "image_id" : string, image_2_name,
+    "category_id" : int, 1 for person
+    "keypoints" : [x1,y1,c1,...,xk,yk,ck],
+    "score" : float,
+ },
+ ...
+]
