@@ -2800,7 +2800,7 @@ def wer_single(r, h):
     }
 
 
-def edit_distance(r, h):
+def edit_distance(r, h): # WER
     """
     Original Code from https://github.com/zszyellow/WER-in-python/blob/master/wer.py
     This function is to calculate the edit distance of reference sentence and the hypothesis sentence.

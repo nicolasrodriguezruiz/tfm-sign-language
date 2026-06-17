@@ -51,7 +51,7 @@ class SignLanguageModel(torch.nn.Module):
 
             # --- Módulo de traducción (Qwen2.5-1.5B + LoRA) ---
             self.translation_network = TranslationNetwork(
-                cfg=model_cfg['TranslationNetwork'],
+                cfg=cfg, #model_cfg['TranslationNetwork'],
                 task=self.task,
             )
             self.text_tokenizer = self.translation_network.tokenizer

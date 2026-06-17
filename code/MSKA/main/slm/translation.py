@@ -37,6 +37,9 @@ class TranslationNetwork(torch.nn.Module):
         super().__init__()
         self.task = task
 
+        self.prompt_str = cfg["data"].get('prompt', {})
+        cfg = cfg["model"]["TranslationNetwork"]
+
         # --- Flags de ablation ---
         self.use_visual_features = cfg.get('use_visual_features', True)
         self.use_gloss_tokens    = cfg.get('use_gloss_tokens', False)
@@ -263,7 +266,7 @@ class TranslationNetwork(torch.nn.Module):
 #         # --- FIN DEL DIAGNÓSTICO TEMPORAL ---
 
 
-        # --- 1. Construir el prefijo visual/glosa ---
+        # --- Construir el prefijo visual/glosa ---
         # En entrenamiento con gloss_source='ground_truth' se usan las glosas reales.
         # En evaluación (o si gloss_source='predicted') se usan las predichas por CTC.
         effective_gloss_ids     = gloss_ids     if self.use_gloss_tokens else None
@@ -346,23 +349,8 @@ class TranslationNetwork(torch.nn.Module):
         #  Sobrescribir con todo lo que llegue desde YAML
         gen_kwargs.update(kwargs)
 
-#         #  La llamada a Qwen (HuggingFace)
-#         output = self.model.generate(
-#             inputs_embeds=prefix_embeds.to('cuda'),
-#             attention_mask=prefix_mask.to('cuda'),
-#             eos_token_id=self.eos_index,
-#             pad_token_id=self.pad_index,
-#             return_dict_in_generate=True,
-#             **gen_kwargs
-#         )
-#         generated_ids = output.sequences
 
-
-        prompt_str = (
-            "<|im_start|>user\n"
-            "Übersetze diese Gebärdensprache exakt ins Deutsche.<|im_end|>\n"
-            "<|im_start|>assistant\n"
-        )
+        prompt_str = self.prompt_str
 
         # Tokenizamos el prompt (sin añadir especiales para mantener control total)
         prompt_ids = self.tokenizer(

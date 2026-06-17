@@ -185,7 +185,8 @@ def main(args, config):
             logger.warning('Please specify the trained model: --resume /path/to/best_checkpoint.pth')
         dev_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch=0, beam_size=5,
                              generate_cfg=config['training']['validation']['translation'],
-                             do_translation=config['do_translation'], do_recognition=config['do_recognition'])
+                             do_translation=config['do_translation'], do_recognition=config['do_recognition'],
+                             header="Dev:")
         print(f"Dev loss of the network on the {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
         test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0, beam_size=5,
                               generate_cfg=config['testing']['translation'],
@@ -215,10 +216,11 @@ def main(args, config):
         }, output_dir / 'checkpoint.pth')
 
         # Evaluar en el conjunto de validación (dev) tras cada época
-        test_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch,
+        dev_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch,
                               beam_size=config['training']['validation']['recognition']['beam_size'],
                               generate_cfg=config['training']['validation']['translation'],
-                              do_translation=config['do_translation'], do_recognition=config['do_recognition'])
+                              do_translation=config['do_translation'], do_recognition=config['do_recognition'],
+                              header="Dev:")
 
         # Guardar el mejor checkpoint según la métrica de la tarea
         best_checkpoint = {
@@ -229,21 +231,21 @@ def main(args, config):
         }
         if config['task'] == "S2T":
             # Traducción: guardar si mejora el BLEU-4
-            if best_bleu4 < test_stats["bleu4"]:
-                best_bleu4 = test_stats["bleu4"]
+            if best_bleu4 < dev_stats["bleu4"]:
+                best_bleu4 = dev_stats["bleu4"]
                 torch.save(best_checkpoint, output_dir / 'best_checkpoint.pth')
-            print(f"* DEV BLEU-4 {test_stats['bleu4']:.3f} Max DEV BLEU-4 {best_bleu4}")
+            print(f"* DEV BLEU-4 {dev_stats['bleu4']:.3f} Max DEV BLEU-4 {best_bleu4}")
         else:
             # Reconocimiento: guardar si baja el WER
-            if min_wer > test_stats["wer"]:
-                min_wer = test_stats["wer"]
+            if min_wer > dev_stats["wer"]:
+                min_wer = dev_stats["wer"]
                 torch.save(best_checkpoint, output_dir / 'best_checkpoint.pth')
-            print(f"* DEV wer {test_stats['wer']:.3f} Min DEV WER {min_wer}")
+            print(f"* DEV wer {dev_stats['wer']:.3f} Min DEV WER {min_wer}")
 
         # Preparar todas las estadísticas de la época
         log_stats = {
             **{f'train_{k}': v for k, v in train_stats.items()},
-            **{f'test_{k}': v for k, v in test_stats.items()},
+            **{f'test_{k}': v for k, v in dev_stats.items()},
             'epoch': epoch,
             'n_parameters': n_parameters,
         }
@@ -252,19 +254,19 @@ def main(args, config):
         with (output_dir / "log.txt").open("a") as f:
             f.write(json.dumps(log_stats) + "\n")
 
-        # Loggear en wandb TODO lo que va al log.txt + métricas personalizadas previas
+        # Loggear en wandb lo que va al log.txt + métricas personalizadas previas
         if args.run:
             wandb_logs = {
                 'epoch': epoch + 1,
                 'training/train_loss': train_stats.get('loss', 0),
-                'dev/dev_loss': test_stats.get('loss', 0),
+                'dev/dev_loss': dev_stats.get('loss', 0),
                 'dev/min_loss': min_wer,
             }
             # Fusionamos log_stats dentro del diccionario de wandb
             wandb_logs.update(log_stats)
             args.run.log(wandb_logs)
 
-        metric = test_stats['wer'] if config['task'] == 'S2G' else test_stats['bleu4']
+        metric = dev_stats['wer'] if config['task'] == 'S2G' else dev_stats['bleu4']
         if early_stopping(metric):
             print(f"Early stopping en época {epoch}. Mejor: {early_stopping.best:.4f}")
             break
@@ -277,7 +279,8 @@ def main(args, config):
     dev_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch=0,
                          beam_size=config['testing']['recognition']['beam_size'],
                          generate_cfg=config['training']['validation']['translation'],
-                         do_translation=config['do_translation'], do_recognition=config['do_recognition'])
+                         do_translation=config['do_translation'], do_recognition=config['do_recognition'],
+                         header="Dev:")
     print(f"Dev loss de la red en los {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
 
     test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0,
@@ -411,10 +414,9 @@ def train_one_epoch(args, model: torch.nn.Module, criterion,
 # ---------------------------------------------------------------------------
 
 def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
-             generate_cfg={}, do_translation=True, do_recognition=True):
+             generate_cfg={}, do_translation=True, do_recognition=True, header="Test:"):
     model.eval()  # desactiva dropout, batch norm en modo inferencia, etc.
     metric_logger = utils.MetricLogger(delimiter="  ")
-    header = 'Test:'
 
     # Acumulamos predicciones y referencias por nombre de muestra para
     # calcular las métricas globales al final (no batch a batch)
