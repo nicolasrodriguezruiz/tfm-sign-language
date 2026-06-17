@@ -132,6 +132,34 @@ Además, los transformers incorporan mecanismos como las codificaciones posicion
 
 Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
 
+
+\subsection{Mecanismo de Atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
+La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos.
+Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento.
+Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
+
+La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$.
+En la práctica, se saca provecho de que la multiplicación entre matrices está muy optimizada.
+\begin{equation*}
+Attention(Q,K,V) = softmax\left( \frac{QK'}{\sqrt{d_k}}\right)V.
+\end{equation*}
+Se añade el factor de escalado $\sqrt{d_k}$, pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño, donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
+\input{Chapters/diagramas/attention.tex}
+
+La idea detrás de los mecanismos de atención es, como se menciona, enriquecer el significado de cada uno de los \textit{tokens} teniendo en cuenta los otros de la consulta.
+Esto permite que el modelo tenga la información más completa posible a la hora de realizar la traducción.
+Un problema que surge es la limitada capacidad de una sola cabeza de prestar atención a multiples aspectos de la entrada, pues al tratar de hacerlo se diluyen las relaciones al mezclarse, potencialmente limitando la capacidad de comprensión del modelo.
+
+Así, en vez de tener una única función de atención con \textit{keys}, \textit{values} y \textit{queries} $d_{\text{modelo}}$-dimensinales, \textbf{Vaswani et al.} proponen utilizar $h$ diferentes proyecciones lineales a dimensión $d_k$, para consultas y claves, y $d_v$ para valores.
+De esta forma el modelo puede ``prestar atención'' a distintos aspectos de la entrada de forma simultánea.
+
+En este caso, la atención multi-cabeza se calcula como sigue\begin{align*}
+MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
+\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
+\end{align*} donde $W^Q_i,W^K_i\in\mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i\in\mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O\in\mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son matrices de pesos entrenables. En particular las matrices $W$ son las proyecciones.
+\input{Chapters/diagramas/multiheadAttention.tex}
+
+
 \subsection{Codificación Posicional} % \textit{Positional Encoding}}
 \begin{equation}\label{eq:PE_sin}
 PE(p,2i)=\sin(p/10000^{2i/C_{in}})
@@ -148,27 +176,49 @@ Donde,
 	\item $C_{in}$ es el número de canales de entrada.
 \end{itemize}
 
-\subsection{Mecanismo de Atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
-La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento. Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
 
-La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$. En la práctica, sacando provecho de que la multiplicación entre matrices está muy optimizada, estas operaciones se hacen mediante matrices, obteniendo la siguiente fórmula.
+\section{Clasificación Temporal Conexionista}
+La \textit{Connectionist Temporal Classification} es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
+
+Esto es especialmente importante en tareas perceptuales y de visión por computador, donde la secuencia de entrada, por ejemplo, una serie de fotogramas de vídeo que capturan a un signante, es habitualmente más larga que la secuencia objetivo de glosas o etiquetas a predecir.
+Al ser de longitudes distintas y carecer de una segmentación temporal explícita, no existe una correspondencia o alineación a priori entre ambas secuencias.
+
+Debido a la alta carga matemática de este concepto, nos limitaremos a explicar el funcionamiento y la idea que propone a grandes rasgos sin entrar en la carga teórica pues no es relevante a este trabajo, aún así todo el formalismo teórico se encuentra en \textit{Connectionist temporal classification: Labelling unsegmented sequence data with recurrent neural networks} \cite{CTC}.
+
+Para resolver este problema de alineación, la intuición principal de la CTC radica en interpretar las salidas de la red neuronal (la secuencia completa) como una distribución de probabilidad sobre todas las posibles \textbf{secuencias de etiquetas}, condicionadas a la secuencia de entrada.
+Combinan dos técnicas principalmente.
+
+\subsubsection*{\textit{Blank Label}}
+Para cada fotograma individual (cada instante de tiempo), a la capa softmax que nos devolvía una distribución de probabilidad sobre todas las glosas posibles del vocabulario, se extiende con un token especial ``BLANK''.
+Este token representa la probabilidad de no observar ninguna etiqueta en ese instante de tiempo específico.
+
+\subsubsection*{\textit{Mapping}}
+La red genera predicciones para cada fotograma individual, pero la CTC aplica una regla de transformación para convertir esa ruta temporal extendida en una secuencia final coherente.
+Esta regla consiste en eliminar primero todas las etiquetas que se repiten de forma consecutiva y, posteriormente, suprimir todos los tokens en blanco.
+
+De forma intuitiva, esto significa que el modelo registrará una nueva etiqueta únicamente cuando la red pase de predecir un espacio en blanco a predecir una glosa, o cuando cambie directamente de una glosa a otra distinta.
+
+Llevado a la traducción de lengua de signos, si un gesto dura varios fotogramas, una idea del proceso es la siguiente.
 \begin{equation*}
-Attention(Q,K,V) = softmax\left( \frac{QK'}{\sqrt{d_k}}\right)V.
-\end{equation*} Se añade el factor de escalado $\sqrt{d_k}$, pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño, donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
-\input{Chapters/diagramas/attention.tex}
-%La idea detrás de los mecanismos de atención es, como se menciona, enriquecer el significado de cada uno de los \textit{tokens}, de su representación, teniendo en cuenta los otros de la consulta. Esto permite que el modelo tenga la información más completa posible a la hora de realizar la traducción.
-Un problema que surge es la limitada capacidad de una sola cabeza de prestar atención a multiples aspectos de la entrada, pues al tratar de hacerlo se diluyen las relaciones al mezclarse, potencialmente limitando la capacidad de comprensión del modelo.
+\underbrace{\textsc{[-, -, HOLA, HOLA, HOLA, -, -]}}_{7\text{ fotogramas}} \rightarrow \underbrace{\textsc{[HOLA]}}_{\text{Una sola glosa}}
+\end{equation*}
 
-Así, en vez de tener una única función de atención con \textit{keys}, \textit{values} y \textit{queries} $d_{\text{modelo}}$-dimensinales, \textbf{Vaswani et al.} proponen utilizar $h$ diferentes proyecciones lineales a dimensión $d_k$, para consultas y claves, y $d_v$ para valores. De esta forma el modelo puede ``prestar atención'' a distintos aspectos de la entrada de forma simultánea.
+Finalmente, durante la fase de entrenamiento, la CTC no penaliza a la red por no adivinar el momento exacto en el que empieza o termina un signo.
+En su lugar, CTC le da ignora exactamente cuándo ocurre el signo, acepta que hay muchas formas válidas de acertar a lo largo del tiempo.
+Para un vídeo de $5$ frames, todas estas ``rutas'' de la red neuronal son válidas porque, al aplicar la regla de la CTC, todas colapsan en el mismo resultado final, \textsc{[HOLA]}.
+\begin{itemize}
+    \item \textbf{Ruta A:} \textsc{[GRACIAS, GRACIAS, -, -, -]}
+    \item \textbf{Ruta B:} \textsc{[-, GRACIAS, GRACIAS, -, -]}
+    \item \textbf{Ruta C:} \textsc{[-, -, -, GRACIAS, GRACIAS]}
+\end{itemize}
 
-En este caso, la atención multi-cabeza se calcula como sigue\begin{align*}
-MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
-\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
-\end{align*} donde $W^Q_i,W^K_i\in\mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i\in\mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O\in\mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son matrices de pesos entrenables. En particular las matrices $W$ son las proyecciones.
-\input{Chapters/diagramas/multiheadAttention.tex}
+Durante el entrenamiento, no se intenta forzar que ocurra solo una ruta que se considere ``perfecta''.
+Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las relgas.
+Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin atarse a una plantilla de tiempo rígida.
 
+En su lugar, utiliza una función objetivo que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
+Esto permite que la red aprenda automáticamente de forma discriminativa y se vuelva robusta ante variaciones en la velocidad o duración temporal de los signos.
 
-\section{Connectionist Temporal Classification}
 \section{Self-Distillation}
 \section{Conexiones Residuales}
 
