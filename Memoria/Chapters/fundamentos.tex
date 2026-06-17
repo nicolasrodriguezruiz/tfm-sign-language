@@ -219,8 +219,11 @@ Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin
 En su lugar, utiliza una función objetivo que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
 Esto permite que la red aprenda automáticamente de forma discriminativa y se vuelva robusta ante variaciones en la velocidad o duración temporal de los signos.
 
-\section{Self-Distillation}
-\section{Conexiones Residuales}
+Como la CTC ha sido entrenada permitiendo y sumando variaciones de longitud temporal desde el principio , la red neuronal es más resistente a si el signo se ejecuta rápido o lento.
+Ya no depende de encajar el vídeo en un marco de tiempo estricto, sino que se centra únicamente en la secuencia lógica de los gestos.
+
+% \section{Self-Distillation}
+% \section{Conexiones Residuales}
 
 \section{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}
 Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes $RNN$ o $CNN$) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.

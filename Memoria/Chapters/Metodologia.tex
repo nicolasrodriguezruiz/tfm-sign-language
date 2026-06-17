@@ -1,60 +1,52 @@
 \chapter{Metodología}
 Modelos que vamos a probar, preprocesado de datos (normalización, etc)
 \section{Extracción de Keypoints}
-Como se mencionó, la extracción de keypoints es el proceso mediante el cual se obtiene una representación estructurada del cuerpo humano a partir de imágenes o vídeo, en forma de coordenadas de puntos anatómicos predefinidos, tales como articulaciones, extremidades o rasgos faciales. Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando información irrelevante como el fondo, la iluminación o la apariencia superficial, lo que la convierte en una representación compacta, generalizable y respetuosa con la privacidad, tal y como se argumentó en la sección anterior.
+Como se mencionó, la extracción de keypoints es el proceso mediante el cual se obtiene una representación estructurada del cuerpo humano a partir de imágenes o vídeo, en forma de coordenadas de puntos anatómicos predefinidos, tales como articulaciones, extremidades o rasgos faciales.
+Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando información irrelevante como el fondo, la iluminación o la apariencia superficial, lo que la convierte en una representación compacta, generalizable y respetuosa con la privacidad, tal y como se argumentó en la sección anterior.
 
 En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a herramientas de estimación de pose de gran precisión y eficiencia. Entre las más destacadas se encuentran \textbf{MediaPipe Holistic}, desarrollada por Google y ampliamente adoptada en la literatura de lengua de signos por su capacidad para detectar simultáneamente cuerpo, manos y rostro en tiempo real con un bajo coste computacional.
 
 \textbf{OpenPose}, uno de los primeros sistemas de estimación de pose multi-persona de referencia, ha sido ampliamente utilizado en trabajos previos; sin embargo, presenta limitaciones en términos de eficiencia y robustez frente a enfoques más recientes.
 
 Por otro lado, métodos como \textbf{HRNet}, mediante \textbf{MMPose}, ofrecen una elevada precisión en la localización de keypoints en imágenes estáticas gracias a su arquitectura de alta resolución, aunque no incorporan de forma explícita mecanismos de modelado temporal, lo que puede generar variabilidad entre frames en secuencias de vídeo.
+Este es el método que consigue los mejores resultados si la capacidad de cómputo no es una limitación.
 
-Finalmente, \textbf{AlphaPose} es un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios multi-persona, condiciones de oclusión y vídeos de baja calidad, lo cual resulta especialmente relevante para nuestro caso de uso. Además, a diferencia de HRNet en sus configuraciones más pesadas, AlphaPose está optimizado para un mejor compromiso entre precisión y velocidad, permitiendo una extracción más eficiente en entornos prácticos.
+Finalmente, \textbf{AlphaPose} es un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios multi-persona, condiciones de oclusión y vídeos de baja calidad, lo cual resulta especialmente relevante para nuestro caso de uso.
+Además, a diferencia de HRNet en sus configuraciones más pesadas, AlphaPose está optimizado para un mejor compromiso entre precisión y velocidad, permitiendo una extracción más eficiente en entornos prácticos.
 
-
-
-
-
-%\subsection{OpenPose}
 \subsection{Alphapose}
-Como mencionamos AlphaPose ha demostrado obtener el menor error medio en detección de keypoints frente otras herramientas especialemte bajo condiciones de degradación de imagen, \cite{info16110970}, lo que refuerza su idoneidad para entornos de grabación no controlados, habituales en datasets de lengua de signos, particularmente en el \textit{dataset} con el que trabajaremos.
+Como mencionamos AlphaPose es robusto a condiciones de oclusión y vídeos de baja calidad y es considerablemente menos exigente que otros métodos manteniendo una precisión y velocidad razonables.
 
-AlphaPose ofrece la capacidad de cambiar el modelo utilizado para la representación del esqueleto, existiendo principalmente dos conjuntos de datos de pose de cuerpo completo:
+AlphaPose, como muchas de estas erramientas, ofrece la capacidad de cambiar el modelo utilizado para la representación del esqueleto, existiendo principalmente dos conjuntos de datos de pose de cuerpo completo:
 \begin{itemize}
-  \item \textbf{COCO-WholeBody}, una ampliación del conjunto de datos \textbf{MS COCO} enfocada en el cuerpo humano completo. Incluye anotaciones detalladas de puntos clave del cuerpo, manos, cara y pies, lo que permite realizar estimaciones de pose más completas y precisas en tareas de análisis del movimiento humano.
-  \item \textbf{HALPE-136}, un conjunto de datos más reciente que proporciona una anotación aún más densa ($136$ puntos clave), con especial énfasis en manos y rostro. Este mayor nivel de detalle puede resultar beneficioso en tareas que requieren capturar movimientos finos, como el reconocimiento de lengua de signos, aunque a costa de una mayor complejidad computacional y posible sensibilidad al ruido en entornos no controlados.
+  \item \textbf{COCO-WholeBody}, una ampliación del conjunto de datos \textbf{MS COCO} enfocada en el cuerpo humano completo.
+  Incluye anotaciones detalladas de puntos clave del cuerpo, manos, cara y pies, lo que permite realizar estimaciones de pose más completas y precisas en tareas de análisis del movimiento humano.
+  \item \textbf{HALPE-136}, un conjunto de datos más reciente que proporciona una anotación aún más densa ($136$ puntos clave), con especial énfasis en manos y rostro.
+  Este mayor nivel de detalle puede resultar beneficioso en tareas que requieren capturar movimientos finos, como el reconocimiento de lengua de signos, aunque a costa de una mayor complejidad computacional y posible sensibilidad al ruido en entornos no controlados.
 \end{itemize}
-
-D
 
 \begin{figure}[H]
   \centering
-  % --- BLOQUE IZQUIERDO: La figura alta ---
-  \begin{minipage}[b]{0.48\textwidth}
+
+  \begin{minipage}[b]{0.25\textwidth}
     \centering
     \includegraphics[width=\textwidth]{human_model_halpe_136.jpg}
-
   \end{minipage}
-  \hfill
-  % --- BLOQUE DERECHO: Las dos figuras cuadradas ---
-  \begin{minipage}[b]{0.48\textwidth}
+  \hspace{0.02\textwidth}
+  \begin{minipage}[b]{0.25\textwidth}
     \centering
-    % Primera figura cuadrada
     \includegraphics[width=0.8\textwidth]{hand_halpe_136.jpg}
 
-    \vspace{0.5cm}
+    \vspace{0.3cm}
 
-    % Segunda figura cuadrada
     \includegraphics[width=0.8\textwidth]{face_halpe_136.jpg}
-
   \end{minipage}
+
   \caption{Keypoints en el Modelo Halpe-136}
 \end{figure}
 
 \lstinputlisting[language=json]{code/keypoints-format.txt}
 
-
-\section{Seq2Seq}
 
 \section{Normalización de los Datos}
 
@@ -65,49 +57,55 @@ Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita
 \subsection{Data Augmentation}
 Como suele ocurrir en aprendizaje profundo, la falta de datos es un muro contra el cual nos estrellamos siempre.
 Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
-Aunque ha habido muchos esfuerzos para solventar esta limitaciones, como la generación de glosas de forma automatica mediante utilizado, por ejemplo, LLMs \cite{guo2025bridgingsignspokenlanguages}, este problema no es fácil de solventar.
+Aunque ha habido muchos esfuerzos para solventar esta limitaciones, como la generación de glosas de forma automatica utilizado, por ejemplo, LLMs \cite{guo2025bridgingsignspokenlanguages}, este problema no está cerca de ser resuelto.
 Así, para compensar esta escasez de datos se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
 
 La postura y la ubicación del intérprete varían de forma natural al realizar un signo.
 Esto permite introducir variabilidad controlada en los datos sin corromper su semántica ni generar muestras inverosímiles.
-Entre las transformaciones espaciales más comunes y efectivas se encuentran las \textbf{rotaciones}, las \textbf{traslaciones} y los \textbf{cambios de escala (zoom)}. % lo de la escala no me convence
+Entre las transformaciones espaciales más comunes y efectivas se encuentran las \textbf{rotaciones}, las \textbf{traslaciones} y los \textbf{cambios de escala (zoom)}.
+
+Sorprendentemente, los autores observaron que la eficacia del modelo comenzó a disminuir específicamente al integrar los métodos de traslación y cambio de escala.
+Su hipótesis es que estas estrategias de aumento introdujeron discrepancias en la alineación de los datos con el conjunto de validación.
+En lugar de ayudar a generalizar, estas alteraciones terminaron provocando un sobreajuste. Así, decidieron mantener únicamente las rotaciones.
+
+Ademaś de estos métodos, proponemos dos métodos de aumento de datos y regularización especificos para la tarea de reconocimiento de la pose: \textbf{\textit{Joint Dropout}} y \textbf{ruido gaussiano}, su funcionamiento y la motivación de su uso se explicará en las secciones siguientes.
 
 \subsubsection*{Rotaciones}
 El objetivo es que el modelo sea robusto ante pequeñas variaciones en la inclinación o el ángulo del intérprete.
 Para lograrlo, se aplica una rotación aleatoria de $\alpha$ grados con una probabilidad $p$.
 Si una matriz $\mathbf{P} \in \mathbb{R}^{n \times 2}$ contiene las coordenadas $(x, y)$ de los puntos clave de un fotograma, la transformación se calcula mediante el siguiente producto matricial.
 \begin{equation*}
-\begin{bmatrix}
-x'_0 & y'_0\\
-x'_1 & y'_1 \\
-\vdots & \vdots\\
-x'_n & y'_n
-\end{bmatrix}
-=
-\begin{bmatrix}
-x_0 & y_0\\
-x_1 & y_1 \\
-\vdots & \vdots\\
-x_n & y_n
-\end{bmatrix}
+  \begin{bmatrix}
+    x'_0 & y'_0\\
+    x'_1 & y'_1 \\
+    \vdots & \vdots\\
+    x'_n & y'_n
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+    x_0 & y_0\\
+    x_1 & y_1 \\
+    \vdots & \vdots\\
+    x_n & y_n
+  \end{bmatrix}
 \cdot
 \underbrace{
-\begin{bmatrix}
-\cos(\theta) & \sin(\theta) \\
--\sin(\theta) & \cos(\theta)
-\end{bmatrix}
+  \begin{bmatrix}
+    \cos(\theta) & \sin(\theta) \\
+    -\sin(\theta) & \cos(\theta)
+  \end{bmatrix}
 }_{\text{Matriz de rotaciones traspuesta}}
 \end{equation*}
 
 \begin{note}
-Al multiplicar la matriz de coordenadas (donde cada fila es un punto) por la derecha, necesitas la matriz de rotación traspuesta. La traspuesta de la matriz de rotación estándar para un ángulo $\alpha$ en sentido antihorario cambia el signo del seno inferior al seno superior.
+Al multiplicar la matriz de coordenadas (donde cada fila es un punto) por la derecha, necesitamos la matriz de rotación traspuesta.
+La traspuesta de la matriz de rotación estándar para un ángulo $\alpha$ en sentido antihorario cambia el signo del seno inferior al seno superior.
 Esto nos permite realizar la rotación del fotograma en un paso.
 \end{note}
 
 Es importante acotar el rango de esta transformación; rotaciones extremas (por ejemplo, de $180^{\circ}$) carecen de sentido práctico, ya que introducen escenarios que el modelo jamás encontrará en un entorno real.
+Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
 
-\subsubsection*{Traslaciones}
-\subsubsection*{Escalado}
 \subsubsection*{\textit{Joint Dropout}}
 \subsubsection*{Ruido Gaussiano}
 
