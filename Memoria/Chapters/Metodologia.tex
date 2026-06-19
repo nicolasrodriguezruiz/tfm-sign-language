@@ -188,7 +188,16 @@ A diferencia con la arquitectura expuesta anteriormente de \textit{DSTA} en la \
 La razón detrás de esta modificación es que el uso de atención temporal aumenta la cantidad de parámetros del modelo y dado que los conjuntos de datos de lenguaje de señas son comparativamente pequeños, tener un modelo con tantos parámetros aumenta drásticamente la vulnerabilidad al sobreajuste.
 
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
+Cada uno de los cuatro flujos de la red (mano izquierda, mano derecha, rostro y cuerpo) tiene su propia red de cabecera independiente.
+Su objetivo principal es capturar el contexto temporal final de los datos para entender el movimiento a lo largo del tiempo.
+
+Recibe las características del último bloque de atención.
+Antes de procesarlas, estos datos pasan por una reducción espacial (\textit{spatial pooling}) para comprimir sus dimensiones a $T/4\times256$.
+
+Está compuesta por una capa lineal temporal, una capa de normalización por lotes (\textit{batch normalization}), una capa de activación \textbf{ReLU} y un bloque convolucional temporal, que contiene dos capas de convolución 1D con un tamaño de kernel de 3)
 \subsubsection{Aprendizaje por Auto-destilación}
+
+
 \subsubsection{Función de Pérdida de Reconocimiento}
 
 \subsection{Arquitectura del Módulo de Traducción}
