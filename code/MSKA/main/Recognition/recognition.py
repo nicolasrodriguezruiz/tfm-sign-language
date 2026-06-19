@@ -103,10 +103,7 @@ class STAttentionBlock(nn.Module):
         self.num_subset = num_subset    # número de "cabezas" de atención espacial
         self.glo_reg_s = glo_reg_s      # si True, añade matriz de atención global aprendida
         self.att_s = att_s              # si True, añade atención dinámica por muestra
-        self.glo_reg_t = glo_reg_t
-        self.att_t = att_t
         self.use_pes = use_pes          # si True, aplica encoding posicional espacial
-        self.use_pet = use_pet
 
         pad = int((kernel_size - 1) / 2)
         self.use_spatial_att = use_spatial_att

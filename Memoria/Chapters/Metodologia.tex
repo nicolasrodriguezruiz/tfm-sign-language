@@ -108,15 +108,29 @@ Es importante acotar el rango de esta transformación; rotaciones extremas (por 
 Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
 
 \subsubsection*{\textit{Joint Dropout}}
+Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la perdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
+
+El método consiste en eliminar la información de ciertos keypoints agrupandolos por extremidad, por ejemplo \textit{mano derecha}, \textit{mano izquierda}, \textit{brazo izquierdo} y \textit{brazo derecho}.
+Además los investigadores señalan que la oclusión debe afectar la duración completa de la acción para forzar a la red a aprender de las extremidades restantes.
+
+Se implementa una versión simplificada de la técnica, que trata con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el papel mencionado.
+Es necesario tener algunas consideraciones, por ejemplo no tiene sentido eliminar \textbf{todas} las extremidades al mismo tiempo pues en tal caso el modelo carecería de información útil alguna e introducería ruido inecesario en el aprendizaje. Así, basandonos en \cite{JDrop} nos limitamos a eliminar 2 extremidades como máximo.
+
 \subsubsection*{Ruido Gaussiano}
+Otra situación que occure frecuentemente en este tipo de tareas son los micromovimientos de la persona, las interferencias del entorno y los temblores naturales que ocurren al capturar el movimiento.
+El objetivo principal de implementar el ruido gaussiano es simular estas perturbaciones comunes.
+Nos basamos en parte en \textit{Enhancing Human Action Recognition with 3D Skeleton Data: A Comprehensive Study of Deep Learning and Data Augmentation} \cite{noise}.
+
+Se añade ruido que sigue una distribución normal $\mathcal{N}(\mu,\sigma^2)$.
+Para asegurar que el efecto del ruido sea perceptible pero sin llegar a distorsionar gravemente los datos originales, los autores configuraron la media, $\mu$, en $0$ y la desviación estándar $\sigma$ en $0.01$.
 
 \subsection{Tokenizador}
 
 \subsection{Arquitectura del Modelo de Reconocimiento}
-En lugar de procesar el esqueleto como una única entidad monolítica, la secuencia de puntos clave se desacopla en cuatro flujos de información independientes: mano izquierda, mano derecha, rostro y cuerpo entero.
-Apoyándose en un mecanismo de autoatención pura, sin necesidad de recurrir a diseños manuales de reglas o topologías de grafos complejas, el sistema procesa cada flujo de forma aislada para, posteriormente, asimilar y fusionar las características extraídas mediante estrategias de destilación de conocimiento.
+La lengua de signos no concentra el significado en una única articulación, sino que lo distribuye a través de múltiples canales simultáneos, como las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
+Para aprovechar esta riqueza de información, el sistema utiliza un mecanismo de autoatención que le permite analizar cada flujo de manera independiente, sin depender de reglas definidas manualmente ni de estructuras complejas. Posteriormente, combina la información obtenida de cada flujo mediante técnicas de destilación de conocimiento para construir una representación más completa y precisa.
 
-En los siguientes subapartados se desglosa la arquitectura interna de este subsistema, detallando desde el preprocesamiento espacial de los puntos clave hasta la estrategia matemática de optimización que permite el aprendizaje conjunto de los múltiples flujos.
+En los siguientes subapartados se desglosa la arquitectura interna de este subsistema, detallando desde el preprocesamiento espacial de los puntos clave hasta la estrategia de optimización que permite el aprendizaje conjunto de los múltiples flujos.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA.pdf}
@@ -124,8 +138,7 @@ En los siguientes subapartados se desglosa la arquitectura interna de este subsi
 \end{figure}
 
 \subsubsection{Desacoplamiento de Keypoints}
-La lengua de signos no concentra el significado en una articulación sino que la distribuye a través de múltiples canales simultáneos, incluyendo las configuraciones manuales, las trayectorias de los brazos y las expresiones faciales.
-Para abordar esta alta complejidad, el modelo \textbf{MSKA-SLR} descarta el uso de un enfoque monolítico (un solo \text{stream}) en favor de una estrategia de desacoplamiento de puntos clave inspirada en los mecanismos de percepción humanos.
+Como mencionabamos el modelo \textbf{MSKA-SLR} deja de utilizar un único flujo de procesamiento (\textit{stream}) y adopta una estrategia de separación de puntos clave inspirada en los mecanismos de percepción humana.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.2\textwidth]{MSKA/MSKA_SKEL.png}
@@ -142,7 +155,7 @@ Además, el procesamiento independiente permite que la red asigne implícitament
 Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
 
 \subsubsection{Módulo de Atención de Keypoints}
-Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos.
+Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos. Utilizamos los módulos de atención espacio-temporales expuestos en detalle en la Seccion \ref{sec:DSTA}. Recordamos la estructura con el siguiente diagrama, aplicandolo al los \textit{keypoints} del cuerpo.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
@@ -161,40 +174,10 @@ Donde,
 
 Dado que no existe una secuencia o estructura predeterminada para cada elemento del tensor, necesitamos un mecanismo de codificación posicional que proporcione una etiqueta única para cada articulación.
 El tensor de entrada $X$ se enriquece sumándole una matriz de codificación posicional ($PE$).
-A diferencia de los modelos NLP clásicos, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial (los $N$ puntos clave), ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
 
-\subsubsection*{MOVER A FUNDAMENTOS?}
+A diferencia con la arquitectura expuesta anteriormente de \textit{DSTA} en la sección \ref{sec:DSTA}, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial, ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
 
-Las funciones de codificación utilizan ondas sinusoidales y cosenoidales de diferentes frecuencias.
-Denotando $p$ a la posición de la articulación en la secuencia, $i$ a la dimensión específica del vector de codificación posicional y $C_{in}$ la profundidad del canal de entrada la codificación posicional se calcula mediante las siguientes fórmulas.
-\begin{align*}
-  PE(p, 2i) = \sin(p / 10000^{2i / C_{in}})\\
-  PE(p, 2i+1) = \cos(p / 10000^{2i / C_{in}})
-\end{align*}
-
-La naturaleza periódica proporciona diferentes representaciones para cada posición, lo que permite al modelo comprender mejor las relaciones posicionales relativas entre los elementos de la secuencia.
-Las articulaciones dentro de un mismo fotograma se codifican secuencialmente, mientras que las articulaciones idénticas en diferentes fotogramas comparten una codificación común.
-
-Una vez sumada la codificación posicional al tensor de entrada, la matriz resultante se proyecta mediante dos funciones de mapeo lineal independientes.
-Esto reduce la dimensión del canal espacial a un nuevo tamaño $C_e$, obteniendo representaciones en $\mathbb{R}^{C_e \times T \times N}$.
-La reducción a $C_e$ (que es menor que los canales de salida $C_{out}$) es una decisión de diseño para mitigar la redundancia de características y aliviar la complejidad computacional.
-
-Como vimos en la sección \ref{sub:attention} la formulación clásica de atención computa el producto escalar y aplica una función \textit{softmax}.
-Sin embargo, este modelo introduce un cambio muy interesante, sustituye la función \textit{softmax} por la tangente hiperbólica ($\tanh$) al calcular el mapa de atención.
-\begin{equation*}
-  \text{Attention}(Q, K, V) = \tanh(\frac{QK^T}{\sqrt{C}})V
-\end{equation*}
-
-La justificación matemática de esto es que, mientras \textit{softmax} acota los pesos en el rango $(0, 1)$ obligando a que las relaciones sean estrictamente positivas y sumen $1$, la función $\tanh$ mapea los valores al rango $(-1, 1)$.
-Esto permite que el modelo codifique correlaciones negativas entre articulaciones, brindando una flexibilidad topológica mucho mayor.
-
-Para evitar el sobreajuste y enseñar al modelo la anatomía básica (las distancias físicas reales y consistentes entre articulaciones), el mapa de atención se somete a una normalización global espacial.
-
-Matemáticamente, esto se logra añadiendo una matriz de atención global parametrizada de tamaño $N \times N$.
-Esta matriz, denotada en el esquema arquitectónico como $SGR$, encapsula las relaciones estructurales universales de las articulaciones del cuerpo humano y se comparte entre todas las instancias de datos, optimizándose de manera conjunta con los demás parámetros de la red durante el retropropagación.
-
-
-
+La razón detrás de esta modificación es que el uso de atención temporal aumenta la cantidad de parámetros del modelo y dado que los conjuntos de datos de lenguaje de señas son comparativamente pequeños, tener un modelo con tantos parámetros aumenta drásticamente la vulnerabilidad al sobreajuste.
 
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
 \subsubsection{Aprendizaje por Auto-destilación}

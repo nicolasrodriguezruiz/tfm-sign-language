@@ -114,8 +114,6 @@ ROUGE, en cambio, castiga que el modelo omita información clave mediante la exh
 
 Al igual que BLEU, ROUGE sufre de la misma limitación semántica, al basarse en solapamientos léxicos directos, no es capaz de puntuar correctamente el uso de sinónimos o paráfrasis.
 
-
-
 \section{Transformers}
 La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje.
 La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
@@ -176,6 +174,17 @@ Donde,
 	\item $C_{in}$ es el número de canales de entrada.
 \end{itemize}
 
+\subsection{FIXME}
+Las funciones de codificación utilizan ondas sinusoidales y cosenoidales de diferentes frecuencias.
+Denotando $p$ a la posición de la articulación en la secuencia, $i$ a la dimensión específica del vector de codificación posicional y $C_{in}$ la profundidad del canal de entrada la codificación posicional se calcula mediante las siguientes fórmulas.
+\begin{align*}
+  PE(p, 2i) = \sin(p / 10000^{2i / C_{in}})\\
+  PE(p, 2i+1) = \cos(p / 10000^{2i / C_{in}})
+\end{align*}
+
+La naturaleza periódica proporciona diferentes representaciones para cada posición, lo que permite al modelo comprender mejor las relaciones posicionales relativas entre los elementos de la secuencia.
+Las articulaciones dentro de un mismo fotograma se codifican secuencialmente, mientras que las articulaciones idénticas en diferentes fotogramas comparten una codificación común.
+
 
 \section{Clasificación Temporal Conexionista}
 La \textit{Connectionist Temporal Classification} es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
@@ -225,7 +234,7 @@ Ya no depende de encajar el vídeo en un marco de tiempo estricto, sino que se c
 % \section{Self-Distillation}
 % \section{Conexiones Residuales}
 
-\section{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}
+\section{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}\label{sec:DSTA}
 Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes $RNN$ o $CNN$) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.
 El problema es que estos diseños manuales no siempre son óptimos y limitan la generalización del modelo.
 

@@ -175,6 +175,57 @@ class S2T_Dataset(Dataset.Dataset):
         """Escala los puntos multiplicando por `scale_factor`."""
         return points * scale_factor
 
+    def random_joint_dropout_2(self, keypoints, dropout_prob):
+    """
+    Oclusión estructurada por extremidades.
+
+    En lugar de enmascarar articulaciones individuales al azar,
+    este método agrupa los índices en extremidades anatómicas completas
+    y decide por extremidad si la apaga entera.
+
+    Esto simula oclusiones realistas: una mano oculta por el cuerpo,
+    un brazo fuera de cuadro, etc. Las articulaciones del torso nunca
+    se enmascaran porque contienen la referencia espacial global
+    (hombros, caderas) que el modelo necesita para interpretar el resto.
+
+    """
+
+    LIMB_GROUPS = {
+        # ── Brazos ────────────────────────────────────────────────────
+        "arm_right":  list(range(6, 11)),    # hombro_d → muñeca_d
+        "arm_left":   list(range(11, 16)),   # hombro_i → muñeca_i
+
+        # ── Manos ─────────────────────────────────────────────────────
+        "hand_right": list(range(115, 136)),  # 21 keypoints mano derecha
+        "hand_left":  list(range(94, 115)), # 21 keypoints mano izquierda
+
+        # ── Cara ──────────────────────────────────────────────────────
+        # Los 68 puntos faciales se tratan como una sola extremidad
+        "face": list(range(26, 94)),
+    }
+
+
+    result = keypoints.clone()
+
+    # Candidatos a dropout
+    limbs_to_occlude = []
+    for limb_name in LIMB_GROUPS.keys():
+        if torch.rand(1).item() < dropout_prob:
+            limbs_to_occlude.append(limb_name)
+
+    # Si se pasaron del límite (2), mezclamos y nos quedamos solo con 2 aleatorias
+    # Esto asegura que "face" o "hand_left" tengan la misma probabilidad de
+    # sobrevivir al corte que "arm_right".
+    if len(limbs_to_occlude) > 2:
+        random.shuffle(limbs_to_occlude)
+        limbs_to_occlude = limbs_to_occlude[:2]
+
+    # Aplicamos los ceros solo a las extremidades seleccionadas
+    for limb_name in limbs_to_occlude:
+        result[:, :, LIMB_GROUPS[limb_name]] = 0.0
+
+    return result
+
     def random_joint_dropout(self, keypoints, dropout_prob):
         """
         Enmascara articulaciones enteras aleatoriamente poniendo sus coordenadas a 0.
@@ -249,7 +300,14 @@ class S2T_Dataset(Dataset.Dataset):
                         dropout_prob=self.augmentation_cfg['joint_dropout'],
                     )
 
-            # Ruido gaussiano (si está configurado)
+            # Joint dropout estructurado
+            if self.augmentation_cfg.get('structured_dropout', 0) > 0:
+                for i in range(keypoints.shape[0]):
+                    keypoints[i] = self.random_joint_dropout_2(
+                        keypoints[i],
+                        dropout_prob=self.augmentation_cfg['structured_dropout'],
+                    )
+            # Ruido gaussiano
             if self.augmentation_cfg.get('gaussian_noise', 0) > 0:
                 for i in range(keypoints.shape[0]):
                     keypoints[i] = self.random_gaussian_noise(
