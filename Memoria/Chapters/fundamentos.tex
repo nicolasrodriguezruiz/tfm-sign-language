@@ -225,12 +225,13 @@ Durante el entrenamiento, no se intenta forzar que ocurra solo una ruta que se c
 Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las relgas.
 Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin atarse a una plantilla de tiempo rígida.
 
-En su lugar, utiliza una función objetivo que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
+En su lugar, utiliza una función objetivo (CTCloss) que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
 Esto permite que la red aprenda automáticamente de forma discriminativa y se vuelva robusta ante variaciones en la velocidad o duración temporal de los signos.
 
-Como la CTC ha sido entrenada permitiendo y sumando variaciones de longitud temporal desde el principio , la red neuronal es más resistente a si el signo se ejecuta rápido o lento.
-Ya no depende de encajar el vídeo en un marco de tiempo estricto, sino que se centra únicamente en la secuencia lógica de los gestos.
-
+Si $x$ representa la secuencia de entrada, $z$ es la secuencia objetivo, y $p(z|x)$ es la probabilidad total acumulada de todas las alineaciones válidas que colapsan en esa secuencia de glosas tras aplicar las reglas de remoción de blancos y repetidos. La función de pérdida CTC se define como la verosimilitud logarítmica negativa de las secuencias objetivo mapeadas.
+\begin{equation*}
+O^{ML}(S,N_w)=-\sum_{(x,z)\in S}\log{p(z|x)}
+\end{equation*}
 % \section{Self-Distillation}
 % \section{Conexiones Residuales}
 

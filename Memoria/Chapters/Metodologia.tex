@@ -107,6 +107,17 @@ Esto nos permite realizar la rotación del fotograma en un paso.
 Es importante acotar el rango de esta transformación; rotaciones extremas (por ejemplo, de $180^{\circ}$) carecen de sentido práctico, ya que introducen escenarios que el modelo jamás encontrará en un entorno real.
 Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
 
+
+\subsubsection*{Aumento Temporal}
+lLas manos ocupan una porción modesta del video y son sumamente vulnerables a los movimientos rápidos de las manos que ocurren de manera natural durante la comunicación en lenguaje de señas.
+La idea al alterar aleatoriamente la longitud de la secuencia, es que el modelo se vea forzado a aprender las características de estos movimientos sin importar la velocidad a la que ocurran.
+
+Para modificar la longitud temporal de las secuencias de puntos clave se seleccionan fotogramas válidos de forma completamente aleatoria dentro de un rango determinado.
+Si seleccionamos una proporción $<1$ de fotogramas simulamos a la persona hacer la misma seña, pero a mayor de velocidad.
+Si la proporción es $>1$ se está añadiendo redundancia o manteniendo la información de los fotogramas por más tiempo simulamos a la persona hacer la misma seña pero más lentamente.
+
+Para conseguir esto, si lo que requerimos es una secuencia más larga, simplemente duplicamos fotogramas en el orden correcto, si por el contrario, buscamos reducir su longitud, mantenemos el orden y eliminamos fotogramas de forma aleatoria.
+
 \subsubsection*{\textit{Joint Dropout}}
 Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la perdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
 
@@ -155,7 +166,7 @@ Además, el procesamiento independiente permite que la red asigne implícitament
 Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
 
 \subsubsection{Módulo de Atención de Keypoints}
-Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos. Utilizamos los módulos de atención espacio-temporales expuestos en detalle en la Seccion \ref{sec:DSTA}. Recordamos la estructura con el siguiente diagrama, aplicandolo al los \textit{keypoints} del cuerpo.
+Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos. Utilizamos los módulos de atención espacio-temporales expuestos en detalle en la \textit{Seccion \ref{sec:DSTA}}. Recordamos la estructura con el siguiente diagrama, aplicandolo al los \textit{keypoints} del cuerpo.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
@@ -172,10 +183,7 @@ Donde,
   \item $N$ es el número total de puntos clave específicos de ese flujo.
 \end{itemize}
 
-Dado que no existe una secuencia o estructura predeterminada para cada elemento del tensor, necesitamos un mecanismo de codificación posicional que proporcione una etiqueta única para cada articulación.
-El tensor de entrada $X$ se enriquece sumándole una matriz de codificación posicional ($PE$).
-
-A diferencia con la arquitectura expuesta anteriormente de \textit{DSTA} en la sección \ref{sec:DSTA}, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial, ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
+A diferencia con la arquitectura expuesta anteriormente de \textit{DSTA} en la \textit{Sección \ref{sec:DSTA}}, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial, ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
 
 La razón detrás de esta modificación es que el uso de atención temporal aumenta la cantidad de parámetros del modelo y dado que los conjuntos de datos de lenguaje de señas son comparativamente pequeños, tener un modelo con tantos parámetros aumenta drásticamente la vulnerabilidad al sobreajuste.
 
