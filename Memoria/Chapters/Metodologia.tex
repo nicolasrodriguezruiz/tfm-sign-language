@@ -109,14 +109,14 @@ Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
 
 
 \subsubsection*{Aumento Temporal}
-lLas manos ocupan una porción modesta del video y son sumamente vulnerables a los movimientos rápidos de las manos que ocurren de manera natural durante la comunicación en lenguaje de señas.
+Las manos ocupan un área reducida del video y son sumamente vulnerables a los movimientos rápidos que ocurren de manera natural durante la comunicación en lenguaje de señas.
 La idea al alterar aleatoriamente la longitud de la secuencia, es que el modelo se vea forzado a aprender las características de estos movimientos sin importar la velocidad a la que ocurran.
 
 Para modificar la longitud temporal de las secuencias de puntos clave se seleccionan fotogramas válidos de forma completamente aleatoria dentro de un rango determinado.
 Si seleccionamos una proporción $<1$ de fotogramas simulamos a la persona hacer la misma seña, pero a mayor de velocidad.
 Si la proporción es $>1$ se está añadiendo redundancia o manteniendo la información de los fotogramas por más tiempo simulamos a la persona hacer la misma seña pero más lentamente.
 
-Para conseguir esto, si lo que requerimos es una secuencia más larga, simplemente duplicamos fotogramas en el orden correcto, si por el contrario, buscamos reducir su longitud, mantenemos el orden y eliminamos fotogramas de forma aleatoria.
+A nivel de implementación, la expansión de la secuencia se realiza duplicando fotogramas de forma aleatoria, mientras que su reducción se logra descartándolos, preservando en todo momento el orden cronológico original.
 
 \subsubsection*{\textit{Joint Dropout}}
 Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la perdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
@@ -125,7 +125,8 @@ El método consiste en eliminar la información de ciertos keypoints agrupandolo
 Además los investigadores señalan que la oclusión debe afectar la duración completa de la acción para forzar a la red a aprender de las extremidades restantes.
 
 Se implementa una versión simplificada de la técnica, que trata con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el papel mencionado.
-Es necesario tener algunas consideraciones, por ejemplo no tiene sentido eliminar \textbf{todas} las extremidades al mismo tiempo pues en tal caso el modelo carecería de información útil alguna e introducería ruido inecesario en el aprendizaje. Así, basandonos en \cite{JDrop} nos limitamos a eliminar 2 extremidades como máximo.
+Como detalle, no tiene sentido la oclusión total de las extremidades, ya que esto privaría a la red de características representativas e introduciría ruido perjudicial en el entrenamiento.
+Así, basandonos en \cite{JDrop} nos limitamos a eliminar $2$ extremidades como máximo.
 
 \subsubsection*{Ruido Gaussiano}
 Otra situación que occure frecuentemente en este tipo de tareas son los micromovimientos de la persona, las interferencias del entorno y los temblores naturales que ocurren al capturar el movimiento.
@@ -137,11 +138,15 @@ Para asegurar que el efecto del ruido sea perceptible pero sin llegar a distorsi
 
 \subsection{Tokenizador}
 
-\subsection{Arquitectura del Modelo de Reconocimiento}
-La lengua de signos no concentra el significado en una única articulación, sino que lo distribuye a través de múltiples canales simultáneos, como las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
-Para aprovechar esta riqueza de información, el sistema utiliza un mecanismo de autoatención que le permite analizar cada flujo de manera independiente, sin depender de reglas definidas manualmente ni de estructuras complejas. Posteriormente, combina la información obtenida de cada flujo mediante técnicas de destilación de conocimiento para construir una representación más completa y precisa.
 
-En los siguientes subapartados se desglosa la arquitectura interna de este subsistema, detallando desde el preprocesamiento espacial de los puntos clave hasta la estrategia de optimización que permite el aprendizaje conjunto de los múltiples flujos.
+
+\subsection{Arquitectura del Modelo de Reconocimiento}
+La lengua de signos no concentra el significado en una sola articulación.
+Sino que lo distribuye a través de distintos canales simultáneamente: las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
+Para aprovechar esta riqueza de información, el sistema utiliza un mecanismo de autoatención que le permite analizar cada flujo de manera independiente.
+Posteriormente, combina la información obtenida de cada flujo mediante técnicas de destilación de conocimiento para construir una representación más completa y precisa.
+
+La arquitectura de este módulo, cuyos componentes se detallan en los apartados subsiguientes, se ilustra en el siguiente diagrama.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA.pdf}
@@ -155,10 +160,9 @@ Como mencionabamos el modelo \textbf{MSKA-SLR} deja de utilizar un único flujo 
     \includegraphics[width=0.2\textwidth]{MSKA/MSKA_SKEL.png}
     \caption{Esquema de la división de las extremidades. Imagen de \cite{MSKA}}
 \end{figure}
-Esta estrategia consiste en dividir la secuencia global de puntos clave extraída del video en cuatro sub-secuencias o flujos (streams) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
+Como se observa en la figura anterior, la secuencia global extraída del vídeo se segmenta en cuatro flujos (\textit{streams}) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
 
-Al procesar los diferentes componentes por separado, el modelo puede captar con mucha más atención y precisión las características clave exclusivas de cada región anatómica.
-En un enfoque monolítico, los movimientos amplios del cuerpo pueden eclipsar las variaciones sutiles pero semánticamente importantes de los dedos o de la boca.
+Este modelado paralelo captura las características específicas de cada región anatómica, mitigando el sesgo de los enfoques monolíticos donde los movimientos amplios del cuerpo pueden eclipsar las variaciones sutiles de los dedos o de la boca, que contienen información muy relevante.
 La separación asegura que los detalles finos no se pierdan en la representación global.
 
 Además, el procesamiento independiente permite que la red asigne implícitamente la importancia adecuada a cada fuente de información durante la etapa posterior de fusión.
@@ -166,35 +170,58 @@ Además, el procesamiento independiente permite que la red asigne implícitament
 Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
 
 \subsubsection{Módulo de Atención de Keypoints}
-Es importante destacar que los pesos de estos módulos son independientes y no se comparten entre los distintos flujos. Utilizamos los módulos de atención espacio-temporales expuestos en detalle en la \textit{Seccion \ref{sec:DSTA}}. Recordamos la estructura con el siguiente diagrama, aplicandolo al los \textit{keypoints} del cuerpo.
+Este módulo integra los mecanismos de atención espacio-temporal descritos en la \textit{Sección \ref{sec:DSTA}}.
+Los pesos de estos bloques son independientes y no se comparten entre los distintos flujos.
+El siguiente diagrama ilustra la adaptación de esta estructura a los \textit{keypoints} corporales.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
-    \caption{Esquema del módulo de atención de \textit{keypoints} del cuerpo. Imagen de \cite{MSKA}}
+    \caption{Esquema del módulo de atención de \textit{keypoints} del cuerpo. Se toma $h=6$. Imagen de \cite{MSKA}}
     \label{fig:att_body}
 \end{figure}
 
-El flujo de datos comienza con una secuencia de puntos clave que se estructura como un tensor multidimensional $X \in \mathbb{R}^{C \times T \times N}$.
-Donde,
+El flujo de datos comienza con una secuencia de puntos clave estructurada como un tensor multidimensional $X \in \mathbb{R}^{C \times T \times N}$, donde:
 \begin{itemize}
-  \item $C$ son los \textbf{canales de entrada}.
-  Cada elemento en $C$ está compuesto por el vector $[x_t^n, y_t^n, c_t^n]$. Aquí, $(x_t^n, y_t^n)$ denotan las coordenadas espaciales bidimensionales y $c_t^n$ representa el nivel de confianza otorgado por el estimador de pose para el punto clave $n$ en el instante $t$.
-  \item $T$ es la dimensión temporal (número total de fotogramas).
-  \item $N$ es el número total de puntos clave específicos de ese flujo.
+  \item $C$ representa los \textbf{canales de entrada}, definidos por el vector $[x_t^n, y_t^n, c_t^n]$.
+  Las variables $(x_t^n, y_t^n)$) denotan las coordenadas espaciales bidimensionales, mientras que $c_t^n$ indica el nivel de confianza asignado por el estimador de pose al punto clave $n$ en el instante $t$.
+  \item $T$ corresponde a la dimensión temporal (número total de fotogramas).
+  \item $N$ es el número total de puntos clave específicos del flujo.
 \end{itemize}
 
-A diferencia con la arquitectura expuesta anteriormente de \textit{DSTA} en la \textit{Sección \ref{sec:DSTA}}, aquí la codificación posicional se aplica exclusivamente a la dimensión espacial, ya que el modelado temporal se delegará posteriormente a convoluciones $2D$.
+A diferencia de la arquitectura \textit{DSTA} descrita en la \textit{Sección \ref{sec:DSTA}}, la codificación posicional se restringe a la dimensión espacial, delegando el modelado temporal a convoluciones $2D$ en etapas posteriores.
 
-La razón detrás de esta modificación es que el uso de atención temporal aumenta la cantidad de parámetros del modelo y dado que los conjuntos de datos de lenguaje de señas son comparativamente pequeños, tener un modelo con tantos parámetros aumenta drásticamente la vulnerabilidad al sobreajuste.
+Esta modificación evita el incremento de parámetros inherente a la atención temporal.
+Dado el tamaño reducido de los conjuntos de datos de lenguaje de señas, una alta parametrización elevaría significativamente el riesgo de sobreajuste.
+
+Delegado el modelado temporal a las convoluciones $2D$, el tensor se procesa mediante una cascada de ocho bloques de atención independientes por flujo.
+Cada bloque incorpora una convolución temporal al final de su estructura; no obstante, solo el primer y quinto bloque aplican un paso (\textit{stride}) de $2$.
+Esta configuración contrae la resolución temporal de forma escalonada, reduciendo los fotogramas de $T$ a $T/4$ ($T\rightarrow T/2\rightarrow T/4$).
+Simultáneamente, la dimensión de los canales de entrada ($C_{in}$) se expande progresivamente ($64$, $128$ y $256$) hasta fijar un valor de salida $C_{out}=256$.
+
+Finalizada la cascada de atención, el tensor resultante $\in\mathbb{R}^{256 \times T/4 \times N}$ es procesado mediante un agrupamiento espacial (\textit{Spatial Pooling}) antes de alimentar a la red de cabecera.
+Esta operación promedia la dimensión correspondiente a los \textit{keypoints} ($N$), colapsando la representación espacial explícita del esqueleto.
+Se obtiene así un tensor bidimensional de $T/4 \times 256$ que sintetiza el espacio en características abstractas, aislando la dinámica temporal para la clasificación final de las glosas.
+
 
 \subsubsection{Redes de Cabecera (\textit{Head Networks}) y Fusión}
-Cada uno de los cuatro flujos de la red (mano izquierda, mano derecha, rostro y cuerpo) tiene su propia red de cabecera independiente.
-Su objetivo principal es capturar el contexto temporal final de los datos para entender el movimiento a lo largo del tiempo.
+Cada flujo de procesamiento (mano izquierda, mano derecha, rostro y cuerpo) tiene su propia red de cabecera independiente.
+Estas estructuras modelan el contexto temporal final de los datos, extrayendo la dinámica global del movimiento a lo largo del tiempo.
 
-Recibe las características del último bloque de atención.
-Antes de procesarlas, estos datos pasan por una reducción espacial (\textit{spatial pooling}) para comprimir sus dimensiones a $T/4\times256$.
+Cada cabeza está compuesta por una capa lineal temporal, una de normalización por lotes (\textit{batch normalization}), una de activación \textit{ReLU} y un bloque convolucional temporal, que contiene dos capas de convolución $1D$ con un tamaño de kernel de $3$.
+Termina con otra lineal y un último \textit{ReLU}.
 
-Está compuesta por una capa lineal temporal, una capa de normalización por lotes (\textit{batch normalization}), una capa de activación \textbf{ReLU} y un bloque convolucional temporal, que contiene dos capas de convolución 1D con un tamaño de kernel de 3)
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{MSKA/headNet.pdf}
+    \caption{Esquema las redes de cabecera.}
+    \label{fig:att_body}
+\end{figure}
+
+Produce lo que los autores denominan la \textbf{representación de la glosa}, con dimensiones $T/4\times512$.
+Finalmente, un clasificador lineal acoplado a una activación \textit{softmax} estima la distribución de probabilidades para predecir la glosa articulada.
+Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el modelo de traducción recibe la representación de la glosa.
+
+Cada cabezal se entrena y se corrige utilizando la función de pérdida CTC expuesta en la \textit{Sección \ref{sec:CTC}} de manera independiente.
 \subsubsection{Aprendizaje por Auto-destilación}
 
 
