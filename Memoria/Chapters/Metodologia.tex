@@ -222,10 +222,56 @@ Finalmente, un clasificador lineal acoplado a una activación \textit{softmax} e
 Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el modelo de traducción recibe la representación de la glosa.
 
 Cada cabezal se entrena y se corrige utilizando la función de pérdida CTC expuesta en la \textit{Sección \ref{sec:CTC}} de manera independiente.
-\subsubsection{Aprendizaje por Auto-destilación}
+
+Para aprovechar al máximo la separación de la información espacial, la arquitectura incorpora un cabezal auxiliar denominado \textbf{Cabezal de Fusión} (\textit{Fuse Head}).
+Su objetivo es asimilar e integrar las características extraídas por los cuatro flujos independientes (manos, rostro y cuerpo) antes de emitir una decisión final.
+La estructura interna de este módulo de fusión es idéntica a la de las redes de cabecera individuales y, de igual manera, es supervisada por su propia función de pérdida CTC ($\mathcal{L}_{CTC}^{fuse}$).
+
+Durante la inferencia, las probabilidades de glosa a nivel de fotograma predichas por los distintos flujos se promedian y se envían a un módulo de \textit{ensemble} para decodificar la secuencia final.
+Este enfoque unifica las representaciones locales, mejorando significativamente la robustez y precisión de las predicciones.
+
+\subsubsection{Función de Pérdida y Autodestilación}
+El entrenamiento conjunto de la red \textit{MSKA-SLR} está guiado por dos componentes principales.
+En primer lugar, se aplica la pérdida CTC a las salidas de cada una de las cuatro cabezas.
+\begin{equation*}
+    \mathcal{L}_{CTC} = \mathcal{L}_{CTC}^{left} + \mathcal{L}_{CTC}^{right} + \mathcal{L}_{CTC}^{body} + \mathcal{L}_{CTC}^{fuse}
+\end{equation*}
+
+En segundo lugar, para complementar la naturaleza global de la pérdida CTC y lograr una interacción más profunda entre los flujos, el modelo implementa una \textbf{autodestilación a nivel de fotograma}.
+Esta técnica calcula el promedio de las probabilidades emitidas por las cuatro redes de cabecera principales y lo utiliza como un \textit{pseudo-objetivo}.
+
+A través de una pérdida de destilación ($\mathcal{L}_{Dist}$), se minimiza la divergencia KL (\textit{Kullback-Leibler})\footnote{La divergencia de Kullback-Leibler (KL), también llamada entropía relativa, es una medida estadística que cuantifica cuánto difiere una distribución de probabilidad de otra \cite{klDivergence}.} entre este pseudo-objetivo unificado y las predicciones individuales de cada flujo.
+
+% Durante este cálculo, el modelo aplica una operación de \textbf{parada de gradiente} sobre las salidas antes de promediarlas en el ensamblaje.
+% Esta operación desconecta el pseudo-objetivo del grafo computacional durante la retropropagación.
+%
+% Al utilizar la parada de gradiente, se garantiza que la pérdida de destilación actualice únicamente los pesos de los flujos individuales.
+% Esto los obliga a aprender direccionalmente del ensamblaje unificado.
+% Simultáneamente, esta operación impide que el error fluya en sentido inverso hacia el propio ensamblaje, evitando la desestabilización matemática del objetivo de referencia; es decir, se impide que la red tome el atajo destructivo de alterar y empeorar el modelo general para hacerlo coincidir con una predicción local errónea.
+% Al mantener el ensamblaje unificado como un ancla estática durante el cálculo de gradientes, se previene el colapso de la red y se asegura una destilación de conocimiento efectiva.
+
+Para asegurar la estabilidad del entrenamiento, se aplica una operación de \textbf{parada de gradiente} sobre el ensamblaje.
+Al desconectar el \textit{pseudo-objetivo} del grafo computacional durante la retropropagación, se garantiza que la pérdida de destilación actúe únicamente sobre los pesos de los flujos individuales.
+Esto evita la retroalimentación del error hacia el ensamblaje, previniendo el colapso del modelo y asegurando que el objetivo de referencia actúe como un ancla estática.%; es decir, se impide que la red tome el atajo destructivo de alterar y empeorar el modelo general para hacerlo coincidir con una predicción local errónea.
+
+Así, la función de pérdida global es la siguiente.
+\begin{equation*}
+    \mathcal{L}_{SLR} = \mathcal{L}_{CTC} + \mathcal{L}_{Dist}
+\end{equation*}
+
+De este modo, el conocimiento unificado del ensamblaje se transfiere a cada flujo individual.
+Esto garantiza que cada cabezal no solo aprenda de sus propias características locales, sino que optimice sus predicciones basándose en la comprensión global de toda la red.
 
 
-\subsubsection{Función de Pérdida de Reconocimiento}
+% \subsubsection*{Consideraciones sobre la arquitectura}
+% Si bien la formulación teórica del modelo propone un enfoque de cuatro flujos de decisión independientes, la implementación que realizan los autores opta por una estrategia de fusión temprana para el flujo facial.
+% Es decir, las características faciales no poseen una cabeza de clasificación propia, sino que se integran como información contextual suplementaria dentro de las redes de cabecera de las manos y la cabeza de fusión.
+% Esta discrepancia es importante, pues implica que la supervisión facial no es explícita, sino implícita a través de la pérdida CTC de los flujos de las manos.
+%
+% La razón es que si tuvieran las $5$ cabezas, existiría un riesgo mucho mayor de sobreajuste (de forma similar a lo que ocurria con la atención temporal).
+% Al fusionar la cara con las manos, obligan al modelo a usar la cara como una ``etiqueta de contexto'' para el movimiento de la mano, lo cual es mucho más eficiente que intentar clasificar el movimiento de la cara como una glosa independiente.
+%
+
 
 \subsection{Arquitectura del Módulo de Traducción}
 
