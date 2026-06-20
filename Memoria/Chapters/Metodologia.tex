@@ -273,8 +273,35 @@ Esto garantiza que cada cabezal no solo aprenda de sus propias características 
 %
 
 
-\subsection{Arquitectura del Módulo de Traducción}
+\subsection{Arquitectura del módulo de traducción}
+Los autores expanden el modelo de reconocimiento hacia un modelo de traducción mediante la adición de una red de traducción externa.
+La arquitectura sigue un paradigma de codificador-decodificador.
 
-\subsubsection{MBart}
+La red MSKA-SLR hace papel de codificador visual (\textit{Visual Encoder}), su salida, la \textbf{representación de la glosa}, sirve como el ``lenguaje intermedio'' que entiende la red.
 
-\subsubsection{Qwen}
+El responsable de generar la secuencia textual final es el decodificador (\textit{Translation Network}).
+Exploraremos la arquitectura original y la expandiremos utilizando \textbf{modelos de lenguaje}.
+
+\subsubsection{Integración mediante MLP}
+Dado que el codificador visual opera en un dominio de características espaciales y temporales comprimidas ($T/4 \times 512$), es necesario adaptar esta salida antes de introducirla en el decodificador de lenguaje.
+
+Para este fin, el sistema emplea un \textbf{perceptrón multicapa} (\textit{MLP}) con dos capas ocultas.
+Este bloque actúa como un adaptador de dominio muy básico: proyecta las representaciones de la glosa al espacio semántico que el modelo de lenguaje espera, alineando las características extraídas por el flujo de fusión con las entradas del decodificador.
+
+
+\subsubsection{MBART como decodificador}
+El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
+mBART es un modelo de lenguaje preentrenado con una arquitectura tipo \textit{transformer} \textit{encoder-decoder} que ha demostrado un rendimiento sobresaliente en tareas de traducción automática multilingüe.
+
+Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya codifica las estructuras sintácticas y semánticas necesarias para la decodificación a lenguaje natural.
+Esto libera a la red de necesitar aprender la sintaxis del idioma desde cero, reduciendo el entrenamiento a alinear las representaciones visuales con el espacio lingüístico de mBART.
+
+% La pérdida de traducción se calcula mediante una función estándar de \textbf{entropía cruzada} a nivel de secuencia, optimizando la probabilidad de generar el texto objetivo correcto a partir de la secuencia visual codificada.
+
+La pérdida de traducción se calcula mediante la entropía cruzada promedio a nivel de token (\textit{token-level cross-entropy loss}).
+Durante el entrenamiento, el decodificador predice la secuencia objetivo de forma autorregresiva; la función de pérdida optimiza la probabilidad de cada token correcto dado el contexto de los tokens anteriores y la representación visual codificada.
+La pérdida total se obtiene mediante el promedio de las probabilidades logarítmicas negativas a lo largo de toda la secuencia objetivo.
+
+
+\subsubsection{Qwen como decodificador}
+

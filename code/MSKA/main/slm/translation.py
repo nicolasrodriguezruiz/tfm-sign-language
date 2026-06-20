@@ -389,8 +389,8 @@ class TranslationNetwork(torch.nn.Module):
             **gen_kwargs
         )
 
-        # (Opcional) El log de depuración del EOS.
-        # Recuerda que HuggingFace SIEMPRE inyecta un falso EOS en la posición 0
+        #  El log de depuración del EOS.
+        # HuggingFace SIEMPRE inyecta un falso EOS en la posición 0
         # al usar inputs_embeds. Por eso ignoramos seq[0] en la búsqueda:
         eos_id = self.tokenizer.eos_token_id
         for i, seq in enumerate(output.sequences):
