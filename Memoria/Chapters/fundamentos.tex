@@ -381,3 +381,5 @@ Además, se incluyen dos conexiones residuales a lo largo del módulo para estab
 La arquitectura \textbf{DSTA-Net} organiza este proceso apilando un total de $L$ capas.
 En cada una de estas capas, el tensor de entrada se procesa secuencialmente: primero entra al módulo de atención espacial (tratando los datos como $N$ articulaciones) para aprender la estructura física, y luego la matriz resultante se transpone para entrar al módulo de atención temporal (tratando los datos como $T$ fotogramas) para aprender el movimiento.
 Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
+
+\section{LoRA}
