@@ -182,20 +182,20 @@ def main(args, config):
     # --- Modo evaluación (--eval): evaluar y salir sin entrenar ---
     if args.eval:
         if not args.resume:
-            logger.warning('Please specify the trained model: --resume /path/to/best_checkpoint.pth')
+            logger.warning('FALTA MODELO: --resume /path/to/best_checkpoint.pth')
         dev_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch=0, beam_size=5,
                              generate_cfg=config['training']['validation']['translation'],
                              do_translation=config['do_translation'], do_recognition=config['do_recognition'],
                              header="Dev:")
-        print(f"Dev loss of the network on the {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
+        print(f"Perdida de la red en los {len(dev_dataloader)} videos de DEV: {dev_stats['loss']:.3f}")
         test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0, beam_size=5,
                               generate_cfg=config['testing']['translation'],
                               do_translation=config['do_translation'], do_recognition=config['do_recognition'])
-        print(f"Test loss of the network on the {len(test_dataloader)} test videos: {test_stats['loss']:.3f}")
+        print(f"Perdida de la red en los  {len(test_dataloader)} videos de TEST: {test_stats['loss']:.3f}")
         return
 
     # --- Bucle de entrenamiento ---
-    print(f"Start training for {args.epochs} epochs")
+    print(f"Empezando entrenamiento con {args.epochs} éoicas")
     start_time = time.time()
 
     # Valores de referencia para decidir cuándo guardar el mejor checkpoint:
@@ -245,7 +245,7 @@ def main(args, config):
         # Preparar todas las estadísticas de la época
         log_stats = {
             **{f'train_{k}': v for k, v in train_stats.items()},
-            **{f'test_{k}': v for k, v in dev_stats.items()},
+            **{f'dev_{k}': v for k, v in dev_stats.items()},
             'epoch': epoch,
             'n_parameters': n_parameters,
         }
@@ -281,20 +281,31 @@ def main(args, config):
                          generate_cfg=config['training']['validation']['translation'],
                          do_translation=config['do_translation'], do_recognition=config['do_recognition'],
                          header="Dev:")
-    print(f"Dev loss de la red en los {len(dev_dataloader)} test videos: {dev_stats['loss']:.3f}")
+    print(f"Dev loss de la red en los {len(dev_dataloader)} videos de DEV: {dev_stats['loss']:.3f}")
 
     test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0,
                           beam_size=config['testing']['recognition']['beam_size'],
                           generate_cfg=config['testing']['translation'],
                           do_translation=config['do_translation'], do_recognition=config['do_recognition'])
-    print(f"Test loss de la red en los {len(test_dataloader)} test videos: {test_stats['loss']:.3f}")
+    print(f"Test loss de la red en los {len(test_dataloader)} videos de TEST: {test_stats['loss']:.3f}")
 
     # Recopilar métricas finales del mejor modelo
     final_stats = {}
     if config['do_recognition']:
         final_stats.update({'Dev WER': dev_stats['wer'], 'Test WER': test_stats['wer']})
     if config['do_translation']:
-        final_stats.update({'Dev Bleu-4': dev_stats['bleu4'], 'Test Bleu-4': test_stats['bleu4']})
+        final_stats.update({'Dev Bleu-1': dev_stats['bleu1'],
+                            'Dev Bleu-2': dev_stats['bleu2'],
+                            'Dev Bleu-3': dev_stats['bleu3'],
+                            'Dev Bleu-4': dev_stats['bleu4'],
+                            'Dev Rouge': dev_stats['rouge'],
+
+                            'Test Bleu-1': test_stats['bleu1'],
+                            'Test Bleu-2': test_stats['bleu2'],
+                            'Test Bleu-3': test_stats['bleu3'],
+                            'Test Bleu-4': test_stats['bleu4'],
+                            'Test Rouge': test_stats['rouge'],
+                            })
 
     # Guardar en log.txt
     with (output_dir / "log.txt").open("a") as f:
@@ -493,7 +504,7 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
 
         # --- Calcular WER global sobre todas las muestras ---
         if do_recognition:
-            evaluation_results = {'wer': 200}  # 200 como valor imposible (WER máximo real es 100%)
+            evaluation_results = {'wer': 200}  # 200 como valor imposible
 
             for hyp_name in results[name].keys():
                 if 'gls_hyp' not in hyp_name:
