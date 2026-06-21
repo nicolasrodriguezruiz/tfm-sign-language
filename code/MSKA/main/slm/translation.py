@@ -99,7 +99,7 @@ class TranslationNetwork(torch.nn.Module):
         # Dimensión oculta de Qwen: es la dimensión que espera el proyector visual
         self.input_dim = self.model.config.hidden_size
 
-        # --- Tokenizador de glosas (opcional) ---
+        # --- Tokenizador de glosas ---
         if self.use_gloss_tokens:
             self.gloss_tokenizer = GlossTokenizer_G2T(tokenizer_cfg=cfg['GlossTokenizer'])
             # Tabla de embeddings de glosas proyectada a hidden_size de Qwen.
@@ -352,31 +352,36 @@ class TranslationNetwork(torch.nn.Module):
 
         prompt_str = self.prompt_str
 
-        # Tokenizamos el prompt (sin añadir especiales para mantener control total)
-        prompt_ids = self.tokenizer(
-            prompt_str,
-            return_tensors="pt",
-            add_special_tokens=False
-        ).input_ids.to(prefix_embeds.device)
+        if prompt_str.strip() != "":
+            # Tokenizamos el prompt
+            prompt_ids = self.tokenizer(
+                prompt_str,
+                return_tensors="pt",
+                add_special_tokens=False
+            ).input_ids.to(prefix_embeds.device)
 
-        # Convertimos los IDs del prompt a vectores usando el cerebro de Qwen
-        # Dependiendo de tu wrapper de HuggingFace, suele ser get_input_embeddings()
-        prompt_embeds = self.model.get_input_embeddings()(prompt_ids)  # Shape: (1, L_prompt, D)
+            # Convertimos los IDs del prompt a vectores usando
+            # Dependiendo del wrapper de HuggingFace, suele ser get_input_embeddings()
+            prompt_embeds = self.model.get_input_embeddings()(prompt_ids)  # Shape: (1, L_prompt, D)
 
-        # Expandimos el prompt para que coincida con el número de videos en tu batch
-        B = prefix_embeds.shape[0]
-        prompt_embeds = prompt_embeds.expand(B, -1, -1)  # Shape: (B, L_prompt, D)
+            # Expandimos el prompt para que coincida con el número de videos
+            B = prefix_embeds.shape[0]
+            prompt_embeds = prompt_embeds.expand(B, -1, -1)  # Shape: (B, L_prompt, D)
 
-        # Creamos una máscara de 1s para el prompt (es información útil)
-        prompt_mask = torch.ones(
-            B, prompt_embeds.shape[1],
-            dtype=prefix_mask.dtype,
-            device=prefix_mask.device
-        )
+            # Creamos una máscara de 1s para el prompt (es información útil)
+            prompt_mask = torch.ones(
+                B, prompt_embeds.shape[1],
+                dtype=prefix_mask.dtype,
+                device=prefix_mask.device
+            )
 
-        # UNIMOS EL VIDEO Y EL PROMPT
-        full_prefix_embeds = torch.cat([prefix_embeds, prompt_embeds], dim=1)
-        full_prefix_mask = torch.cat([prefix_mask, prompt_mask], dim=1)
+            # UNIMOS EL VIDEO Y EL PROMPT
+            full_prefix_embeds = torch.cat([prefix_embeds, prompt_embeds], dim=1)
+            full_prefix_mask = torch.cat([prefix_mask, prompt_mask], dim=1)
+        else:
+            # Si está vacío, el prefijo completo es simplemente el prefijo visual
+            full_prefix_embeds = prefix_embeds
+            full_prefix_mask = prefix_mask
         # ---------------------------------------------------------
 
         # La llamada a Qwen (HuggingFace) usando el prefix COMPLETO
@@ -389,18 +394,18 @@ class TranslationNetwork(torch.nn.Module):
             **gen_kwargs
         )
 
-        #  El log de depuración del EOS.
+        # El log de depuración del EOS.
         # HuggingFace SIEMPRE inyecta un falso EOS en la posición 0
         # al usar inputs_embeds. Por eso ignoramos seq[0] en la búsqueda:
-        eos_id = self.tokenizer.eos_token_id
-        for i, seq in enumerate(output.sequences):
-            # Buscamos el EOS a partir de la posición 1
-            if len(seq) > 1 and (seq[1:] == eos_id).any().item():
-                pass # Aquí sí ha generado el punto final correctamente
+#         eos_id = self.tokenizer.eos_token_id
+#         for i, seq in enumerate(output.sequences):
+#             # Buscamos el EOS a partir de la posición 1
+#             if len(seq) > 1 and (seq[1:] == eos_id).any().item():
+#                 pass # Aquí sí ha generado el punto final correctamente
 
-        decoded = self.tokenizer.batch_decode(
-            output.sequences, skip_special_tokens=True
-        )
+#         decoded = self.tokenizer.batch_decode(
+#             output.sequences, skip_special_tokens=True
+#         )
 
 # # #         # ===== Estadísticas útiles =====
 
