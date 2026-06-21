@@ -99,7 +99,7 @@ class TranslationNetwork(torch.nn.Module):
         # Dimensión oculta de Qwen: es la dimensión que espera el proyector visual
         self.input_dim = self.model.config.hidden_size
 
-        # --- Tokenizador de glosas ---
+        # --- Tokenizador de glosas (opcional) ---
         if self.use_gloss_tokens:
             self.gloss_tokenizer = GlossTokenizer_G2T(tokenizer_cfg=cfg['GlossTokenizer'])
             # Tabla de embeddings de glosas proyectada a hidden_size de Qwen.
@@ -403,9 +403,9 @@ class TranslationNetwork(torch.nn.Module):
 #             if len(seq) > 1 and (seq[1:] == eos_id).any().item():
 #                 pass # Aquí sí ha generado el punto final correctamente
 
-#         decoded = self.tokenizer.batch_decode(
-#             output.sequences, skip_special_tokens=True
-#         )
+        decoded = self.tokenizer.batch_decode(
+            output.sequences, skip_special_tokens=True
+        )
 
 # # #         # ===== Estadísticas útiles =====
 
