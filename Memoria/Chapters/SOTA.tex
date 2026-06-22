@@ -2,70 +2,102 @@
 Analizaremos en este capítulo el contexto general de la traducción de lengua de signos, desde su evolución hasta la actualidad.
 Finalemente estudiaremos el estado del arte especifico a los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
 
-\section{General (traducción en SL)}
+\section{Evolución de la traducción de lengua de signos}
 Como vimos en la itroducción, la traducción automática de la lengua de signos es un problema complejo que implica mapear una secuencia de vídeo continuo a una secuencia de texto en un lenguaje hablado, superando grandes barreras espaciales, sintácticas y gramaticales.
 A lo largo de los ultimos años ha habido grandes avances en las técnicas utilizadas.
 De similar forma a las tareas de traducción tradicionales se han preferido arquitecturas basadas en mecanismos de atención, \textit{vision transformers} o incluso \textit{LLM}.
 
-\subsection{Prediciendo con Glosas}
-Muchos de los intentos más exitosos y el paradigma hace unos años era utilizar las glosas como representación intermedia para la traducción.
-Este enfoque de dos etapas simplificaba el problema, pero sufría del cuello de botella de la propagación de errores.
-Esto es, cuando la parte del modelo encargada de traducir las glosas comete un error, la segunda parte, por muy buena que sea, al tener información equivocada cometerá un error en la traducción.
-
-\subsubsection*{\underline{STMC (Spatial-Temporal Multi-Cue, SLR)}}
-Aunque la lingüística ya reconocía el carácter fundamentalmente multimodal de la lengua de signos, los modelos STMC (Spatial-Temporal Multi-Cue) fueron pioneros en integrar esta premisa directamente en el diseño arquitectónico de una red neuronal entrenable de principio a fin.
-A diferencia de enfoques anteriores que dependían de algoritmos externos (como rastreadores de manos) o que simplemente concatenaban características perdiendo información, las redes \textbf{STMC}, propuestas por Zhou et al. \cite{STMC_CSLR} en \textsc{2020}, procesan de forma conjunta diferentes señales visuales (forma de las manos, expresiones faciales, postura corporal) en dimensiones espaciales y temporales para mejorar el reconocimiento de glosas.
-Para lograr esto, la arquitectura del modelo se divide en dos componentes principales:
-\begin{itemize}
-    \item \textbf{Módulo Espacial Multiseñal (\textit{Spatial Multi-Cue})} que se encarga de la representación espacial en cada fotograma.
-     Incorpora una rama de estimación de pose integrada y diferenciable que permite recortar y extraer automáticamente las características visuales específicas de cada canal.
-
-     \item \textbf{Módulo Temporal Multiseñal (\textit{Temporal Multi-Cue})} que modela las dependencias temporales a lo largo del video a través de dos rutas paralelas.
-     La ruta intra-señal preserva las características únicas y la evolución temporal de cada canal de forma aislada, mientras que la ruta inter-señal explora la sinergia y colaboración entre todas las señales a diferentes escalas de tiempo.
-\end{itemize}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{STMC/STMC.png}
-    \caption{Estructura del modelo STMC}
-\end{figure}
-
-\subsubsection*{\underline{Spotter+GPT (Traducción Híbrida de SLT)}}
-Aunque la traducción de la lengua de signos se ha formulado frecuentemente como una tarea de traducción automática neuronal compleja debido a los desafíos para alinear y tokenizar videos, además de las marcadas diferencias gramaticales entre lenguajes hablados y de signos, el enfoque propuesto por Sincan et al. \cite{SpotterGPT} en \textsc{2024} innova al prescindir del entrenamiento de un modelo de traducción glosa-a-texto.
-A diferencia de los enfoques convencionales que pueden presentar un bajo rendimiento en dominios extensos, el método \textbf{Spotter+GPT} propone una arquitectura híbrida que combina el reconocimiento visual clásico con las capacidades de razonamiento de un \textbf{LLM} preentrenado.
-Para lograr esto, la arquitectura del sistema se divide en dos componentes principales:
-\begin{itemize}
-    \item \textbf{Módulo de Detección Visual (\textit{Sign Spotter})} que utiliza un modelo I3D entrenado con un gran conjunto de datos de dominio lingüístico para identificar signos individuales.
-    Este módulo procesa el video continuo mediante una técnica de ventana deslizante para extraer predicciones de glosas, aplicando posteriormente un filtrado basado en umbrales de confianza para consolidar la secuencia.
-
-    \item \textbf{Módulo de Generación de Lenguaje (\textit{ChatGPT / LLM})} que emplea la versión \textit{gpt-3.5-turbo} para recibir la secuencia de glosas detectadas de forma directa.
-    Mediante ingeniería de instrucciones (\textit{prompting}) y sin requerir ajuste fino (\textit{fine-tuning}), el modelo transforma esta lista en una oración coherente en lenguaje hablado, superando de forma dinámica las diferencias en el orden gramatical.
-\end{itemize}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{SPOTTER+GPT/SPOTTER.png}
-    \caption{Estructura del modelo spotter+GPT}
-\end{figure}
-
-En cuanto a los resultados, los experimentos muestran que el Spotter+GPT supera a modelos secuenciales dedicados en métricas de calidad humana y similitud semántica (como BLEURT).
-Además, destaca cualitativamente por su gran resiliencia, logrando mantener la coherencia semántica en la oración hablada final incluso cuando el detector visual pierde información o introduce glosas adicionales.
+\section{Modelos basados en glosas (dos etapas)}
 
 
-\begin{itemize}
-    \item Transformers
-\end{itemize}
 
-\subsection{Modelos \textit{End2End}}
-\begin{itemize}
-    \item Gloss-Free SLT
-    \item Sign2GPT (El Paradigma Gloss-based con LLM)
-\end{itemize}
+\section{Modelos libre de glosas (\textit{end-to-end})}
 
-\subsection{LLMS para la traduccion de signos}
 
-\section{Uso de keypoints como entrada a modelos en SL}
 
-\section{Datasets}
-El paradigma en cuanto conjuntos de datos no es muy diferente al de hace unos años.
-Esto radica principalmente en la dificultad y el coste que existe en la traducción manual de miles de videos de legua de signos.
+\section{Píxeles vs. \textit{Keypoints}}
+
+
+\section{El Modelo MSKA y nuestro enfoque}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+% \subsection{Prediciendo con Glosas}
+% Muchos de los intentos más exitosos y el paradigma hace unos años era utilizar las glosas como representación intermedia para la traducción.
+% Este enfoque de dos etapas simplificaba el problema, pero sufría del cuello de botella de la propagación de errores.
+% Esto es, cuando la parte del modelo encargada de traducir las glosas comete un error, la segunda parte, por muy buena que sea, al tener información equivocada cometerá un error en la traducción.
+%
+% \subsubsection*{\underline{STMC (Spatial-Temporal Multi-Cue, SLR)}}
+% Aunque la lingüística ya reconocía el carácter fundamentalmente multimodal de la lengua de signos, los modelos STMC (Spatial-Temporal Multi-Cue) fueron pioneros en integrar esta premisa directamente en el diseño arquitectónico de una red neuronal entrenable de principio a fin.
+% A diferencia de enfoques anteriores que dependían de algoritmos externos (como rastreadores de manos) o que simplemente concatenaban características perdiendo información, las redes \textbf{STMC}, propuestas por Zhou et al. \cite{STMC_CSLR} en \textsc{2020}, procesan de forma conjunta diferentes señales visuales (forma de las manos, expresiones faciales, postura corporal) en dimensiones espaciales y temporales para mejorar el reconocimiento de glosas.
+% Para lograr esto, la arquitectura del modelo se divide en dos componentes principales:
+% \begin{itemize}
+%     \item \textbf{Módulo Espacial Multiseñal (\textit{Spatial Multi-Cue})} que se encarga de la representación espacial en cada fotograma.
+%      Incorpora una rama de estimación de pose integrada y diferenciable que permite recortar y extraer automáticamente las características visuales específicas de cada canal.
+%
+%      \item \textbf{Módulo Temporal Multiseñal (\textit{Temporal Multi-Cue})} que modela las dependencias temporales a lo largo del video a través de dos rutas paralelas.
+%      La ruta intra-señal preserva las características únicas y la evolución temporal de cada canal de forma aislada, mientras que la ruta inter-señal explora la sinergia y colaboración entre todas las señales a diferentes escalas de tiempo.
+% \end{itemize}
+%
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{STMC/STMC.png}
+%     \caption{Estructura del modelo STMC}
+% \end{figure}
+%
+% \subsubsection*{\underline{Spotter+GPT (Traducción Híbrida de SLT)}}
+% Aunque la traducción de la lengua de signos se ha formulado frecuentemente como una tarea de traducción automática neuronal compleja debido a los desafíos para alinear y tokenizar videos, además de las marcadas diferencias gramaticales entre lenguajes hablados y de signos, el enfoque propuesto por Sincan et al. \cite{SpotterGPT} en \textsc{2024} innova al prescindir del entrenamiento de un modelo de traducción glosa-a-texto.
+% A diferencia de los enfoques convencionales que pueden presentar un bajo rendimiento en dominios extensos, el método \textbf{Spotter+GPT} propone una arquitectura híbrida que combina el reconocimiento visual clásico con las capacidades de razonamiento de un \textbf{LLM} preentrenado.
+% Para lograr esto, la arquitectura del sistema se divide en dos componentes principales:
+% \begin{itemize}
+%     \item \textbf{Módulo de Detección Visual (\textit{Sign Spotter})} que utiliza un modelo I3D entrenado con un gran conjunto de datos de dominio lingüístico para identificar signos individuales.
+%     Este módulo procesa el video continuo mediante una técnica de ventana deslizante para extraer predicciones de glosas, aplicando posteriormente un filtrado basado en umbrales de confianza para consolidar la secuencia.
+%
+%     \item \textbf{Módulo de Generación de Lenguaje (\textit{ChatGPT / LLM})} que emplea la versión \textit{gpt-3.5-turbo} para recibir la secuencia de glosas detectadas de forma directa.
+%     Mediante ingeniería de instrucciones (\textit{prompting}) y sin requerir ajuste fino (\textit{fine-tuning}), el modelo transforma esta lista en una oración coherente en lenguaje hablado, superando de forma dinámica las diferencias en el orden gramatical.
+% \end{itemize}
+%
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth]{SPOTTER+GPT/SPOTTER.png}
+%     \caption{Estructura del modelo spotter+GPT}
+% \end{figure}
+%
+% En cuanto a los resultados, los experimentos muestran que el Spotter+GPT supera a modelos secuenciales dedicados en métricas de calidad humana y similitud semántica (como BLEURT\footnote{BLEURT es una métrica de evaluación automática basada en BERT que mide la calidad de textos generados por IA evaluando su similitud semántica con un texto de referencia \cite{BLEURT}.}).
+% Además, destaca cualitativamente por su gran resiliencia, logrando mantener la coherencia semántica en la oración hablada final incluso cuando el detector visual pierde información o introduce glosas adicionales.
+%
+%
+% \begin{itemize}
+%     \item Transformers
+% \end{itemize}
+%
+% \subsection{Modelos \textit{End2End}}
+% La necesidad de anotar manualmente cada fotograma o segmento de vídeo con su glosa correspondiente es costosa, propensa a sesgos y limita enormemente la escalabilidad de los conjuntos de datos.
+% Por ello, la investigación reciente se ha centrado en arquitecturas de principio a fin (\textit{End2End}) que minimizan o eliminan esta dependencia.
+%
+% \begin{itemize}
+%     \item Gloss-Free SLT
+%     \item Sign2GPT (El Paradigma Gloss-based con LLM)
+% \end{itemize}
+%
+% \subsection{LLMS para la traduccion de signos}
+%
+% \section{Uso de keypoints como entrada a modelos en SL}
+%
+% \section{Datasets}
+% El paradigma en cuanto conjuntos de datos no es muy diferente al de hace unos años.
+% Esto radica principalmente en la dificultad y el coste que existe en la traducción manual de miles de videos de legua de signos.
