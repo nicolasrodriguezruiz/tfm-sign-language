@@ -1,0 +1,72 @@
+\documentclass[tikz,border=5mm]{standalone}
+\usetikzlibrary{positioning, fit, backgrounds, arrows.meta, calc}
+\usepackage{fontawesome5}
+\begin{document}
+\begin{tikzpicture}[
+    box/.style={
+        rectangle,
+        rounded corners=3mm,
+        draw=black,
+        thick,
+        fill=pink!20,
+        align=center,
+        inner sep=3mm
+    },
+    arrow/.style={
+        -Stealth,
+        thick
+    }
+]
+
+% --- Nodos Principales ---
+% Imagen de la signante
+\node[inner sep=0pt] (img) at (0, 3.5) {\includegraphics[width=2.2cm]{phoenix.jpg}};
+
+% Nodo CSLR
+\node[box, minimum width=2.2cm, minimum height=2.8cm] (cslr) at (3.5, 0) {};
+\node[draw, circle, minimum size=0.4cm, thick, fill=white] (cslr-circ) at (3.5, 0.4) {};
+\draw[thick, line width=1.2pt] (cslr-circ.315) -- ++(315:0.25cm);
+\node[font=\bfseries\sffamily] at (3.5, -0.4) {CSLR};
+
+% Nodo Glosas
+\node[box, minimum width=4cm, minimum height=1.8cm] (gloss) at (9, 3.5) {\textbf{\sffamily [HOY, CALOR, SEVILLA]}};
+
+% % Nodo G2T
+% \node[box, minimum width=4cm, minimum height=1.8cm] (g2t) at (9, 0) {};
+% \node[draw, circle, minimum size=0.4cm, thick, fill=white] (g2t-circ) at (8.25, 0) {};
+% \draw[thick, line width=1.2pt] (g2t-circ.315) -- ++(315:0.25cm);
+% \node[font=\bfseries\sffamily, right=0.1cm of g2t-circ] {\centering NMT};
+
+% Nodo G2T (¡Sustituido por engranajes!)
+\node[box, minimum width=4cm, minimum height=1.8cm] (g2t) at (9, 0) {};
+% Colocamos el icono de los engranajes en tamaño grande (\large o \Large)
+\node[inner sep=0pt] (g2t-icon) at (8.0, 0) {\Large\faCogs};
+\node[font=\bfseries\sffamily, right=0.15cm of g2t-icon] {\centering NMT};
+
+% Nodo Texto Final
+\node[box, minimum width=4.5cm, minimum height=1.8cm, text width=4.2cm, align=center] (text) at (15, 3.5) {\textbf{\sffamily ``Hoy hace calor en\\sevilla''}};
+
+% --- Conexiones (Flechas) ---
+% Imagen a CSLR
+\draw[arrow] (img.south) |- (cslr.west);
+
+% CSLR a Glosas (Con etiqueta GLOSAS)
+\draw[thick] (cslr.east) -- (5.2, 0) -- node[fill=blue!10, rotate=90, inner sep=2pt, font=\small\sffamily\bfseries] {GLOSAS} (5.2, 3.5);
+\draw[arrow] (5.2, 3.5) -- (gloss.west);
+
+% Glosas a G2T
+\draw[arrow] (gloss.south) -- (g2t.north);
+
+% G2T a Texto (Con etiqueta TEXTO)
+\draw[thick] (g2t.east) -- node[fill=blue!10, inner sep=2pt, font=\small\sffamily\bfseries] {TEXTO} (15, 0);
+\draw[arrow] (15, 0) -- (text.south);
+
+% --- Recuadro de Fondo (Gigante Azul) ---
+\begin{scope}[on background layer]
+    \node[draw=blue!60, fill=blue!10, thick, rounded corners=1cm,
+          fit=(img) (cslr) (gloss) (g2t) (text),
+          inner xsep=0.8cm, inner ysep=0.8cm] {};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}
