@@ -289,19 +289,71 @@ Para este fin, el sistema emplea un \textbf{perceptrón multicapa} (\textit{MLP}
 Este bloque actúa como un adaptador de dominio muy básico: proyecta las representaciones de la glosa al espacio semántico que el modelo de lenguaje espera, alineando las características extraídas por el flujo de fusión con las entradas del decodificador.
 
 
+% \subsubsection{MBART como decodificador}
+% El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
+% mBART es un modelo de lenguaje preentrenado con una arquitectura tipo \textit{transformer} \textit{encoder-decoder} que ha demostrado un rendimiento sobresaliente en tareas de traducción automática multilingüe.
+%
+% Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya codifica las estructuras sintácticas y semánticas necesarias para la decodificación a lenguaje natural.
+% Esto libera a la red de necesitar aprender la sintaxis del idioma desde cero, reduciendo el entrenamiento a alinear las representaciones visuales con el espacio lingüístico de mBART.
+%
+% La pérdida de traducción se calcula mediante la entropía cruzada promedio a nivel de token (\textit{token-level cross-entropy loss}).
+% Durante el entrenamiento, el decodificador predice la secuencia objetivo de forma autorregresiva; la función de pérdida optimiza la probabilidad de cada token correcto dado el contexto de los tokens anteriores y la representación visual codificada.
+% La pérdida total se obtiene mediante el promedio de las probabilidades logarítmicas negativas a lo largo de toda la secuencia objetivo.
+%
+%
+% \subsubsection{Modelo de lenguage pequeño como decodificador}
+% Optamos por utilizar un \textbf{modelo de lenguaje} basado en una arquitectura solo decodificador (\textit{Decoder-Only}) en vez de un modelo basado en codificador-decodificador.
+% %Para ello, se integra \textbf{Qwen2.5-1.5B}, un modelo fundacional de lenguaje optimizado mediante alineación.
+%
+% A diferencia de lo que ocurria con mBART, las características de video y las glosas no son procesadas por un codificador independiente.
+% En su lugar, el sistema emplea una técnica de \textbf{inyección de prefijos (\textit{Soft-Prompting})}:
+% \begin{enumerate}
+%     \item El \textit{VLMapper} proyecta el tensor visual al espacio exacto de dimensiones ocultas (\textit{hidden size}) del modelo.
+%     \item Estas características se tratan como secuencias continuas de \textit{tokens virtuales} y se concatenan al inicio de la entrada.
+%     \item Se anexa un \textit{prompt} textual de instrucción.
+% \end{enumerate}
+%
+% La secuencia unificada de \textit{embeddings} que procesa el modelo se estructura como: \texttt{[Tokens Visuales] + [Prompt Textual] + [Traducción Objetivo]}.
+%
+% \paragraph{Estrategia de entrenamiento y LoRA}
+% La red de traducción se entrena utilizando la técnica \textbf{LoRA} \ref{sec:LoRA}, pues los modelos de lenguage suelen contener miles de millones de parámetros, un ajuste fino completo (\textit{Full Fine-Tuning}) podría desestabilizar sus capacidades lingüísticas preentrenadas.
+%
+% \paragraph{Eligiendo modelo de lenguage}
+
+% \newpage
 \subsubsection{MBART como decodificador}
+
 El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
+
 mBART es un modelo de lenguaje preentrenado con una arquitectura tipo \textit{transformer} \textit{encoder-decoder} que ha demostrado un rendimiento sobresaliente en tareas de traducción automática multilingüe.
 
-Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya codifica las estructuras sintácticas y semánticas necesarias para la decodificación a lenguaje natural.
-Esto libera a la red de necesitar aprender la sintaxis del idioma desde cero, reduciendo el entrenamiento a alinear las representaciones visuales con el espacio lingüístico de mBART.
+Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya codifica las estructuras sintácticas y semánticas necesarias para la decodificación a lenguaje natural, lo que reduce el entrenamiento a alinear las representaciones visuales con su espacio lingüístico.
 
-% La pérdida de traducción se calcula mediante una función estándar de \textbf{entropía cruzada} a nivel de secuencia, optimizando la probabilidad de generar el texto objetivo correcto a partir de la secuencia visual codificada.
+La pérdida de traducción se calcula mediante entropía cruzada a nivel de token (\textit{token-level cross-entropy loss}): el decodificador predice la secuencia objetivo de forma autorregresiva, optimizando la probabilidad de cada token correcto dado el contexto previo y la representación visual codificada.
 
-La pérdida de traducción se calcula mediante la entropía cruzada promedio a nivel de token (\textit{token-level cross-entropy loss}).
-Durante el entrenamiento, el decodificador predice la secuencia objetivo de forma autorregresiva; la función de pérdida optimiza la probabilidad de cada token correcto dado el contexto de los tokens anteriores y la representación visual codificada.
-La pérdida total se obtiene mediante el promedio de las probabilidades logarítmicas negativas a lo largo de toda la secuencia objetivo.
+\subsubsection{Modelo de lenguaje pequeño como decodificador}
+Los modelos \textit{decoder-only} modernos han demostrado capacidades de generalización, traducción y comprensión lingüística superiores a muchos modelos \textit{encoder-decoder}, gracias a su preentrenamiento sobre corpus de texto de mayor escala.
+Así, en lugar de un modelo \textit{encoder-decoder} como mBART, optamos por integrar un modelo de lenguaje con arquitectura exclusivamente de decodificador (\textit{decoder-only}).
+
+En esta arquitectura, las características visuales no pasan por un codificador independiente.
+En su lugar, se emplea una estrategia de \textbf{prefijo visual} (\textit{visual prefix conditioning}), inspirada en modelos multimodales como LLaVA \cite{LLaVA}:
+\begin{enumerate}
+  \item El \textit{VLMapper} proyecta las características visuales al espacio de embeddings del modelo de lenguaje.
+  \item Estas características se tratan como una secuencia de tokens continuos y se concatenan al inicio de la entrada.
+  \item Se anexa un \textit{prompt} textual de instrucción que guía al modelo hacia la tarea de traducción.
+\end{enumerate}
+La secuencia unificada que procesa el modelo adopta la estructura:
+\begin{center}
+\texttt{[Tokens Visuales] + [Prompt Textual] + [Traducción Objetivo]}.
+\end{center}
+
+La función de pérdida se aplica únicamente sobre los tokens de la traducción objetivo.
+De este modo, el modelo no recibe penalización por su comportamiento sobre el contexto de entrada, concentrando toda la señal de supervisión en aprender a generar la traducción correcta condicionada a la información visual.
+
+Dado que un ajuste fino completo de un modelo de lenguaje podría desestabilizaría sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicado en \textit{Sección}~\ref{sec:LoRA}).
+
+Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \textit{zero-shot}, siguiendo la línea del trabajo \textbf{Spotter+GPT} \cite{spotter_gpt} presentado en el estado del arte.
+En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
 
 
-\subsubsection{Qwen como decodificador}
 
