@@ -6,7 +6,6 @@ Basado en:
   train.py
   utils/train_utils.py
 enlace https://github.com/winston1214/Sign-Language-project
-
 """
 
 import logging
@@ -118,14 +117,14 @@ class GRU_AT_Decoder(nn.Module):
         self.n_layers   = n_layers
         self.embedding  = nn.Embedding(output_dim, emb_dim)
 
-        # CORRECCIÓN: Ahora sí le pasamos num_layers=n_layers
+
         self.gru    = nn.GRU(hid_dim * 2 + emb_dim, hid_dim, num_layers=n_layers)
         self.fc_out = nn.Linear((hid_dim * 2) + hid_dim + emb_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input, hidden, encoder_outputs):
         # input:           (B,)
-        # hidden:          (n_layers, B, hid_dim) <-- Ahora recibe todas las capas
+        # hidden:          (n_layers, B, hid_dim)
         # encoder_outputs: (B, T, hid_dim*2)
 
         input    = input.unsqueeze(0)                          # (1, B)
@@ -175,7 +174,6 @@ class GRU_AT_Seq2Seq(nn.Module):
 
         encoder_outputs, hidden = self.encoder(src)
 
-        # CORRECCIÓN: Duplicamos el hidden del Encoder para las N capas del Decoder
         hidden = hidden.unsqueeze(0).repeat(self.decoder.n_layers, 1, 1)
 
         input = trg[:, 0]   # <sos> tokens, shape (B,)
