@@ -84,7 +84,7 @@ Este mapa de puntos optimiza el seguimiento temporal en secuencias dinámicas y 
 
     \includegraphics[width=0.8\textwidth]{face_halpe_136.jpg}
   \end{minipage}
-  \caption{Distribución de \textit{keypoints} anatómicos en el formato Halpe-136.}
+  \caption{Distribución de \textit{keypoints} anatómicos en el formato Halpe-136 \cite{alphapose}.}
 \end{figure}
 
 El producto final tras procesar cada vídeo es un archivo estructurado en formato \textsc{json}.
@@ -92,16 +92,22 @@ Cada fotograma se traduce en un diccionario que almacena la lista plana de coord
 
 \lstinputlisting[language=json]{code/keypoints-format.txt}
 
-
-
-
-
-
-
-
 \section{Normalización de los Datos}
+Las coordenadas brutas producidas por AlphaPose se expresan en píxeles absolutos del fotograma, lo que las hace dependientes de la resolución del vídeo de origen.
+Para que el modelo pueda aprender representaciones independientes de dicha resolución y para favorecer la estabilidad numérica durante el entrenamiento, se aplica una normalización espacial a todos los \textit{keypoints} antes de introducirlos en la red.
 
-\section{Multi Stream Keypoint Attention}
+El proceso consta de dos etapas.
+En primer lugar, las coordenadas se llevan al rango $[0,1]$ dividiendo cada componente entre las dimensiones del fotograma: la coordenada
+$x$ se divide entre el ancho $W$ y la coordenada y entre el alto $H$.
+
+Dado que en el sistema de coordenadas de imagen el eje $y$ crece hacia abajo, se invierte previamente dicho eje,\begin{equation*}y \leftarrow H - y\end{equation*} para alinearlo con la convención matemática estándar, en la que el origen se sitúa en la parte inferior.
+
+En segundo lugar, el rango $[0,1]$ se reescala al intervalo $[-1,1]$ mediante la transformación \begin{equation*}v \leftarrow \frac{v - 0.5}{0.5},\end{equation*} de modo que el centro geométrico del fotograma queda mapeado al origen de coordenadas.
+Esta elección es especialmente conveniente en el dominio de la lengua de signos, ya que el torso del signante, que actúa como referencia espacial global, tiende a ocupar la región central del encuadre.
+
+El tercer canal de cada punto clave, correspondiente al índice de confianza $c$ asignado por el estimador de pose, no se modifica, pues ya se encuentra acotado en el rango $[0,1]$ por diseño del modelo de extracción.
+
+\section{\textit{Multi-Stream Keypoint Attention}}
 En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma.
 Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
