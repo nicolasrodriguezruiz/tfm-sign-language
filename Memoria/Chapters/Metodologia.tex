@@ -376,3 +376,24 @@ Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \te
 En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
 
 \subsection{Tokenizador}
+Todo sistema de traducción automática requiere convertir las secuencias de texto en representaciones numéricas que la red pueda procesar.
+En este trabajo coexisten dos niveles de tokenización con propósitos distintos: uno para las glosas, que actúa como señal de supervisión del módulo de reconocimiento, y otro para el texto en lenguaje natural, que supervisa el módulo de traducción.
+
+\subsubsection*{Tokenizador de Glosas}
+Como mencionamos, las glosas son la representación intermedia del lenguaje de signos, secuencias de palabras clave normalmente en mayúsculas que describen los signos ejecutados.
+
+Su tokenización se realiza mediante un vocabulario cerrado construido a partir del conjunto de entrenamiento, donde cada glosa única recibe un identificador numérico.
+Este vocabulario se emplea tanto para convertir las etiquetas de referencia en índices durante el entrenamiento como para decodificar las predicciones del módulo CTC durante la inferencia.
+
+\subsubsection*{Tokenizador de mBART}
+En la variante con mBART como red de traducción, el texto en alemán se tokeniza con el tokenizador propio del modelo, basado en \textit{SentencePiece}.
+Al tratarse de un modelo \textit{encoder-decoder} multilingüe, requiere un tratamiento específico: se añade un token de idioma de destino al inicio de la secuencia del decodificador (\texttt{de\_DE}), y las posiciones de \textit{padding} se marcan con $-100$ para que sean ignoradas durante el cálculo de la entropía cruzada.
+Además, las secuencias de entrada al decodificador se desplazan una posición a la derecha (\textit{shift\_tokens\_right}), siguiendo el paradigma de \textit{teacher forcing} propio de los modelos autorregresivos \textit{encoder-decoder}.
+
+\subsubsection*{Tokenizador de Qwen}
+En la variante con un modelo de lenguaje \textit{decoder-only}, se emplea el tokenizador de \textbf{Qwen}.
+A diferencia de mBART, este tokenizador no requiere token de idioma ni desplazamiento de la secuencia, el propio modelo gestiona internamente el \textit{teacher forcing} a partir de los \textit{labels}.
+
+La secuencia que se tokeniza concatena un \textit{prompt} de instrucción seguido del texto objetivo, siguiendo la estructura descrita en la sección anterior.
+La pérdida se enmascara sobre los tokens del \textit{prompt} asignándoles el valor $-100$, de modo que la señal de supervisión recae exclusivamente sobre los tokens de la traducción.
+
