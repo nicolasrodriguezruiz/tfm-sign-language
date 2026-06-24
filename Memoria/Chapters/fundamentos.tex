@@ -14,8 +14,6 @@ En el contexto actual, donde los modelos de lenguaje requieren iteraciones const
 
 En este contexto surgen, entre otras, las medidas aquí expuestas, buscando obtener la mayor correlacción con el criterio de un evaluador humano.
 
-
-
 \subsection{WER}
 La métrica \textbf{\textit{Word Error Rate} (WER)} tiene su origen en la evaluación de los primeros sistemas de \textbf{Reconocimiento Automático de Habla} (\textit{ASR}, por sus siglas en inglés) desarrollados entre las décadas de $1980$ y $1990$.
 Ante la necesidad de cuantificar el rendimiento de los modelos ocultos de Markov (\textit{HMM}) en la transcripción de voz a texto, la comunidad científica adoptó y adaptó la \textbf{distancia de Levenshtein}.
@@ -114,24 +112,100 @@ ROUGE, en cambio, castiga que el modelo omita información clave mediante la exh
 
 Al igual que BLEU, ROUGE sufre de la misma limitación semántica, al basarse en solapamientos léxicos directos, no es capaz de puntuar correctamente el uso de sinónimos o paráfrasis.
 
+\subsection{BLEURT}
+
+
 \section{Transformers}
-La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje.
-La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
-Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
+La arquitectura \textbf{Transformer}, introducida por Vaswani et al. \cite{vaswani2023attentionneed}, supuso un cambio de paradigma absoluto en el procesamiento de secuencias, desplazando a las redes neuronales recurrentes.
+Su relevancia para el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de autoatención (\textit{self-attention}).
+Esto permite que cada elemento de una entrada (ya sea un \textit{token} de texto o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
 
-\subsection{¿Por qué Transformers?}
-Para entender la relevancia e inovación de los transformers es necesario conocer lo que les precedía. En particular, las \textit{long short-term memory} y las \textit{gated recurrent neural networks} dominaron el procesamiento de secuencias mediante mecanismos de computación recurrente, los cuales procesan la información de manera secuencial siguiendo el orden temporal de la entrada. Estas arquitecturas presentaban dos limitaciones fundamentales: la dificultad para captar dependencias de largo alcance debido al desvanecimiento del gradiente y la imposibilidad de paralelizar el entrenamiento, lo que restringe enormemente la eficiencia computacional con secuencias largas.
+A continuación, repasaremos sus fundamentos estructurales para entender su aplicación en nuestro modelo.
 
-Los transformers proponen abandonar por completo la recurrencia en favor del mecanismo de atención, lo que les permite captar dependencias de largo alcance en los textos de forma directa y con operaciones fácilmente paralelizables. En lugar de procesar la secuencia elemento a elemento, estos modelos consideran simultáneamente todos los tokens de entrada mediante el mecanismo de auto-atención, que calcula la relevancia relativa entre cada par de posiciones de la secuencia.
+\subsection{De la recurrencia a la atención}
+Para entender la innovación de los \textit{transformers}, es necesario conocer las limitaciones de sus predecesores.
+Históricamente, las redes recurrentes (como LSTM y GRU) dominaron estas tareas procesando la información de manera estrictamente secuencial.
 
-Este enfoque introduce varias ventajas clave. En primer lugar, elimina la dependencia estrictamente secuencial del cómputo, permitiendo un uso mucho más eficiente del hardware moderno, especialmente en arquitecturas paralelas como las \textbf{GPUs}. En segundo lugar, facilita el modelado de relaciones a larga distancia sin los problemas asociados al desvanecimiento del gradiente, ya que cualquier elemento de la secuencia puede interactuar directamente con cualquier otro en un solo paso de atención.
+Sin embargo, procesar la información de forma estrictamente secuencial arrastraba dos problemas estructurales:
+\begin{itemize}
+    \item \textbf{Restricciones de paralelización:} El cálculo de cada elemento queda bloqueado hasta que finaliza el anterior.
+    En la práctica, esta dependencia paso a paso inutiliza la ventaja del procesamiento paralelo de las \textbf{GPUs}, volviendo el entrenamiento muy lento a medida que crece el tamaño de la entrada.
+    \item \textbf{Degradación del contexto temporal:} Relacionar el principio y el final de una secuencia larga resulta algorítmicamente complejo.
+    A medida que la información atraviesa los distintos estados ocultos, la señal original va perdiendo fuerza (debido al desvanecimiento del gradiente), lo que limita la capacidad de la red para ``recordar'' elementos distantes.
+\end{itemize}
 
-Además, los transformers incorporan mecanismos como las codificaciones posicionales para preservar la información sobre el orden de la secuencia, compensando así la ausencia de recurrencia. Esta combinación de atención global y representación posicional ha demostrado ser altamente efectiva en tareas de modelado del lenguaje y traducción automática, superando ampliamente a las arquitecturas recurrentes tradicionales.
+Los \textit{transformers} solucionan esto abandonando por completo la recurrencia.
+En su lugar, exponen toda la secuencia de forma simultánea.
+El modelo evalúa las dependencias globales en un solo paso mediante la atención, vinculando cualquier par de posiciones de forma directa.
+Al descartar el procesamiento secuencial, se logra una eficiencia computacional sin precedentes y se evita la degradación de la señal a lo largo de la entrada.
 
-Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
+Dado que este enfoque paralelo pierde la noción temporal inherente del orden de los datos, la arquitectura se apoya en codificaciones posicionales explícitas.
+Es natural plantearse si esta enorme capacidad de abstracción semántica y espacial, que ha revolucionado los lenguajes hablados, se traslada con la misma eficacia a la lengua de signos utilizando los \textit{keypoints} como representación visual.
+
+%La herramienta matemática que permite abandonar la recurrencia y procesar la entrada de forma global es el mecanismo de atención.
 
 
-\subsection{Mecanismo de Atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
+
+%
+%
+% \section{Transformers}
+% La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje.
+% La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
+% Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
+%
+% \subsection{¿Por qué Transformers?}
+% Para entender la relevancia e inovación de los transformers es necesario conocer lo que les precedía. En particular, las \textit{long short-term memory} y las \textit{gated recurrent neural networks} dominaron el procesamiento de secuencias mediante mecanismos de computación recurrente, los cuales procesan la información de manera secuencial siguiendo el orden temporal de la entrada. Estas arquitecturas presentaban dos limitaciones fundamentales: la dificultad para captar dependencias de largo alcance debido al desvanecimiento del gradiente y la imposibilidad de paralelizar el entrenamiento, lo que restringe enormemente la eficiencia computacional con secuencias largas.
+%
+% Los transformers proponen abandonar por completo la recurrencia en favor del mecanismo de atención, lo que les permite captar dependencias de largo alcance en los textos de forma directa y con operaciones fácilmente paralelizables. En lugar de procesar la secuencia elemento a elemento, estos modelos consideran simultáneamente todos los tokens de entrada mediante el mecanismo de auto-atención, que calcula la relevancia relativa entre cada par de posiciones de la secuencia.
+%
+% Este enfoque introduce varias ventajas clave. En primer lugar, elimina la dependencia estrictamente secuencial del cómputo, permitiendo un uso mucho más eficiente del hardware moderno, especialmente en arquitecturas paralelas como las \textbf{GPUs}. En segundo lugar, facilita el modelado de relaciones a larga distancia sin los problemas asociados al desvanecimiento del gradiente, ya que cualquier elemento de la secuencia puede interactuar directamente con cualquier otro en un solo paso de atención.
+%
+% Además, los transformers incorporan mecanismos como las codificaciones posicionales para preservar la información sobre el orden de la secuencia, compensando así la ausencia de recurrencia. Esta combinación de atención global y representación posicional ha demostrado ser altamente efectiva en tareas de modelado del lenguaje y traducción automática, superando ampliamente a las arquitecturas recurrentes tradicionales.
+%
+% Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
+
+
+
+
+
+
+\subsection{Mecanismo de atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
+La función de atención permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Conceptualmente, el proceso consiste en comparar una consulta (\textit{query}) con un conjunto de claves (\textit{keys}) mediante una función de compatibilidad. Esta función mide el grado de similitud entre la consulta y cada clave, generando unos pesos que reflejan la importancia relativa de cada elemento.
+
+Al transformar estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores (\textit{values}), produciendo así una representación final que enfatiza los componentes más pertinentes de la entrada.
+
+La variante más extendida de este mecanismo es la Atención de Producto Escalar Escalado (\textit{Scaled Dot-Product Attention}). En la práctica, para aprovechar la alta optimización de los cálculos paralelos, esta operación se realiza matricialmente, procesando simultáneamente un conjunto de consultas $Q$, claves $K$ y valores $V$:
+\begin{equation*}Attention(Q,K,V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}}\right)V\end{equation*}
+
+En esta formulación, $d_k$ representa la dimensión de las claves. La división por $\sqrt{d_k}$ actúa como un factor de escalado crucial: evita que, al trabajar con dimensiones altas, los productos escalares adquieran magnitudes muy elevadas. Si esto ocurriera, la función \textit{softmax} se saturaría (asignando un peso cercano a $1$ al valor máximo y $0$ al resto), lo que provocaría que los gradientes fueran minúsculos, estancando así el entrenamiento.
+\input{Chapters/diagramas/attention.tex}
+
+\subsubsection*{Atención Multicabeza (\textit{Multi-Head Attention})}
+El propósito del mecanismo descrito es enriquecer el significado de cada \textit{token} contextualizándolo con el resto de la secuencia. Sin embargo, surge un problema de capacidad representativa: si utilizamos una única función de atención, el modelo se ve forzado a promediar todos los aspectos relacionales de la entrada, diluyendo las interacciones complejas.
+
+Para solucionar esto, Vaswani et al. \cite{vaswani2023attentionneed} proponen no utilizar una única función con dimensiones completas ($d_{\text{modelo}}$). En su lugar, proyectan linealmente las consultas, claves y valores $h$ veces con diferentes matrices de pesos hacia dimensiones menores ($d_k$ y $d_v$). De esta forma, el modelo puede "prestar atención" simultáneamente a distintos tipos de relaciones en diferentes subespacios de representación.
+
+Matemáticamente, la atención multicabeza se calcula concatenando los resultados de cada "cabeza" y aplicando una proyección lineal final:
+\begin{align*}
+MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
+\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
+\end{align*}
+
+Donde $W^Q_i \in \mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^K_i \in \mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i \in \mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O \in \mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son las matrices de pesos entrenables que definen cada una de las proyecciones.
+\input{Chapters/diagramas/multiheadAttention.tex}
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Mecanismo de atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
 La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos.
 Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento.
 Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.

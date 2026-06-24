@@ -1,33 +1,76 @@
 \chapter{Metodología}\label{ch:metodologia}
-Modelos que vamos a probar, preprocesado de datos (normalización, etc)
-\section{Extracción de Keypoints}
-Como se mencionó, la extracción de keypoints es el proceso mediante el cual se obtiene una representación estructurada del cuerpo humano a partir de imágenes o vídeo, en forma de coordenadas de puntos anatómicos predefinidos, tales como articulaciones, extremidades o rasgos faciales.
-Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando información irrelevante como el fondo, la iluminación o la apariencia superficial, lo que la convierte en una representación compacta, generalizable y respetuosa con la privacidad, tal y como se argumentó en la sección anterior.
+En este capítulo se detallan las decisiones de diseño y las técnicas experimentales implementadas para el desarrollo del sistema de traducción.
+En primer lugar, se justificará el método seleccionado para la extracción visual de características.
+Posteriormente, se describirá el proceso de preprocesado y normalización de los datos espaciales.
+Finalmente, se desglosará la arquitectura base de los modelos.
 
-En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a herramientas de estimación de pose de gran precisión y eficiencia. Entre las más destacadas se encuentran \textbf{MediaPipe Holistic}, desarrollada por Google y ampliamente adoptada en la literatura de lengua de signos por su capacidad para detectar simultáneamente cuerpo, manos y rostro en tiempo real con un bajo coste computacional.
+\section{Extracción de \textit{Keypoints}}
+Extraer \textit{keypoints} significa, en esencia, traducir el cuerpo humano a un mapa estructurado de puntos anatómicos.
+Al capturar imágenes o vídeo, el sistema localiza coordenadas bidimensionales que representan articulaciones, extremidades y rasgos faciales.
+Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando ruido visual irrelevante como el fondo, la iluminación o la apariencia superficial.
+Es una solución compacta, generalizable y, además, respetuosa con la privacidad.
 
-\textbf{OpenPose}, uno de los primeros sistemas de estimación de pose multi-persona de referencia, ha sido ampliamente utilizado en trabajos previos; sin embargo, presenta limitaciones en términos de eficiencia y robustez frente a enfoques más recientes.
+En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a múltiples herramientas de estimación de pose.
+La traducción de legnua de signos exige capturar movimientos veloces y sutiles, asegurar la coherencia temporal de las trayectorias a lo largo del vídeo y operar bajo un coste computacional que viabilice futuras aplicaciones de traducción en tiempo real.
 
-Por otro lado, métodos como \textbf{HRNet}, mediante \textbf{MMPose}, ofrecen una elevada precisión en la localización de keypoints en imágenes estáticas gracias a su arquitectura de alta resolución, aunque no incorporan de forma explícita mecanismos de modelado temporal, lo que puede generar variabilidad entre frames en secuencias de vídeo.
-Este es el método que consigue los mejores resultados si la capacidad de cómputo no es una limitación.
+Al mirar el estado del arte actual, las herramientas de referencia muestran flaquezas de cara a este dominio.
+Un sistema clásico como \textbf{OpenPose} \cite{OpenPose}, pionero en la estimación multi-persona, se ve superado hoy en precisión y arrastra un coste de cómputo excesivo para flujos de trabajo escalables, registrando un \textit{F1-Score} del $83.67\%$ en el conjunto de datos estándar MPII.
 
-Finalmente, \textbf{AlphaPose} es un sistema de estimación de pose de alta precisión que destaca especialmente en escenarios multi-persona, condiciones de oclusión y vídeos de baja calidad, lo cual resulta especialmente relevante para nuestro caso de uso.
-Además, a diferencia de HRNet en sus configuraciones más pesadas, AlphaPose está optimizado para un mejor compromiso entre precisión y velocidad, permitiendo una extracción más eficiente en entornos prácticos.
+Por otro lado, la popular opción de Google, \textbf{MediaPipe Holistic} \cite{mediapipe}, destaca por su velocidad, no obstante, su diseño está fuertemente optimizado para el seguimiento de un único individuo en primer plano
+Cuando el fondo se vuelve caótico o cruzan terceras personas, el modelo puede perder el foco sobre el signante principal o introducir ruido en las estimaciones anatómicas.
 
-\subsection{Alphapose}
-Como mencionamos AlphaPose es robusto a condiciones de oclusión y vídeos de baja calidad y es considerablemente menos exigente que otros métodos manteniendo una precisión y velocidad razonables.
 
-AlphaPose, como muchas de estas erramientas, ofrece la capacidad de cambiar el modelo utilizado para la representación del esqueleto, existiendo principalmente dos conjuntos de datos de pose de cuerpo completo:
-\begin{itemize}
-  \item \textbf{COCO-WholeBody}, una ampliación del conjunto de datos \textbf{MS COCO} enfocada en el cuerpo humano completo.
-  Incluye anotaciones detalladas de puntos clave del cuerpo, manos, cara y pies, lo que permite realizar estimaciones de pose más completas y precisas en tareas de análisis del movimiento humano.
-  \item \textbf{HALPE-136}, un conjunto de datos más reciente que proporciona una anotación aún más densa ($136$ puntos clave), con especial énfasis en manos y rostro.
-  Este mayor nivel de detalle puede resultar beneficioso en tareas que requieren capturar movimientos finos, como el reconocimiento de lengua de signos, aunque a costa de una mayor complejidad computacional y posible sensibilidad al ruido en entornos no controlados.
-\end{itemize}
+Una alternativa con una precisión espacial notable en el análisis estático es \textbf{MMPose}  (parte del proyecto OpenMMLab), que alcanza un \textit{F1-Score} del $87.12\%$ gracias a su diseño arquitectónico, orientado a preservar representaciones de alta resolución.
+Además, por defecto, procesa los fotogramas de manera aislada.
+Sin un hilo conductor temporal implícito, el resultado suele sufrir de temblores constantes (\textit{jittering}).
+En lengua de signos, donde la trayectoria del movimiento es tan elocuente como la propia postura de las manos, estas oscilaciones artificiales distorsionan el mensaje original.
 
+\subsection{El ecosistema MMPose y la adopción de AlphaPose}
+Al evaluar el panorama actual de la estimación de pose, es imperativo reconocer la transición de la industria hacia librerías modulares como \textbf{MMPose}.
+A diferencia de los \textit{frameworks} monolíticos, MMPose se ha consolidado como el estándar moderno gracias a su extrema versatilidad.
+Permite intercambiar arquitecturas (\textit{backbones}), cabezales de detección y funciones de pérdida con facilidad, integrando casi de inmediato los modelos más recientes y eficientes del estado del arte, como RTMPose.
+
+Frente a este ecosistema tan dinámico, \textbf{AlphaPose} \cite{alphapose} representa una herramienta pionera con una arquitectura mucho más enfocada y cerrada.
+No obstante, utilizaremos AlphaPose en este trabajo por dos motivos.
+En primer lugar, una inercia histórica, AlphaPose ha sido la base de numerosas investigaciones previas, lo que garantiza un entorno probado, maduro y directamente comparable con la literatura existente.
+En segundo lugar, y más importante, su diseño integral ``listo para usar'' incorpora nativamente soluciones específicas para el seguimiento de personas en vídeo, algo que en librerías más modulares requiere un ensamblaje ligerametne más manual.
+
+\subsection{Configuración y arquitectura de AlphaPose}
+El primer acierto de esta herramienta radica en cómo gestiona el espacio cuando hay más de una persona en escena.
+AlphaPose utiliza una estrategia descendente (\textit{Top-Down}) basada en la arquitectura RMPE (\textit{Regional Multi-Person Pose Estimation}).
+A diferencia de los enfoques ascendentes (\textit{Bottom-Up}), que localizan todas las articulaciones de la imagen a la vez para luego intentar agruparlas por individuos, RMPE emplea primero un detector de objetos.
+Acota a cada sujeto en una caja delimitadora (\textit{bounding box}) y, solo entonces, calcula su postura por separado.
+De este modo, el signante principal queda blindado frente al ruido del entorno o la presencia de terceros.
+Quizás en un entorno de laboratorio controlado esta ventaja parezca menor, pero entrenar el sistema bajo esta lógica asegura que el modelo sea capaz de transferir su aprendizaje a situaciones del día a día, donde las condiciones distan mucho de ser ideales.
+
+Otro ostaculo típico es la oclusión, cuando las manos se cruzan, se superponen o tapan en parte el rostro.
+Alphapose tiene integrado nativamente dos mecanismos que buscan solucionar este problema.
+Por un lado, la Transformación Espacial Simétrica (SSTN) reajusta y centra la silueta del usuario incluso si la caja delimitadora inicial se desvió por culpa de la propia oclusión.
+Por otro, el algoritmo de Supresión de No Máximos Paramétrica (\textit{p-Pose NMS}) realiza una labor de limpieza automática, eliminando extremidades duplicadas o falsos positivos que el sistema podría haber imaginado por confusión.
+
+A todo esto se suma la capacidad del \textit{software} para manejarse con vídeos borrosos o con cambios bruscos de iluminación.
+Cuando la nitidez decae debido a la rapidez de un gesto, entra en acción su módulo de rastreo temporal, \textbf{\textit{Pose Flow}} (\textit{Efficient Online Pose Tracking}).
+Este componente rompe con la rigidez de analizar imágenes aisladas y prefiere conectar los fotogramas vecinos para dar continuidad al esqueleto.
+Si un punto clave desaparece durante un par de cuadros por culpa del desenfoque, el sistema se apoya en el contexto inmediato anterior y posterior para recomponer la trayectoria, evitando deformaciones anómalas.
+
+\subsubsection{El desafío del \textit{jittering} y la delegación temporal}
+Conviene aclarar que, pese a las virtudes de \textit{Pose Flow} para mantener el hilo de las identidades, este módulo no realiza un pulido cinemático fino.
+El núcleo predictivo de AlphaPose sigue operando fotograma a fotograma, una inercia técnica que suele introducir micro-vibraciones (\textit{jittering}) de unos pocos píxeles en las coordenadas resultantes.
+
+En la visión por computador tradicional, la respuesta automática a este problema suele ser el uso de filtros matemáticos temporales (como el de Savitzky-Golay) o el diseño de redes auxiliares para forzar un alisado artificial de las trayectorias.
+Sin embargo, aplicar un borrón estadístico sobre la lengua de signos es peligroso, corremos el riesgo de maquillar o suprimir micro-movimientos que encierran un valor gramatical o semántico determinante (como la tensión en los dedos o un leve cambio de orientación).
+
+Por este motivo, en este trabajo se ha tomado la decisión de no suavizar artificialmente los datos espaciales durante el preprocesamiento.
+Preferimos delegar esa incertidumbre en la propia arquitectura de la red predictiva (los flujos de \textit{MSKA} y sus módulos de atención).
+Confiamos en que la capacidad de la arquitectura \textit{Transformer} para capturar dependencias temporales largas mediante la autoatención sea suficiente para absorber este ruido, logrando dar sentido a las fluctuaciones sin sacrificar la riqueza expresiva del signo original.
+
+\subsubsection{Configuración técnica y formato de salida}
+Alphapose tiene la capacidad de cambiar la topologia que representan los puntos clave del esqueleto.
+Existen principalmente dos opciones adecuadas para esta tarea: \textbf{COCO-WholeBody}, una extensión del clásico MS-COCO que cubre el cuerpo entero con $133$ puntos, y \textbf{HALPE-136}, que proporciona una anotación de $136$ puntos clave.
+Elegimos esta última opción porque introduce anclas de referencia espacial estratégicas en el torso, como el centro de la cadera, el cuello y la cabeza.
+Este mapa de puntos optimiza el seguimiento temporal en secuencias dinámicas y actúa como un contrapeso que estabiliza la captura de gestos manuales veloces o marcadores faciales, mitigando en parte el problema del \textit{jittering}.
 \begin{figure}[H]
   \centering
-
   \begin{minipage}[b]{0.25\textwidth}
     \centering
     \includegraphics[width=\textwidth]{human_model_halpe_136.jpg}
@@ -41,12 +84,19 @@ AlphaPose, como muchas de estas erramientas, ofrece la capacidad de cambiar el m
 
     \includegraphics[width=0.8\textwidth]{face_halpe_136.jpg}
   \end{minipage}
-
-  \caption{Keypoints en el Modelo Halpe-136}
+  \caption{Distribución de \textit{keypoints} anatómicos en el formato Halpe-136.}
 \end{figure}
 
-Alphapose devuelve los puntos clave video por video en formato \textsc{json} estructurado de la siguiente forma.
+El producto final tras procesar cada vídeo es un archivo estructurado en formato \textsc{json}.
+Cada fotograma se traduce en un diccionario que almacena la lista plana de coordenadas bidimensionales $(x, y)$ combinadas con su respectivo índice de confianza $(c)$ para cada punto anatómico detectado, reflejando la estructura del siguiente fragmento:
+
 \lstinputlisting[language=json]{code/keypoints-format.txt}
+
+
+
+
+
+
 
 
 \section{Normalización de los Datos}
@@ -135,10 +185,6 @@ Nos basamos en parte en \textit{Enhancing Human Action Recognition with 3D Skele
 
 Se añade ruido que sigue una distribución normal $\mathcal{N}(\mu,\sigma^2)$.
 Para asegurar que el efecto del ruido sea perceptible pero sin llegar a distorsionar gravemente los datos originales, los autores configuraron la media, $\mu$, en $0$ y la desviación estándar $\sigma$ en $0.01$.
-
-\subsection{Tokenizador}
-
-
 
 \subsection{Arquitectura del Modelo de Reconocimiento}
 La lengua de signos no concentra el significado en una sola articulación.
@@ -289,38 +335,6 @@ Para este fin, el sistema emplea un \textbf{perceptrón multicapa} (\textit{MLP}
 Este bloque actúa como un adaptador de dominio muy básico: proyecta las representaciones de la glosa al espacio semántico que el modelo de lenguaje espera, alineando las características extraídas por el flujo de fusión con las entradas del decodificador.
 
 
-% \subsubsection{MBART como decodificador}
-% El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
-% mBART es un modelo de lenguaje preentrenado con una arquitectura tipo \textit{transformer} \textit{encoder-decoder} que ha demostrado un rendimiento sobresaliente en tareas de traducción automática multilingüe.
-%
-% Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya codifica las estructuras sintácticas y semánticas necesarias para la decodificación a lenguaje natural.
-% Esto libera a la red de necesitar aprender la sintaxis del idioma desde cero, reduciendo el entrenamiento a alinear las representaciones visuales con el espacio lingüístico de mBART.
-%
-% La pérdida de traducción se calcula mediante la entropía cruzada promedio a nivel de token (\textit{token-level cross-entropy loss}).
-% Durante el entrenamiento, el decodificador predice la secuencia objetivo de forma autorregresiva; la función de pérdida optimiza la probabilidad de cada token correcto dado el contexto de los tokens anteriores y la representación visual codificada.
-% La pérdida total se obtiene mediante el promedio de las probabilidades logarítmicas negativas a lo largo de toda la secuencia objetivo.
-%
-%
-% \subsubsection{Modelo de lenguage pequeño como decodificador}
-% Optamos por utilizar un \textbf{modelo de lenguaje} basado en una arquitectura solo decodificador (\textit{Decoder-Only}) en vez de un modelo basado en codificador-decodificador.
-% %Para ello, se integra \textbf{Qwen2.5-1.5B}, un modelo fundacional de lenguaje optimizado mediante alineación.
-%
-% A diferencia de lo que ocurria con mBART, las características de video y las glosas no son procesadas por un codificador independiente.
-% En su lugar, el sistema emplea una técnica de \textbf{inyección de prefijos (\textit{Soft-Prompting})}:
-% \begin{enumerate}
-%     \item El \textit{VLMapper} proyecta el tensor visual al espacio exacto de dimensiones ocultas (\textit{hidden size}) del modelo.
-%     \item Estas características se tratan como secuencias continuas de \textit{tokens virtuales} y se concatenan al inicio de la entrada.
-%     \item Se anexa un \textit{prompt} textual de instrucción.
-% \end{enumerate}
-%
-% La secuencia unificada de \textit{embeddings} que procesa el modelo se estructura como: \texttt{[Tokens Visuales] + [Prompt Textual] + [Traducción Objetivo]}.
-%
-% \paragraph{Estrategia de entrenamiento y LoRA}
-% La red de traducción se entrena utilizando la técnica \textbf{LoRA} \ref{sec:LoRA}, pues los modelos de lenguage suelen contener miles de millones de parámetros, un ajuste fino completo (\textit{Full Fine-Tuning}) podría desestabilizar sus capacidades lingüísticas preentrenadas.
-%
-% \paragraph{Eligiendo modelo de lenguage}
-
-% \newpage
 \subsubsection{MBART como decodificador}
 
 El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
@@ -355,5 +369,4 @@ Dado que un ajuste fino completo de un modelo de lenguaje podría desestabilizar
 Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \textit{zero-shot}, siguiendo la línea del trabajo \textbf{Spotter+GPT} \cite{SpotterGPT} presentado en el estado del arte.
 En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
 
-
-
+\subsection{Tokenizador}
