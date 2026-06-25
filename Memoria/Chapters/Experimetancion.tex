@@ -1,88 +1,216 @@
 \chapter{Experimentación y análisis de resultados}
+Este capítulo presenta los experimentos realizados para validar las decisiones de diseño descritas en la metodología y evaluar el rendimiento del sistema propuesto sobre el conjunto de datos PHOENIX-2014T\@.
 
-\section{Keypoints}
+La experimentación se organiza en tres bloques progresivos.
+En primer lugar, se estudia el módulo de reconocimiento de forma aislada, analizando el impacto de las distintas técnicas de aumentación de datos sobre la tasa de error en glosas.
+En segundo lugar, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, estableciendo una línea base comparable al enfoque Spotter+GPT descrito en el estado del arte.
+Finalmente, se presenta el sistema completo con ajuste fino mediante LoRA, incluyendo un estudio de ablación sobre las modalidades de entrada y una comparativa con la variante basada en mBART.
+\section{Configuración experimental}
 
-\section{Familiarizandonos con la tarea}
+\subsection{Entorno de entrenamiento}
+Todos los experimentos se ejecutaron sobre una única \textbf{GPU NVIDIA A100} de 40\,GB de memoria, con precisión mixta \texttt{bfloat16} para reducir el consumo de memoria sin sacrificar estabilidad numérica durante el entrenamiento.
 
-\section{MSKA}
+El código está desarrollado en Python con PyTorch como \textit{framework} principal, y se emplea la librería \textit{Transformers} de Hugging Face para la gestión de los modelos de lenguaje y sus tokenizadores.
+Todo el código está disponible en el repositorio de GitHub: \url{https://github.com/nicolasrodriguezruiz/tfm-sign-language}
 
-\subsection{Utilizando mBart}
+\subsection{Hiperparámetros generales}
+Los hiperparámetros comunes a todos los experimentos se recogen en la Tabla~\ref{tab:hyperparams}.
 
-\subsection{Utilizando un SLM}
-Usaremos modelos de la familia de modelos de pesos abiertos \textbf{Qwen} \cite{qwen} como red de traducción.
+\begin{table}[H]
+	\centering
+		\begin{tabular}{lcc}
+			\hline
+			\textbf{Parámetro}         & \textbf{Reconocimiento (S2G)} & \textbf{Traducción (S2T)} \\ \hline
+			Tamaño de batch            & 16                            & 8                         \\
+			Épocas máximas             & 100                           & 40                        \\
+			\textit{Early stopping}    & 15 épocas                     & 10 épocas                 \\
+			Optimizador                & \multicolumn{2}{c}{AdamW}                                 \\
+			$\beta_1, \beta_2$         & \multicolumn{2}{c}{0.9,\ 0.998}                           \\
+			\textit{Weight decay}      & \multicolumn{2}{c}{0.02}                                  \\
+			\textit{Scheduler}         & \multicolumn{2}{c}{Annealed Cosine Decay}                 \\ \hline
+		\end{tabular}
+	\caption{Hiperparámetros comunes a todos los experimentos.}
+	\label{tab:hyperparams}
+\end{table}
 
-Qwen2.5 han sido preentrenados sobre corpus de hasta $36$ billones de tokens, con una composición diversa y de alta calidad que incluye texto web, libros, código, datos STEM, razonamiento lógico, contenido multilingüe y datos sintéticos \cite{qwen}.
-Este volumen y diversidad de preentrenamiento dota a los modelos de una comprensión lingüística profunda especialmente útili para formar frases coherentes a partir de glosas que carecen de corrección gramatical.
-Además, la familia Qwen ofrece modelos de tamaño variado con un rendimiento competitivo frente a modelos mayores de otras familias, lo que los hace idóneos para entornos con restricciones de memoria de GPU.
-
-Concretamente, trataremos con \textbf{Qwen2.5-1.5B}, \textbf{Qwen2.5-7B} y \textbf{Qwen2.5-14B} \cite{qwen2.5}.
-
-\subsubsection{MSKA-SLR como Spotter + Qwen}
-
-\subsubsection{MSKA-SLR+Qwen (FineTunning y LoRA)}
-%Se congelan los pesos base del modelo y se inyectan matrices de bajo rango entrenables únicamente en los mecanismos de atención (\texttt{q\_proj, v\_proj, k\_proj, o\_proj}).
-
-%Adicionalmente, durante el entrenamiento autorregresivo, se aplica una máscara matricial (valor \texttt{-100}) sobre la región del prefijo visual en el vector de etiquetas (\textit{labels}).
-%Esto garantiza que la función de pérdida de entropía cruzada (\textit{Cross-Entropy}) penalice al modelo exclusivamente por la generación del texto de traducción objetivo, forzando al \textit{VLMapper} y a los adaptadores LoRA a alinear la semántica visual con la maestría lingüística latente del modelo.
-
-
-
-% \section{Resultados y \textit{ablation study}}
-% TODO CAMBIIAR A NUMEROS CORRECTOS
-% \begin{table}[H]
-% 	\centering
-% 	\begin{tabular}{l|ll}
-% 		\hline
-% 		\multicolumn{1}{c|}{}           & Dev & Test \\ \hline
-% 		SLR-base                        & 20  & 20   \\
-% 		SLR-\textit{JointDropout}       & 20  & 20   \\
-% 		SLR-\textit{Noise}              & 20  & 20   \\
-% 		SLR-\textit{Noise+JointDropout} & 20  & 20   \\
-% 		SLR-\textit{JointDropout}       &     &      \\ \hline
-% 	\end{tabular}
-% 	\caption{WER de MSKA-SLR con Alphapose}
-% \end{table}
-%
-% \begin{table}[H]
-% \centering
-% \resizebox{1\textwidth}{!}{
-% 	\begin{tabular}{l|ccccc|ccccc}
-% 		\hline
-% 										& \multicolumn{5}{c|}{\textbf{Dev}}         & \multicolumn{5}{c}{\textbf{Test}}         \\ \cline{2-11}
-% 										& Bleu-1 & Bleu-2 & Bleu-3 & Bleu-4 & Rouge & Bleu-1 & Bleu-2 & Bleu-3 & Bleu-4 & Rouge \\ \hline
-% 		SLT-MBart                              				& 43.32  & 32.31  & 25.05  & 21.00  & 43.14 &   -    &   -    &   -    & 20.00  & 41.11 \\ \hline
-% 		SLT-Glosas (\textit{no entrenamiento}) 				&        &        &        &        &       &        &        &        &        &       \\
-% 		SLT-Glosas (\textit{entrenamiento}) 				&        &        &        &        &       &        &        &        &        &       \\
-% 		SLT-VT (\textit{FineTunning})          				& 39.69  & 29.36  & 23.08  & 19.00  & 39.59 &   -    &   -    &   -    & 18.87  & 37.16 \\
-% 		SLT-VT (\textit{LoRA básico})          				& 41.49  & 30.91  & 24.52  & 20.23  & 41.15 &        &        &        & 19.34  & 39.57 \\
-% 		SLT-VT (\textit{LoRA completo})        				& 41.42  & 30.91  & 24.45  & 20.16  & 40.93 &   -    &   -    &   -    & 19.44  & 38.94 \\
-% 		SLT-VT (\textit{LoRA completo} + \textit{no promot})        	&        &        &        &        &       &        &        &        &        &       \\
-% 										&        &        &        &        &       &        &        &        &        &       \\ \hline
-% 	\end{tabular}
-% 	}
-% 	\caption{SLT-Qwen2.5-1.5B}
-% \end{table}
-%
-% \begin{table}[H]
-% \centering
-% \resizebox{1\textwidth}{!}{
-% 	\begin{tabular}{l|ccccc|ccccc}
-% 		\hline
-% 		                                       & \multicolumn{5}{c|}{\textbf{Dev}}         & \multicolumn{5}{c}{\textbf{Test}}         \\ \cline{2-11}
-% 		                                       & Bleu-1 & Bleu-2 & Bleu-3 & Bleu-4 & Rouge & Bleu-1 & Bleu-2 & Bleu-3 & Bleu-4 & Rouge \\ \hline
-% 		SLT-MBart                              & 43.32  & 32.31  & 25.05  & 21.00  & 43.14 &   -    &   -    &   -    & 20.00  & 41.11 \\ \hline
-% 		SLT-Glosas (\textit{no entrenamiento}) &        &        &        &        &       &        &        &        &        &       \\
-% 		SLT-VT (\textit{FineTunning})          &   -    &   -    &   -    &   -    &   -   &   -    &   -    &   -    &   -    &   -   \\
-% 		SLT-VT (\textit{LoRA básico})          &        &        &        &        &       &        &        &        &        &       \\
-% 		SLT-VT (\textit{LoRA completo})        &        &        &        &        &       &        &        &        &        &       \\
-% 		                                       &        &        &        &        &       &        &        &        &        &       \\
-% 		                                       &        &        &        &        &       &        &        &        &        &       \\ \hline
-% 	\end{tabular}
-% 	}
-% 	\caption{SLT-Qwen2.5-7B}
-% \end{table}
+Los \textit{learning rates} específicos de cada variante se detallan en la sección correspondiente, dado que varían según el módulo entrenado y la estrategia de ajuste empleada.
 
 
-\section{Comparativa con state of the art}
+\subsection{Configuración de LoRA}
+Para el \textit{finetuning} de los modelos Qwen se emplea LoRA, manteniendo los pesos base del modelo congelados e inyectando matrices de bajo rango únicamente en los módulos de atención.
 
-\subsection*{Un adendum}
+\begin{itemize}
+    \item \textbf{LoRA-Atención}: adaptadores únicamente en las proyecciones de atención: \texttt{q\_proj}, \texttt{k\_proj}, \texttt{v\_proj}, \texttt{o\_proj}.
+    \item \textbf{LoRA-Completo}: adaptadores adicionales en las capas del bloque \textit{feed-forward}: \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}.
+\end{itemize}
+
+Los parámetros de LoRA son comunes a ambas configuraciones y se recogen en la Tabla~\ref{tab:lora_params}.
+
+\begin{table}[H]
+	\centering
+		\begin{tabular}{lc}
+			\hline
+			\textbf{Parámetro} & \textbf{Valor} \\ \hline
+			Rango ($r$)        & 64             \\
+			Alpha ($\alpha$)   & 128            \\
+			Dropout            & 0.25           \\ \hline
+			\end{tabular}
+			\caption{Configuración de LoRA empleada en los experimentos de traducción.}
+		\label{tab:lora_params}
+	\end{table}
+
+La escala efectiva de los adaptadores queda determinada por el cociente $\alpha / r = 2$, lo que implica que las actualizaciones de bajo rango se aplican con un factor de escala de $2$ sobre los pesos originales.
+
+En el caso de \textbf{Qwen2.5-1.5B}, el tamaño reducido del modelo permite explorar tanto el \textbf{\textit{finetuning} completo} como el ajuste mediante \textbf{LoRA}.
+El \textit{finetuning} completo sirve como referencia para cuantificar el coste real de capacidad que supone la aproximación de bajo rango.
+
+Para los modelos de mayor tamaño (\textbf{Qwen2.5-7B} y \textbf{Qwen2.5-14B}), el \textit{finetuning} completo resulta inviable bajo las restricciones de memoria de una única A100 de 40\,GB, por lo que se emplea exclusivamente LoRA.
+
+\subsection{Configuración de generación}
+La generación de texto durante la inferencia se controla mediante los parámetros recogidos en la Tabla~\ref{tab:gen_params}.
+Como es convencional, existen dos fases validación, empleada durante el entrenamiento para seleccionar el mejor \textit{checkpoint}, y test, utilizada para la evaluación final sobre el conjunto de prueba.
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lcc}
+		\hline
+		\textbf{Parámetro}                & \textbf{Validación} & \textbf{Test} \\ \hline
+		\multicolumn{3}{l}{\textit{Reconocimiento (CTC beam search)}}          \\
+		\hspace{1em}\textit{Beam size}    & 1                   & 5             \\ \hline
+		\multicolumn{3}{l}{\textit{Traducción (Qwen)}}                         \\
+		\hspace{1em}\textit{Beam size}    & 4                   & 4             \\
+		\hspace{1em}\texttt{max\_new\_tokens}      & 51         & 51            \\
+		\hspace{1em}\texttt{length\_penalty}       & 0.0        & 0.0           \\
+		\hspace{1em}\texttt{repetition\_penalty}   & 1.5        & 1.5           \\
+		\hspace{1em}\texttt{no\_repeat\_ngram\_size} & 3        & 3             \\
+		\hspace{1em}\texttt{temperature}           & 0.05       & 0.05          \\
+		\hspace{1em}\texttt{do\_sample}            & \texttt{false} & \texttt{false} \\
+		\hspace{1em}\texttt{early\_stopping}       & \texttt{true}  & \texttt{true}  \\ \hline
+		\end{tabular}
+		\caption{Parámetros de generación empleados en validación y test.}
+	\label{tab:gen_params}
+\end{table}
+
+Durante la validación se usa \textit{beam size} $1$ para el reconocimiento con el objetivo de reducir el coste computacional por época, reservando la búsqueda en haz completa ($b=5$) para la evaluación final.
+
+En la traducción, \texttt{do\_sample=false} fuerza una decodificación casi determinista, equivalente en la práctica a \textit{beam search} puro.
+La penalización de repetición ($1.5$) y la restricción de $n$-gramas repetidos ($n=3$) evitan el colapso de la generación hacia secuencias degeneradas, un problema especialmente frecuente cuando la entrada visual contiene ambigüedades o el reconocimiento introduce glosas incorrectas.
+
+% ----------------------------------------------------------------
+
+\section{Análisis exploratorio del dataset}
+Antes de presentar los resultados de los modelos, es conveniente caracterizar cuantitativamente el conjunto de datos para justificar algunas de las decisiones de diseño adoptadas en la metodología.
+
+\subsection{Estadísticas del conjunto de entrenamiento}
+El conjunto de entrenamiento de PHOENIX-2014T contiene $7.096$ muestras.
+La Tabla~\ref{tab:dataset_stats} resume las principales estadísticas sobre la longitud de los vídeos y de las frases en alemán, medidas estas últimas en tokens del vocabulario de Qwen2.5.
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lcc}
+		\hline
+		\textbf{Estadístico} & \textbf{Frames por vídeo} & \textbf{Tokens por frase} \\ \hline
+		Media                & 116.5                       & 23.6                      \\
+		Desv. típica         & 49.8                       & 9.7                       \\
+		Mínimo               & 16                       & 3                         \\
+		Mediana (p50)        & 112                       & 22                        \\
+		Percentil 75         & 144                       & 29                        \\
+		Percentil 90         & 182                       & 37                        \\
+		Percentil 95         & 208                       & 41                        \\
+		Percentil 99         & 259                       & 51                        \\
+		Máximo               & 475                       & 78                        \\ \hline
+		\end{tabular}
+		\caption{Estadísticas de longitud sobre el conjunto de entrenamiento de PHOENIX-2014T\@. Tokens medidos con el tokenizador de Qwen2.5.}
+	\label{tab:dataset_stats}
+\end{table}
+
+Se observa que el percentil $99$ de longitud textual se sitúa en $51$ tokens, lo que justifica el valor \texttt{max\_new\_tokens=51} empleado durante la generación y \texttt{text\_max\_length=128} durante el entrenamiento, dejando margen suficiente para el prompt de instrucción.
+
+En segundo lugar, el ratio medio de aproximadamente $5$ frames por token implica que secuencias de hasta $400$ frames corresponden a traducciones de en torno a $80$ tokens, coherente con el límite \texttt{clip\_len=400} establecido en el dataset.
+
+\subsection{Vocabulario de glosas}
+El vocabulario de glosas del conjunto de entrenamiento contiene \texttt{1094} entradas únicas, incluyendo los tokens especiales requeridos por la decodificación CTC.
+Cada glosa recibe un identificador numérico único construido a partir del conjunto de entrenamiento; las glosas no vistas durante el entrenamiento se mapean al token \texttt{<UNK>} en inferencia.
+
+%La naturaleza cerrada de este vocabulario, acotado al dominio meteorológico, es uno de los factores que permite al módulo de reconocimiento alcanzar tasas de error competitivas pese al tamaño reducido del corpus.
+
+% ----------------------------------------------------------------
+
+\section{Reconocimiento de Lengua de Signos (SLR)}
+En esta sección se evalúa el módulo de reconocimiento de forma aislada sobre la tarea S2G, midiendo el impacto de las distintas técnicas de aumento de datos sobre la calidad del reconocimiento de glosas.
+
+\subsubsection{Métricas de evaluación}
+El rendimiento del reconocimiento se mide mediante la \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER), explicada en la Sección~\ref{sec:WER}.
+
+Adicionalmente se reportan las tasas individuales de sustitución (\textit{SUB}), eliminación (\textit{DEL}) e inserción (\textit{INS}) para caracterizar el tipo de error dominante.
+
+Antes del cálculo, tanto las hipótesis como las referencias se normalizan mediante la función \texttt{clean\_phoenix\_2014\_trans}, que estandariza mayúsculas y elimina artefactos de puntuación propios del formato de anotación de PHOENIX-2014T\@.
+
+\subsection{Modelo base}
+El modelo de reconocimiento sigue la arquitectura MSKA-SLR descrita en el Capítulo~\ref{ch:metodologia}, entrenado desde pesos aleatorios exclusivamente sobre los datos de PHOENIX-2014T\@.
+
+La configuración base no aplica ninguna técnica de aumentación de datos más allá de la augmentación temporal y la rotación aleatoria, presentes en todos los experimentos.
+
+Los parámetros específicos del módulo de reconocimiento se recogen en la Tabla~\ref{tab:slr_config}.
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lc}
+		\hline
+		\textbf{Parámetro}                  & \textbf{Valor}        \\ \hline
+		\textit{Learning rate}              & $1 \times 10^{-3}$    \\
+		\textit{Scheduler}                  & Cosine Annealing      \\
+		$T_{\max}$                          & 100                   \\
+		\textit{Beam size} (validación)     & 1                     \\
+		\textit{Beam size} (test)           & 5                     \\
+		Método de \textit{ensemble}         & Uniforme              \\
+		\textit{Early stopping} ($\delta$)  & 0.1                   \\ \hline
+	\end{tabular}
+	\caption{Configuración del módulo de reconocimiento.}
+	\label{tab:slr_config}
+\end{table}
+
+La arquitectura DSTA-Net procesa cuatro flujos independientes ya mencionados en Sección~\ref{ch:metodologia}, cuyos índices de \textit{keypoints} se detallan en la Tabla~\ref{tab:streams}.
+La decisión final se obtiene promediando uniformemente las distribuciones de probabilidad de los cuatro flujos junto con la cabeza de fusión (\textit{ensemble} uniforme).
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lcc}
+		\hline
+		\textbf{Flujo}      & \textbf{Keypoints} & \textbf{Dimensión de entrada} \\ \hline
+		Mano izquierda      & 27                 & 512                           \\
+		Mano derecha        & 27                 & 512                           \\
+		Cuerpo              & 78                 & 256                           \\
+		Cara                & 26                 & ---                           \\
+		Fusión              & 136 (todos)        & 1024                          \\ \hline
+	\end{tabular}
+	\caption{Configuración de los flujos de la arquitectura MSKA-SLR\@. La cara se integra como contexto en los flujos de las manos y la cabeza de fusión, sin cabeza de clasificación propia.}
+	\label{tab:streams}
+\end{table}
+
+
+
+\subsection{Estudio de aumentación de datos}
+Se evalúan cinco configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
+Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout}; se describen en detalle en la Sección~\ref{ch:metodologia}.
+\includegraphics{adress_me}
+
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lccccc|cccc}
+		\hline
+		\multirow{2}{*}{\textbf{Configuración}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{4}{c}{\textbf{Test}} \\
+		    & \textbf{WER}$\downarrow$
+		    & \textbf{SUB} & \textbf{DEL} & \textbf{INS}
+		    & & \textbf{WER}$\downarrow$
+		    & \textbf{SUB} & \textbf{DEL} & \textbf{INS} \\ \hline
+		SLR-base                         & & & & & & & & & \\
+		SLR-\textit{JointDropout}        & & & & & & & & & \\
+		SLR-\textit{GaussianNoise}       & & & & & & & & & \\
+		SLR-\textit{JD}+\textit{Noise}   & & & & & & & & & \\
+		SLR-\textit{StructuredDropout}   & & & & & & & & & \\ \hline
+	\end{tabular}
+	\caption{Comparativa de técnicas de aumentación sobre PHOENIX-2014T\@. 	JD: \textit{Joint Dropout}. Mejor resultado en negrita.}
+	\label{tab:slr_augmentation}
+\end{table}

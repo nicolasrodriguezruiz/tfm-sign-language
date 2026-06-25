@@ -183,15 +183,47 @@ def main(args, config):
     if args.eval:
         if not args.resume:
             logger.warning('FALTA MODELO: --resume /path/to/best_checkpoint.pth')
+
         dev_stats = evaluate(args, config, dev_dataloader, model, tokenizer, epoch=0, beam_size=5,
                              generate_cfg=config['training']['validation']['translation'],
                              do_translation=config['do_translation'], do_recognition=config['do_recognition'],
                              header="Dev:")
-        print(f"Perdida de la red en los {len(dev_dataloader)} videos de DEV: {dev_stats['loss']:.3f}")
+        print(f"Pérdida de la red en los {len(dev_dataloader)} videos de DEV: {dev_stats['loss']:.3f}")
+
+        if config['do_recognition']:
+            print(f"DEV -> WER: {dev_stats.get('wer', 0):.2f}% | SUB: {dev_stats.get('sub_rate', 0):.2f}% | DEL: {dev_stats.get('del_rate', 0):.2f}% | INS: {dev_stats.get('ins_rate', 0):.2f}%")
+
         test_stats = evaluate(args, config, test_dataloader, model, tokenizer, epoch=0, beam_size=5,
-                              generate_cfg=config['testing']['translation'],
-                              do_translation=config['do_translation'], do_recognition=config['do_recognition'])
-        print(f"Perdida de la red en los  {len(test_dataloader)} videos de TEST: {test_stats['loss']:.3f}")
+                               generate_cfg=config['testing']['translation'],
+                               do_translation=config['do_translation'], do_recognition=config['do_recognition'],
+                               header="Test:")
+        print(f"Pérdida de la red en los  {len(test_dataloader)} videos de TEST: {test_stats['loss']:.3f}")
+        if config['do_recognition']:
+            print(f"TEST -> WER: {test_stats.get('wer', 0):.2f}% | SUB: {test_stats.get('sub_rate', 0):.2f}% | DEL: {test_stats.get('del_rate', 0):.2f}% | INS: {test_stats.get('ins_rate', 0):.2f}%")
+
+        eval_stats = {
+            'config': args.config,
+            'checkpoint': args.resume,
+        }
+        if config['do_recognition']:
+            eval_stats.update({
+                'Dev_WER': dev_stats.get('wer', 0),
+                'Test_WER': test_stats.get('wer', 0),
+                'Test_SUB': test_stats.get('sub_rate', 0),
+                'Test_DEL': test_stats.get('del_rate', 0),
+                'Test_INS': test_stats.get('ins_rate', 0),
+            })
+        if config['do_translation']:
+            eval_stats.update({
+                'Dev_BLEU4': dev_stats.get('bleu4', 0),
+                'Test_BLEU4': test_stats.get('bleu4', 0),
+                'Test_ROUGE': test_stats.get('rouge', 0),
+            })
+
+        eval_out = output_dir / 'eval_results.json'
+        with open(eval_out, 'w', encoding='utf-8') as f:
+            json.dump(eval_stats, f, indent=4)
+        print(f"Resultados guardados en: {eval_out}")
         return
 
     # --- Bucle de entrenamiento ---
@@ -210,8 +242,8 @@ def main(args, config):
         # Guardar checkpoint de la época actual (se sobreescribe cada vez).
         torch.save({
             'model': model.state_dict(),
-            'scheduler': scheduler.state_dict(),
-            'optimizer': optimizer.state_dict(),
+            #'scheduler': scheduler.state_dict(),
+            #'optimizer': optimizer.state_dict(),
             'epoch': epoch,
         }, output_dir / 'checkpoint.pth')
 
@@ -504,7 +536,7 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
 
         # --- Calcular WER global sobre todas las muestras ---
         if do_recognition:
-            evaluation_results = {'wer': 200}  # 200 como valor imposible
+            evaluation_results = {'wer': 200, 'del_rate': 0.0, 'ins_rate': 0.0, 'sub_rate': 0.0}
 
             for hyp_name in results[name].keys():
                 if 'gls_hyp' not in hyp_name:
@@ -521,10 +553,23 @@ def evaluate(args, config, dev_dataloader, model, tokenizer, epoch, beam_size=1,
 
                 wer_results = wer_list(hypotheses=gls_hyp, references=gls_ref)
                 evaluation_results[k + 'wer_list'] = wer_results
-                # Conservar el WER de la mejor cabeza de clasificación
-                evaluation_results['wer'] = min(wer_results['wer'], evaluation_results['wer'])
 
-            metric_logger.update(wer=evaluation_results['wer'])
+                # Conservar el WER y sus desgloses de la mejor cabeza de clasificación
+                if wer_results['wer'] < evaluation_results['wer']:
+                    evaluation_results['wer'] = wer_results['wer']
+                    evaluation_results['del_rate'] = wer_results['del_rate']
+                    evaluation_results['ins_rate'] = wer_results['ins_rate']
+                    evaluation_results['sub_rate'] = wer_results['sub_rate']
+
+            metric_logger.update(
+                wer=evaluation_results['wer'],
+                del_rate=evaluation_results['del_rate'],
+                ins_rate=evaluation_results['ins_rate'],
+                sub_rate=evaluation_results['sub_rate']
+            )
+
+            # Print por pantalla durante la evaluación
+            #print(f"WER: {evaluation_results['wer']:.2f}% | SUB: {evaluation_results['sub_rate']:.2f}% | DEL: {evaluation_results['del_rate']:.2f}% | INS: {evaluation_results['ins_rate']:.2f}%")
 
         # --- Calcular BLEU y ROUGE global sobre todas las muestras ---
         if do_translation:

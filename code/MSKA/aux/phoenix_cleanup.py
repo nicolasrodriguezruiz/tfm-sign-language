@@ -1,9 +1,11 @@
+# SCRPIT EXTRAIDO DE https://github.com/sutwangyan/MSKA
+
 from itertools import groupby
 import re
 
 
 def clean_phoenix_2014(prediction):
-    # TODO (Cihan): Python version of the evaluation script provided
+    #  Python version of the evaluation script provided
     #  by the phoenix2014 dataset (not phoenix2014t). This should work
     #  as intended but further tests are required to make sure it is
     #  consistent with the bash/sed based clean up script.
@@ -70,11 +72,11 @@ def clean_phoenix_2014_trans(prediction):
     prediction = re.sub(r"\b([A-Z][A-Z]*)RAUM\b", r"\1", prediction) #only \bRAUM\b exists in gls annotations (remove RAUM)
     prediction = re.sub(r"WIE AUSSEHEN", "WIE-AUSSEHEN", prediction) # not in gls.vocab
     #combine single character with '+'
-    prediction = re.sub(r"^([A-Z]) ([A-Z][+ ])", r"\1+\2", 
+    prediction = re.sub(r"^([A-Z]) ([A-Z][+ ])", r"\1+\2",
             prediction) #"A B+","A B "  -> "A+B+" "A+B" #must be at the start of the string
     prediction = re.sub(r"[ +]([A-Z]) ([A-Z]) ", r" \1+\2 ", prediction) # "+A B " -> "A+B"
     prediction = re.sub(r"([ +][A-Z]) ([A-Z][ +])", r"\1+\2", prediction) # " A B "->" A+B "
-    prediction = re.sub(r"([ +][A-Z]) ([A-Z][ +])", r"\1+\2", prediction) # " 
+    prediction = re.sub(r"([ +][A-Z]) ([A-Z][ +])", r"\1+\2", prediction) # "
     prediction = re.sub(r"([ +][A-Z]) ([A-Z][ +])", r"\1+\2", prediction) # "REPEAT?" " A B C "  --> " A+B+C "
     prediction = re.sub(r"([ +]SCH) ([A-Z][ +])", r"\1+\2", prediction)
     prediction = re.sub(r"([ +]NN) ([A-Z][ +])", r"\1+\2", prediction)
@@ -85,7 +87,7 @@ def clean_phoenix_2014_trans(prediction):
     prediction = re.sub(r"(?<![\w-])(\b[A-Z]+(?![\w-])) \1(?![\w-])", r"\1", prediction)
     prediction = re.sub(r"(?<![\w-])(\b[A-Z]+(?![\w-])) \1(?![\w-])", r"\1", prediction)## 把重复出现的 连续大写字母 合为一个 e.g. ‘BBC BBC BBC ’ -> 'BBC
     prediction = re.sub(r"(?<![\w-])(\b[A-Z]+(?![\w-])) \1(?![\w-])", r"\1", prediction) ##???
-    prediction = re.sub(r" +", " ", prediction) #remove lonely +  
+    prediction = re.sub(r" +", " ", prediction) #remove lonely +
 
     # Remove white spaces and repetitions
     # remove white spaces? split()!=split(" ")

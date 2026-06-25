@@ -41,7 +41,6 @@ def step1_create_symlinks():
                 video_tasks.append((video_path, split, video_name))
 
     total_frames = 0
-    # Lanzar la creación en paralelo usando 16 hilos
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         # Enviar las tareas al pool
         futures = [
@@ -56,7 +55,7 @@ def step1_create_symlinks():
     print(f"Listo. {total_frames} frames enlazados.")
 
 def step2_run_alphapose():
-    print("\n=== PASO 2: Ejecutando AlphaPose (Delegando al script oficial) ===")
+    print("\n=== PASO 2: Ejecutando AlphaPose ===")
     os.chdir(ALPHAPOSE_DIR)
 
     cmd = [
@@ -66,7 +65,8 @@ def step2_run_alphapose():
         "--indir", SYMLINK_DIR,
         "--outdir", OUTPUT_DIR,
         "--detbatch", "4",
-        "--posebatch", "32"
+        "--posebatch", "32",
+        "--pose_track"
     ]
     subprocess.run(cmd, check=True)
 
@@ -75,7 +75,7 @@ def step3_split_json():
     results_json = os.path.join(OUTPUT_DIR, "alphapose-results.json")
 
     if not os.path.exists(results_json):
-        print("ERROR: No se encontró el alphapose-results.json. ¿Falló AlphaPose?")
+        print("ERROR: No se encontró el alphapose-results.json.")
         return
 
     with open(results_json, 'r') as f:
@@ -108,7 +108,7 @@ def step3_split_json():
         with open(out_file, 'w') as f:
             json.dump({"version": "alphapose_halpe136", "people": people}, f)
 
-    print(f"¡Éxito! Generados {len(frames_dict)} archivos JSON individuales.")
+    print(f"Generados {len(frames_dict)} archivos JSON individuales.")
 
     # Limpieza final
     os.remove(results_json)

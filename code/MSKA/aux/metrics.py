@@ -2921,6 +2921,29 @@ def rouge(references, hypotheses, level='word'):
     a = Rouge.rouge([' '.join(x) for x in hyp], [' '.join(x) for x in ref])
     return a['rouge_l/f_score']*100
 
+import evaluate
+
+def calculate_bleurt(references, hypotheses):
+    """
+    Calcula la métrica BLEURT para evaluar la similitud semántica.
+    references: lista de strings (Ground Truth)
+    hypotheses: lista de strings (Predicciones)
+    """
+    try:
+        # Cargamos el modelo multilingüe (la primera vez tardará en descargar ~2GB)
+        bleurt = evaluate.load("bleurt", "BLEURT-20")
+
+        # Computar resultados
+        results = bleurt.compute(predictions=hypotheses, references=references)
+
+        # Devolver la media
+        avg_score = sum(results["scores"]) / len(results["scores"])
+
+        return avg_score
+
+    except Exception as e:
+        print(f"Error calculando BLEURT: {e}")
+        return 0.0
 
 if __name__ == "__main__":
     main()
