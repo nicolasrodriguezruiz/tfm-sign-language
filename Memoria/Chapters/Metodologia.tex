@@ -111,7 +111,7 @@ El tercer canal de cada punto clave, correspondiente al índice de confianza $c$
 En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma.
 Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
-\subsection{Data Augmentation}
+\subsection{Data Augmentation}\label{sec:DATAAUG}
 Como mencionabamos en la \textit{ch:SOTA}, existe una falta de datos, los conjuntos de datos disponibles son escasos y apenas tienen, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
 %Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
 Así, y con la intención de reducir el sobreajuste se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.

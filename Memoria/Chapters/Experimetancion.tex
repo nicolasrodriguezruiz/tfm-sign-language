@@ -190,27 +190,303 @@ La decisión final se obtiene promediando uniformemente las distribuciones de pr
 
 \subsection{Estudio de aumentación de datos}
 Se evalúan cinco configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
-Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout}; se describen en detalle en la Sección~\ref{ch:metodologia}.
-\includegraphics{adress_me}
+Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout} se describen en detalle en la Sección~\ref{sec:DATAAUG}.
 
+La diferencia entre \textit{Joint Dropout} y \textit{Structured Dropout} es que mientras el primero enmascara articulaciones individuales de forma aleatoria e independiente, cada keypoint tiene una probabilidad
+fija de ser anulado, sin ninguna restricción anatómica.
+El segundo, agrupa los keypoints por extremidades completas tal y como se describe en la sección correspondiente.
+
+Mientras \textit{Structured Dropout} modela situaciones más realistas, los resultados acontinuación muestran que el \textit{Joint Dropout} obtiene un WER ligeramente inferior ($27.24\%$ frente a $27.59\%$ en test).
+
+La razón por la que occure esto es que enmascarar una extremidad completa durante toda la secuencia priva al modelo de demasiada información simultáneamente, esto sumado a la falta de datos hacen que el modelo tenga mayor deifcultades al aprender.
+
+Por esta razón decidí realizar una pequeña modificación, en vez de ocultar por completo la articulación, ocultar puntos aleatorios preservando siempre una fracción suficiente de la estructura de cada extremidad, ofreciendo una regularización más suave y efectiva en este escenario de datos limitados.
 
 \begin{table}[H]
 	\centering
-	\begin{tabular}{lccccc|cccc}
+	\begin{tabular}{lc|cccc|cccc}
 		\hline
 		\multirow{2}{*}{\textbf{Configuración}}
-		    & \multicolumn{5}{c|}{\textbf{Dev}}
-		    & \multicolumn{4}{c}{\textbf{Test}} \\
+		    & \multicolumn{1}{c|}{\textbf{Dev}}
+		    & \multicolumn{4}{c|}{\textbf{Test}}  \\
 		    & \textbf{WER}$\downarrow$
-		    & \textbf{SUB} & \textbf{DEL} & \textbf{INS}
-		    & & \textbf{WER}$\downarrow$
+		    & \textbf{WER}$\downarrow$
 		    & \textbf{SUB} & \textbf{DEL} & \textbf{INS} \\ \hline
-		SLR-base                         & & & & & & & & & \\
-		SLR-\textit{JointDropout}        & & & & & & & & & \\
-		SLR-\textit{GaussianNoise}       & & & & & & & & & \\
-		SLR-\textit{JD}+\textit{Noise}   & & & & & & & & & \\
-		SLR-\textit{StructuredDropout}   & & & & & & & & & \\ \hline
+		SLR-base                                    & 27.81 & 27.33          & 11.81 & 13.29 & 2.23 \\
+		SLR-\textit{JointDropout}                   & \textbf{27.68} & \textbf{27.24} & 12.28 & 12.51 & 2.44 \\
+		SLR-\textit{StructuredDropout}              & 28.24 & 27.59          & 12.82 & 12.21 & 2.56 \\
+		SLR-\textit{GaussianNoise}                  & 28.56 & 28.13          & 12.82 & 13.15 & 2.16 \\ \hline
+		%SLR-\textit{JointDropout}+\textit{Noise}    & 28.96 & 29.28          & 13.38 & 13.71 & 2.18 \\ \hline
 	\end{tabular}
-	\caption{Comparativa de técnicas de aumentación sobre PHOENIX-2014T\@. 	JD: \textit{Joint Dropout}. Mejor resultado en negrita.}
+	\caption{Comparativa de técnicas de aumentación sobre PHOENIX-2014T\@.
+	Mejor resultado en negrita.}
 	\label{tab:slr_augmentation}
 \end{table}
+
+\subsubsection*{Análisis de resultados}
+
+Los resultados de la Tabla~\ref{tab:slr_augmentation} son devastadores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
+
+La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en test de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos (en validación).
+Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error: las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\% \rightarrow 12.28\%$).
+
+Esto sugiere que enmascarar puntos clave individualmente obliga al modelo a ser más atrevido, reduciendo la tendencia a omitir glosas cuando parte de la información espacial no está disponible.
+
+El \textbf{SLR-\textit{StructuredDropout}}, que enmascara extremidades anatómicas completas en lugar de puntos individuales, obtiene un resultado ligeramente inferior al \textit{JointDropout} ($28.24\%$ vs $27.68\%$ en validación).
+No obstante, presenta el valor de eliminaciones más bajo de todos los experimentos ($12.21\%$), lo que indica que la oclusión estructurada por extremidades ayuda al modelo a mantener la secuencia de glosas completa, aunque introduce mayor confusión entre signos similares (mayor tasa de sustitución).
+
+El \textbf{SLR-\textit{GaussianNoise}} empeora el rendimiento base en casi un punto ($28.56\%$ vs $27.81\%$).
+Probablemente, en el corpus de PHOENIX, las grabaciones en estudio de calidad homogénea hacen que el ruido gaussiano introduzca una variabilidad artificial que no corresponde a ningún patrón real del conjunto de validación, perjudicando la generalización.
+
+% En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER, lo que apunta a que el cuello de botella del reconocimiento no reside en el sobreajuste sino en la capacidad del modelo para representar la variabilidad inherente de la lengua de signos a partir de keypoints 2D\@.
+%
+
+En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER, lo que apunta a que el modelo sufre de sobreajuste y que las técnicas de aumentación exploradas no lo logran mitigar de forma significativa.
+La Figura~\ref{fig:slr_curves} refleja este comportamiento, en la gráfica de pérdida, las curvas de entrenamiento descienden de forma pronunciada hasta valores cercanos a $15$, mientras que las curvas de validación se estabilizan en torno a $45$ desde la época $20$, sin mejorar demásiado hasta que la parada temprana finalmente detiene el entrenamiento de forma anticipada.
+
+Esta brecha persistente entre entrenamiento y validación es evidencia del sobreajuste que se mantiene en todas las configuraciones de aumentación probadas.
+
+La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$--$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $adw$.
+El \textit{StructuredDropout} presenta una convergencia más lenta durante las primeras épocas, posiblemente porque enmascarar extremidades completas dificulta el aprendizaje inicial, aunque termina alcanzando un resultado comparable al resto.
+
+En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
+Técnicas complementarias como el preentrenamiento sobre corpus de mayor tamaño o el aumento de datos mediante síntesis constituyen líneas de mejora más prometedoras que la augmentación espacial sobre keypoints.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{SLR/SLR_hr}
+    \caption{Evolución de la pérdida (izquierda) y del WER en validación (derecha) a lo largo del entrenamiento para las distintas configuraciones de aumentación.
+    Las líneas transparentes en la gráfica de pérdida corresponden a las curvas de entrenamiento.
+    Las estrellas marcan el \textit{checkpoint} con el mejor modelo.}
+    \label{fig:slr_curves}
+\end{figure}
+
+El mejor modelo, \textbf{SLR-\textit{JointDropout}}, será el utilizado como módulo de reconocimiento en todos los experimentos de traducción posteriores.
+
+% \subsection{Análisis cualitativo de las predicciones}
+% % Mostrar ejemplos concretos del notebook:
+% % casos perfectos, errores de sustitución (<UNK>),
+% % omisiones y adiciones
+% % Discutir patrones de error observados
+
+% ----------------------------------------------------------------
+
+\section{Traducción mediante mBART (línea base)}
+% Punto de referencia para comparar con Qwen
+
+\subsection{Métricas de evaluación}
+% Explicar BLEU-1/2/3/4 y ROUGE brevemente
+% Nivel de tokenización usado (word)
+
+\subsection{Resultados}
+% \begin{table}[H]
+% \centering
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{l|ccccc|ccccc}
+%   \hline
+%                  & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
+%                  & B1 & B2 & B3 & B4 & R  & B1 & B2 & B3 & B4 & R  \\ \hline
+%   MSKA-mBART     &    &    &    &    &    &    &    &    &    &    \\ \hline
+% \end{tabular}}
+% \caption{Resultados de traducción con mBART}
+% \end{table}
+
+% ----------------------------------------------------------------
+
+\section{Traducción mediante Qwen2.5}
+
+\subsection{Spotter + Qwen (zero-shot)}
+% Baseline sin entrenamiento, equivalente a Spotter+GPT
+% pero con modelo local
+
+\subsubsection{Configuración del prompt}
+% Mostrar el prompt usado
+% Justificar el formato ChatML con apply_chat_template
+
+\subsubsection{Resultados}
+% Tabla con WER del reconocimiento que entra a Qwen
+% y BLEU/ROUGE de la traducción resultante
+% \begin{table}[H]
+% \centering
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{l|c|ccccc|ccccc}
+%   \hline
+%   Modelo & WER$\downarrow$
+%          & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
+%          &   & B1 & B2 & B3 & B4 & R & B1 & B2 & B3 & B4 & R \\ \hline
+%   Qwen2.5-1.5B &  &  &  &  &  &  &  &  &  &  &  \\
+%   Qwen2.5-7B   &  &  &  &  &  &  &  &  &  &  &  \\
+%   Qwen2.5-14B  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+% \end{tabular}}
+% \caption{Resultados zero-shot: glosas predichas → Qwen sin finetuning}
+% \end{table}
+
+\subsubsection{Discusión}
+% Comparar con Spotter+GPT del estado del arte
+% Ventajas del modelo local (privacidad, latencia)
+% Limitaciones del zero-shot frente al finetuning
+
+% -------
+
+\subsection{MSKA-SLR + Qwen con LoRA}
+% El sistema completo: keypoints → Recognition → VLMapper → Qwen
+
+\subsubsection{Estudio de ablación: componentes de entrada}
+% Qué información recibe Qwen: visual, glosas, o ambas
+
+% \begin{table}[H]
+% \centering
+% \resizebox{\textwidth}{!}{
+% \begin{tabular}{ll|ccccc|ccccc}
+%   \hline
+%   Features visuales & Glosas
+%     & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
+%     &   & B1 & B2 & B3 & B4 & R & B1 & B2 & B3 & B4 & R \\ \hline
+%   \checkmark &            &  &  &  &  &  &  &  &  &  &  \\
+%              & GT         &  &  &  &  &  &  &  &  &  &  \\
+%              & Predichas  &  &  &  &  &  &  &  &  &  &  \\
+%   \checkmark & GT         &  &  &  &  &  &  &  &  &  &  \\
+%   \checkmark & Predichas  &  &  &  &  &  &  &  &  &  &  \\ \hline
+% \end{tabular}}
+% \caption{Ablation study sobre las modalidades de entrada a Qwen}
+% \end{table}
+
+\subsubsection{Comparativa de tamaños de modelo}
+% 1.5B vs 7B vs 14B
+% Tabla BLEU/ROUGE + tiempo de inferencia + VRAM
+
+\subsubsection{Resultados finales}
+% Mejor configuración encontrada
+% Comparación directa con mBART
+
+% ----------------------------------------------------------------
+
+\section{Comparativa global y discusión}
+
+\subsection{Resumen de resultados}
+% Tabla unificada con todos los sistemas:
+% mBART, Spotter+Qwen (1.5B/7B/14B), MSKA+Qwen-LoRA
+
+\subsection{Comparativa con el estado del arte}
+% Tabla comparando con otros trabajos en Phoenix-2014T
+% (los que citas en SOTA.tex)
+
+\subsection{Análisis de errores}
+% Tipos de error más frecuentes
+% Casos donde Qwen recupera errores del reconocimiento
+% Casos donde Qwen falla pese a buen reconocimiento
+% Ejemplos cualitativos concretos
+
+\subsection{Coste computacional}
+% Comparar parámetros entrenables: mBART vs LoRA
+% Tiempo de inferencia por muestra
+% Viabilidad para uso en tiempo real
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
