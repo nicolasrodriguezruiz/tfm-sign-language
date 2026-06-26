@@ -228,7 +228,7 @@ Por esta razón decidí realizar una pequeña modificación, en vez de ocultar p
 Los resultados de la Tabla~\ref{tab:slr_augmentation} son devastadores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
 
 La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en test de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos (en validación).
-Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error: las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\% \rightarrow 12.28\%$).
+Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error: las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
 
 Esto sugiere que enmascarar puntos clave individualmente obliga al modelo a ser más atrevido, reduciendo la tendencia a omitir glosas cuando parte de la información espacial no está disponible.
 
@@ -246,7 +246,7 @@ La Figura~\ref{fig:slr_curves} refleja este comportamiento, en la gráfica de p�
 
 Esta brecha persistente entre entrenamiento y validación es evidencia del sobreajuste que se mantiene en todas las configuraciones de aumentación probadas.
 
-La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$--$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $adw$.
+La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$-$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $adw$.
 El \textit{StructuredDropout} presenta una convergencia más lenta durante las primeras épocas, posiblemente porque enmascarar extremidades completas dificulta el aprendizaje inicial, aunque termina alcanzando un resultado comparable al resto.
 
 En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
@@ -381,27 +381,6 @@ El mejor modelo, \textbf{SLR-\textit{JointDropout}}, será el utilizado como mó
 % Comparar parámetros entrenables: mBART vs LoRA
 % Tiempo de inferencia por muestra
 % Viabilidad para uso en tiempo real
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
