@@ -4,7 +4,7 @@ Este capítulo presenta los experimentos realizados para validar las decisiones 
 La experimentación se organiza en tres bloques progresivos.
 En primer lugar, se estudia el módulo de reconocimiento de forma aislada, analizando el impacto de las distintas técnicas de aumentación de datos sobre la tasa de error en glosas.
 En segundo lugar, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, estableciendo una línea base comparable al enfoque Spotter+GPT descrito en el estado del arte.
-Finalmente, se presenta el sistema completo con ajuste fino mediante LoRA, incluyendo un estudio de ablación sobre las modalidades de entrada y una comparativa con la variante basada en mBART.
+Finalmente, se presenta el sistema completo con \textit{finetuning} mediante LoRA, incluyendo un estudio de ablación sobre las modalidades de entrada y una comparativa con la variante basada en mBART.
 \section{Configuración experimental}
 
 \subsection{Entorno de entrenamiento}
@@ -186,8 +186,6 @@ La decisión final se obtiene promediando uniformemente las distribuciones de pr
 	\label{tab:streams}
 \end{table}
 
-
-
 \subsection{Estudio de aumentación de datos}
 Se evalúan cinco configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
 Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout} se describen en detalle en la Sección~\ref{sec:DATAAUG}.
@@ -225,14 +223,14 @@ Por esta razón decidí realizar una pequeña modificación, en vez de ocultar p
 
 \subsubsection*{Análisis de resultados}
 
-Los resultados de la Tabla~\ref{tab:slr_augmentation} son devastadores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
+Los resultados de la Tabla~\ref{tab:slr_augmentation} son poco prometedores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
 
 La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en test de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos (en validación).
-Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error: las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
+Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error, las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
 
 Esto sugiere que enmascarar puntos clave individualmente obliga al modelo a ser más atrevido, reduciendo la tendencia a omitir glosas cuando parte de la información espacial no está disponible.
 
-El \textbf{SLR-\textit{StructuredDropout}}, que enmascara extremidades anatómicas completas en lugar de puntos individuales, obtiene un resultado ligeramente inferior al \textit{JointDropout} ($28.24\%$ vs $27.68\%$ en validación).
+El \textbf{SLR-\textit{StructuredDropout}}, obtiene un resultado ligeramente inferior al \textit{JointDropout} ($28.24\%$ vs $27.68\%$ en validación).
 No obstante, presenta el valor de eliminaciones más bajo de todos los experimentos ($12.21\%$), lo que indica que la oclusión estructurada por extremidades ayuda al modelo a mantener la secuencia de glosas completa, aunque introduce mayor confusión entre signos similares (mayor tasa de sustitución).
 
 El \textbf{SLR-\textit{GaussianNoise}} empeora el rendimiento base en casi un punto ($28.56\%$ vs $27.81\%$).
@@ -241,16 +239,17 @@ Probablemente, en el corpus de PHOENIX, las grabaciones en estudio de calidad ho
 % En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER, lo que apunta a que el cuello de botella del reconocimiento no reside en el sobreajuste sino en la capacidad del modelo para representar la variabilidad inherente de la lengua de signos a partir de keypoints 2D\@.
 %
 
-En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER, lo que apunta a que el modelo sufre de sobreajuste y que las técnicas de aumentación exploradas no lo logran mitigar de forma significativa.
-La Figura~\ref{fig:slr_curves} refleja este comportamiento, en la gráfica de pérdida, las curvas de entrenamiento descienden de forma pronunciada hasta valores cercanos a $15$, mientras que las curvas de validación se estabilizan en torno a $45$ desde la época $20$, sin mejorar demásiado hasta que la parada temprana finalmente detiene el entrenamiento de forma anticipada.
+En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER. Además, observando las curvas de las pérdidas en entrenamiento y validación (\textit{Figura~\ref{fig:slr_curves}}) deducimos que el modelo sufre de sobreajuste y que las técnicas de aumentación exploradas no lo logran mitigar de forma significativa.
+
+Las curvas de entrenamiento descienden de forma pronunciada hasta valores cercanos a $15$, mientras que las curvas de validación se estabilizan en torno a $45$ desde la época $20$, sin mejorar demásiado hasta que la parada temprana finalmente detiene el entrenamiento de forma anticipada.
 
 Esta brecha persistente entre entrenamiento y validación es evidencia del sobreajuste que se mantiene en todas las configuraciones de aumentación probadas.
 
-La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$-$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $adw$.
+La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$-$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $35$.
 El \textit{StructuredDropout} presenta una convergencia más lenta durante las primeras épocas, posiblemente porque enmascarar extremidades completas dificulta el aprendizaje inicial, aunque termina alcanzando un resultado comparable al resto.
 
-En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
-Técnicas complementarias como el preentrenamiento sobre corpus de mayor tamaño o el aumento de datos mediante síntesis constituyen líneas de mejora más prometedoras que la augmentación espacial sobre keypoints.
+% En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
+% Técnicas complementarias como el preentrenamiento sobre corpus de mayor tamaño o el aumento de datos mediante síntesis constituyen líneas de mejora más prometedoras que la augmentación espacial sobre keypoints.
 
 \begin{figure}[H]
     \centering
@@ -263,209 +262,489 @@ Técnicas complementarias como el preentrenamiento sobre corpus de mayor tamaño
 
 El mejor modelo, \textbf{SLR-\textit{JointDropout}}, será el utilizado como módulo de reconocimiento en todos los experimentos de traducción posteriores.
 
-% \subsection{Análisis cualitativo de las predicciones}
-% % Mostrar ejemplos concretos del notebook:
-% % casos perfectos, errores de sustitución (<UNK>),
-% % omisiones y adiciones
-% % Discutir patrones de error observados
+\subsubsection*{Análisis cualitativo de las predicciones}
+
+Para complementar el análisis cuantitativo, la Tabla~\ref{tab:slr_qualitative} recoge cuatro ejemplos representativos extraídos del conjunto de test, seleccionados para ilustrar los patrones de error más frecuentes observados en el mejor modelo (\textit{JointDropout}).
+
+\begin{table}[H]
+	\centering
+	\renewcommand{\arraystretch}{1.4}
+	\begin{tabular}{p{0.15\textwidth} p{0.38\textwidth} p{0.38\textwidth}}
+		\hline
+		\textbf{Caso}           & \textbf{Referencia}                                        & \textbf{Predicción}                          \\ \hline
+		Correcto                & WAHRSCHEINLICH SCHAUER GEWITTER STARK                      & WAHRSCHEINLICH SCHAUER GEWITTER STARK        \\
+		Sustitución             & DEUTSCH LAND MORGEN HOCH DRUCK KOMMEN WOLKE \textbf{AUFLOESEN} & DEUTSCH LAND MORGEN HOCH DRUCK KOMMEN WOLKE \textbf{VERSCHWINDEN} \\
+		Eliminación             & MORGEN \textbf{LANG BLEIBEN}                               & MORGEN                                       \\
+		Fallo sistemático       & BIS ABEND IN-KOMMEND DANN KOMMEN \textbf{NIEDERUNG}        & BIS \textbf{NACHT} IN-KOMMEND DANN KOMMEN    \\ \hline
+	\end{tabular}
+	\caption{Ejemplos cualitativos de predicciones del modelo SLR-\textit{JointDropout} sobre el conjunto de prueba. En negrita las glosas donde se produce el error.}
+	\label{tab:slr_qualitative}
+\end{table}
+
+El primer caso confirma que el modelo funciona correctamente en secuencias cortas con signos frecuentes en el corpus, donde la información de los keypoints es suficientemente discriminativa.
+
+El error de sustitución del segundo ejemplo: \textit{AUFLOESEN} (dispersarse) y \textit{VERSCHWINDEN} (desaparecer) son sinónimos en el contexto meteorológico y comparten una configuración manual similar.
+Este tipo de confusión semántica entre glosas de significado próximo es difícilmente evitable desde el módulo de reconocimiento, y constituye precisamente uno de los casos donde un modelo de lenguaje con capacidad de razonamiento contextual puede recuperar el significado correcto en la etapa de traducción.
+
+El tercer ejemplo ilustra el error de eliminación: el modelo reconoce la glosa inicial pero omite las dos siguientes, posiblemente porque la secuencia \textit{LANG BLEIBEN} ocurre con menor frecuencia en el corpus y sus keypoints se confunden con ruido temporal.
+
+El cuarto caso es el más significativo desde el punto de vista del análisis, todos los modelos evaluados, producen exactamente la misma predicción errónea sobre este ejemplo (y otros $123$ del conjunto de prueba).
+La sustitución de \textit{ABEND} por \textit{NACHT} (tarde vs.\ noche) y la omisión de \textit{NIEDERUNG} apuntan a que el error nace de una ambigüedad intrínseca en los datos: los signos correspondientes son visualmente similares y el corpus no proporciona suficientes ejemplos contrastivos para que el modelo aprenda a distinguirlos.
 
 % ----------------------------------------------------------------
 
-\section{Traducción mediante mBART (línea base)}
-% Punto de referencia para comparar con Qwen
+\section{Traducción mediante mBART}
+El primer sistema de traducción evaluado es la variante original de MSKA acoplada a mBART, que actúa como línea base clásica y punto de referencia para todos los experimentos posteriores con modelos de
+lenguaje.
 
-\subsection{Métricas de evaluación}
-% Explicar BLEU-1/2/3/4 y ROUGE brevemente
-% Nivel de tokenización usado (word)
+A diferencia de los sistemas basados en Qwen, mBART opera como un modelo \textit{encoder-decoder} multilingüe especializado en traducción automática, por lo que no requiere prompt de instrucción ni estrategia de prefijo visual: las representaciones del codificador visual.
 
-\subsection{Resultados}
-% \begin{table}[H]
-% \centering
-% \resizebox{\textwidth}{!}{
-% \begin{tabular}{l|ccccc|ccccc}
-%   \hline
-%                  & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
-%                  & B1 & B2 & B3 & B4 & R  & B1 & B2 & B3 & B4 & R  \\ \hline
-%   MSKA-mBART     &    &    &    &    &    &    &    &    &    &    \\ \hline
-% \end{tabular}}
-% \caption{Resultados de traducción con mBART}
-% \end{table}
+\subsection{Resultados y análisis}
+
+\begin{table}[H]
+	\centering
+	\resizebox{1\textwidth}{!}{\begin{tabular}{lc|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Modelo}}
+		    & \multirow{2}{*}{\textbf{Dev WER}$\downarrow$}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		      & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+		MSKA-mBART & 27.57 & 45.49 & 34.03 & 26.58 & 21.43 & 45.20
+		                   & 45.03 & 34.51 & 27.43 & 22.48 & 45.00 \\ \hline
+	\end{tabular}
+	}
+	\caption{Resultados de MSKA-mBART sobre PHOENIX-2014T\@.
+	B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:mbart_results}
+\end{table}
+
+mBART establece una línea base sólida, alcanzando un BLEU-4 de $22.48$ y un ROUGE-L de $45.00$ en test.
+Estos valores son coherentes con los reportados en la literatura para sistemas basados en keypoints sobre PHOENIX-2014T, lo que confirma que la reimplementación del módulo de reconocimiento y el pipeline de preprocesado son correctos.
+
+Destaca la consistencia entre los resultados de validación y test: la diferencia en BLEU-4 es inferior a un punto ($21.43$ vs $22.48$), lo que indica que, a pesar de todo, el modelo generaliza bien y no presenta sobreajuste en la etapa de traducción.
+Esta estabilidad contrasta con el comportamiento del módulo de reconocimiento, donde la brecha entre entrenamiento y validación era pronunciada, y sugiere que mBART aprovecha eficazmente su preentrenamiento multilingüe para compensar parcialmente los errores introducidos por el reconocedor.
+
+Estos resultados servirán como referencia cuantitativa para evaluar si la sustitución de mBART por un modelo de lenguaje de arquitectura \textit{decoder-only} supone una mejora real o implica un coste en calidad de traducción.
 
 % ----------------------------------------------------------------
 
-\section{Traducción mediante Qwen2.5}
+\section{Traducción \textit{zero-shot}: Spotter + Qwen}
 
-\subsection{Spotter + Qwen (zero-shot)}
-% Baseline sin entrenamiento, equivalente a Spotter+GPT
-% pero con modelo local
+Antes de explorar el \textit{finetuning}, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, siguiendo la línea del trabajo Spotter+GPT descrito en el estado del arte.
+En este experimento no se realiza ningún entrenamiento adicional: el módulo de reconocimiento predice una secuencia de glosas mediante CTC \textit{beam search}, y dicha secuencia se pasa directamente a Qwen como texto plano mediante un prompt de instrucción, sin ningún tipo de entrenamiento ni acceso a features visuales.
 
-\subsubsection{Configuración del prompt}
-% Mostrar el prompt usado
-% Justificar el formato ChatML con apply_chat_template
+%Este experimento permite responder a una pregunta concreta: ¿puede un modelo de lenguaje traducir glosas a texto alemán coherente sin haber sido entrenado para ello?
+%La respuesta tiene implicaciones directas sobre la viabilidad de sistemas híbridos ligeros que no requieran entrenamiento específico de dominio.
 
-\subsubsection{Resultados}
-% Tabla con WER del reconocimiento que entra a Qwen
-% y BLEU/ROUGE de la traducción resultante
-% \begin{table}[H]
-% \centering
-% \resizebox{\textwidth}{!}{
-% \begin{tabular}{l|c|ccccc|ccccc}
-%   \hline
-%   Modelo & WER$\downarrow$
-%          & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
-%          &   & B1 & B2 & B3 & B4 & R & B1 & B2 & B3 & B4 & R \\ \hline
-%   Qwen2.5-1.5B &  &  &  &  &  &  &  &  &  &  &  \\
-%   Qwen2.5-7B   &  &  &  &  &  &  &  &  &  &  &  \\
-%   Qwen2.5-14B  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
-% \end{tabular}}
-% \caption{Resultados zero-shot: glosas predichas → Qwen sin finetuning}
-% \end{table}
+\subsection{Configuración}
 
-\subsubsection{Discusión}
-% Comparar con Spotter+GPT del estado del arte
-% Ventajas del modelo local (privacidad, latencia)
-% Limitaciones del zero-shot frente al finetuning
+Se emplea \textbf{Qwen2.5-14B-Instruct} como modelo de lenguaje, elegido por su tamaño suficiente para exhibir capacidades de razonamiento \textit{zero-shot} y por su disponibilidad bajo las restricciones de memoria de una única A100 de $40$\,GB en inferencia con precisión \texttt{bfloat16}.
+
+El prompt de instrucción, formulado en alemán para maximizar la coherencia lingüística con la tarea basandonos en el de \textit{Spotter+GPT} \cite{SpotterGPT}, tiene la siguiente estructura:
+\begin{quote}
+\ttfamily\small
+Du bist ein hilfreicher Assistent.Deine Aufgabe ist es, aus einer Liste von Wörtern einen sinnvollen deutschen Satz zu bilden. Beachte strikt diese Regeln:
+\begin{enumerate}
+	 \item Der Benutzer gibt dir nur eine Liste von Wörtern (Glossen).
+	 Bilde daraus einen fließenden Satz.
+	\item Antworte NUR mit dem generierten Satz.
+	Wenn du keinen Satz bilden kannst, antworte mit `Keine Übersetzung'.
+\end{enumerate}
+Glossen:
+\end{quote}
+
+Esto, traducido al español es:
+\begin{quote}
+\ttfamily\small
+Eres un asistente servicial. Tu tarea consiste en formar una oración alemana con sentido a partir de una lista de palabras. Sigue estrictamente estas reglas:
+\begin{enumerate}
+	 \item El usuario te proporciona únicamente una lista de palabras (glosas).
+	Forma una oración fluida a partir de ellas.
+	\item Responda ÚNICAMENTE con la frase generada.
+	Si no puede formar una frase, responda con ``Sin traducción''.
+\end{enumerate}
+Glosas:
+\end{quote}
+
+Las glosas predichas por el módulo de reconocimiento se concatenan al final del prompt y se pasan al modelo mediante el formato nativo de chat (\textit{ChatML}) de Qwen, utilizando \texttt{apply\_chat\_template} para garantizar la correcta inserción de los tokens de control.
+
+\subsection{Resultados y análisis}
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lccccc}
+		\hline
+		\textbf{Modelo} & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+		Spotter+Qwen2.5-14B (\textit{zero-shot}) & 12.11 & 4.12 & 1.38 & 0.46 & 9.85 \\ \hline
+	\end{tabular}
+	\caption{Resultados del experimento \textit{zero-shot} sobre el conjunto de test de PHOENIX-2014T\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:zeroshot_results}
+\end{table}
+
+% Los resultados son significativamente inferiores a la línea base de mBART ($0.46$ vs $22.48$ en BLEU-4), lo que descarta el escenario \textit{zero-shot} como una alternativa viable para este dominio.
+%
+% La causa principal no reside en la capacidad lingüística de Qwen, sino en la naturaleza de las glosas que recibe.
+% Las glosas de PHOENIX-2014T son palabras clave en alemán en mayúsculas que siguen la gramática espacial de la lengua de signos alemana (DGS), estructuralmente muy distinta del alemán hablado: carecen de artículos, conjugaciones verbales y conectores sintácticos.
+% Transformar esta representación esquemática en una oración fluida requiere un conocimiento implícito del dominio meteorológico y de la correspondencia entre la gramática de la DGS y el alemán estándar que Qwen no posee sin entrenamiento específico.
+%
+% A esto se suma el impacto acumulado de los errores del reconocedor: con un WER de aproximadamente $27\%$, una de cada cuatro glosas es incorrecta, errónea o ausente.
+% Mientras que un modelo entrenado aprende a ser robusto ante estas imperfecciones, Qwen en modo \textit{zero-shot} las trata como entrada fiable, propagando los errores directamente a la traducción.
+%
+% Este resultado contrasta con el éxito reportado por Spotter+GPT en el estado del arte, donde se emplea GPT-3.5 con un vocabulario de signos más amplio y heterogéneo.
+%
+% La diferencia sugiere que el enfoque \textit{zero-shot} puede funcionar en dominios con mayor variedad léxica, donde el LLM dispone de más contexto para inferir el significado, pero resulta insuficiente en dominios cerrados y gramaticalmente alejados del lenguaje natural como el meteorológico de PHOENIX\@.
+%
+% En conclusión, el escenario \textit{zero-shot} confirma que el \textit{finetuning} es imprescindible para alinear un modelo de lenguaje general con la tarea específica de traducción de lengua de signos, independientemente del tamaño del modelo empleado.
+%
+%
+%
+%
+%
+%
+% \subsection{Análisis}
+
+Los resultados cuantitativos sitúan el sistema en un BLEU-4 de $0.46$ y un ROUGE-L de $9.85$, valores muy inferiores a la línea base de mBART ($22.48$ y $45.00$ respectivamente).
+Lo cual es razonable dado que el modelo en ningún momento se ha entrenado para predecir exactamente las frases del corpus.
+Con la métrica BLEURT, que mide similitud semántica en lugar de coincidencia exacta de $n$-gramas, el sistema alcanza un BLEURT de $0.5014$, lo que indica que una fracción de las traducciones captura el significado correcto aunque con una formulación léxica distinta a la referencia.
+Como punto de comparación, el experimento con glosas de referencia (\textit{ground truth}) en lugar de predichas obtiene un BLEURT de $0.5339$, apenas $0.032$ puntos por encima, lo que sugiere que el cuello de botella no reside únicamente en los errores del reconocedor sino principalmetne en las limitaciones del modelo en capacidad \textit{zero-shot}.
+
+La Tabla~\ref{tab:zeroshot_examples} recoge ejemplos representativos que ilustran cualitativamente el comportamiento del sistema en ambos modos.
+
+\begin{table}[H]
+	\centering
+	\small
+	\renewcommand{\arraystretch}{1.5}
+	\begin{tabular}{p{0.08\textwidth} >{\centering\arraybackslash}p{0.13\textwidth} p{0.22\textwidth} p{0.22\textwidth} p{0.22\textwidth}}
+		\hline
+		\textbf{Modo} & \textbf{BLEURT} & \textbf{Glosas} & \textbf{Referencia} & \textbf{Predicción} \\ \hline
+
+		Pred. & 0.876\par(mejor)
+		    & OST REGION MEISTENS SONNE
+		    & richtung osten ist es meist sonnig
+		    & In der Ostregion wird es meistens sonnig sein. \\
+
+		Pred. & 0.075
+		    & PRED BLEIBEN
+		    & das bleibt auch noch in dieser woche so [...]
+		    & \textit{Keine Übersetzung} \\
+
+		Pred. & 0.071
+		    & IN-KOMMEND WIEDER KOMMEN
+		    & die luft die in den kommenden tagen [...]
+		    & Inkommend wieder kommen. [\textit{el modelo añade una nota explicando que el contexto es insuficiente, incumpliendo la instrucción}] \\
+
+		Pred. & 0.049\par(peor)
+		    & JETZT WIE-AUSSEHEN WETTER MORGEN MITTWOCH DREIZEHN JANUAR
+		    & und nun die wettervorhersage für morgen mittwoch [...]
+		    & Morgen Mittwoch, den Dreizehn. Januar [...] \textit{[alucinación en chino]} \\
+
+		\hline
+
+		GT & 0.921\par(mejor)
+		    & SAMSTAG SCHNEE FALLEN
+		    & samstag fällt auch noch schnee
+		    & Am Samstag fällt noch Schnee. \\
+
+		GT & 0.092
+		    & HEUTE NACHT ZWOELF REGION KOELN EINS REGION BRANDENBURG
+		    & heute nacht zwölf grad in der kölner bucht [...]
+		    & In der Nacht um zwölf Uhr in der Region um Köln, eins und neun. [\textit{el modelo razona en voz alta en alemán, incumpliendo la instrucción}] \\
+
+		GT & 0.039\par(peor)
+		    & DEUTSCHLAND IRLAND TIEF MITTE-MEER HOCH
+		    & deutschland liegt zwischen einem tief bei irland [...]
+		    & \textit{[razonamiento en chino antes de responder Keine Übersetzung]} \\
+
+		\hline
+	\end{tabular}
+	\caption{Ejemplos cualitativos del experimento \textit{zero-shot} con glosas predichas (Pred.) y glosas de referencia (GT). Las referencias y predicciones se muestran en alemán tal como las produce el sistema.}
+	\label{tab:zeroshot_examples}
+\end{table}
+
+Podemos destacar tres fallos comunes.
+
+Primero un \textbf{fallo por escasez de glosas}: cuando el reconocedor produce secuencias muy cortas o incompletas (como \textit{PRED BLEIBEN}), el modelo no dispone de suficiente información para construir una oración y responde correctamente con \textit{Keine Übersetzung}.
+Este comportamiento es formalmente correcto, pero resulta inútil desde el punto de vista de la traducción.
+
+Otro es la \textbf{ruptura de la instrucción}: en varios casos el modelo devuelve las glosas casi sin traducir y añade comentarios explicativos en alemán sobre por qué no puede completar la tarea, incumpliendo directamente la instrucción de responder únicamente con el resultado.
+Este comportamiento refleja una tensión entre el \textit{instruction following} del modelo y la dificultad de la tarea, cuando Qwen no puede producir una traducción coherente, su entrenamiento como asistente lo lleva a justificarse en lugar de intentarlo.
+
+El tercer y más grave patrón es la \textbf{alucinación multilingüe}: en dos casos el modelo genera texto en chino mandarín, mezclando idiomas de forma abrupta a mitad de la respuesta.
+Esto apunta a una inestabilidad del modelo cuando recibe entradas que no encajan con sus distribuciones de entrenamiento. Las glosas en mayúsculas con morfología alemana pero sintaxis de lengua de signos constituyen un tipo de input inusual que puede activar patrones de otros idiomas del corpus de preentrenamiento.
+Este problema aparece tanto con glosas predichas como con glosas de referencia, lo que confirma que el origen es la naturaleza de las glosas como input, no a los errores del reconocedor.
+
+% En conjunto, el experimento \textit{zero-shot} confirma que las capacidades lingüísticas de Qwen son insuficientes para abordar la traducción de lengua de signos sin ningún tipo de entrenamiento, independientemente de la calidad de las glosas de entrada.
+% La pequeña diferencia de BLEURT entre glosas predichas ($0.5014$) y de referencia ($0.5339$) refuerza esta conclusión: mejorar el reconocedor no resolvería el problema fundamental, que es la falta de alineación entre el espacio de las glosas y el espacio lingüístico del alemán hablado.
+%
+%
+% En conjunto, el experimento \textit{zero-shot} ofrece una lectura matizada.
+Comparando con el trabajo Spotter+GPT, que emplea GPT-3.5-turbo y alcanza un BLEURT de $0.49$ con su detector visual y $0.79$ con glosas de referencia, nuestro sistema obtiene resultados similares en el escenario con glosas predichas ($0.50$ vs $0.49$) pero notablemente inferiores en el escenario con glosas de referencia ($0.53$ vs $0.79$).
+
+Esto muestra que cuando la entrada es ruidosa (glosas predichas), ambos sistemas se comportan de forma comparable, lo que sugiere que el cuello de botella en ese escenario es el reconocedor, no el modelo de lenguaje.
+Sin embargo, cuando la entrada es perfecta (glosas de referencia), GPT-3.5-turbo aprovecha mucho mejor la información disponible, apuntando a que Qwen 14B tiene una capacidad de razonamiento \textit{zero-shot} inferior.
+
+Cabe señalar que la comparación directa entre ambos trabajos tiene limitaciones ya que Spotter+GPT evalúa sobre conjuntos de datos distintos a PHOENIX-2014T, por lo que las diferencias pueden reflejar parcialmente la dificultad específica del corpus.
+
+En cualquier caso, la brecha entre el \textit{zero-shot} y la línea base de mBART ($22.48$ en BLEU-4) justifica explorar el \textbf{finetuning} como estrategia para alinear el modelo de lenguaje con la tarea específica de traducción de lengua de signos.
 
 % -------
 
-\subsection{MSKA-SLR + Qwen con LoRA}
-% El sistema completo: keypoints → Recognition → VLMapper → Qwen
+\section{Ablation study: Qwen2.5-1.5B}
 
-\subsubsection{Estudio de ablación: componentes de entrada}
-% Qué información recibe Qwen: visual, glosas, o ambas
+Esta sección analiza el impacto de las distintas decisiones de diseño sobre el rendimiento del sistema de traducción, manteniendo fijo el módulo de reconocimiento (SLR-\textit{JointDropout}) en todos los experimentos.
+Estudiaremos tres modificaciones distintas: la modalidad de entrada a Qwen (\textit{features} visuales vs.\ glosas predichas), la cobertura de los adaptadores LoRA (solo atención vs.\ atención y FFN) y la estrategia de \textit{finetuning} (LoRA vs.\ \textit{finetuning} completo).
 
-% \begin{table}[H]
-% \centering
-% \resizebox{\textwidth}{!}{
-% \begin{tabular}{ll|ccccc|ccccc}
-%   \hline
-%   Features visuales & Glosas
-%     & \multicolumn{5}{c|}{Dev} & \multicolumn{5}{c}{Test} \\
-%     &   & B1 & B2 & B3 & B4 & R & B1 & B2 & B3 & B4 & R \\ \hline
-%   \checkmark &            &  &  &  &  &  &  &  &  &  &  \\
-%              & GT         &  &  &  &  &  &  &  &  &  &  \\
-%              & Predichas  &  &  &  &  &  &  &  &  &  &  \\
-%   \checkmark & GT         &  &  &  &  &  &  &  &  &  &  \\
-%   \checkmark & Predichas  &  &  &  &  &  &  &  &  &  &  \\ \hline
-% \end{tabular}}
-% \caption{Ablation study sobre las modalidades de entrada a Qwen}
-% \end{table}
+\subsection{Modalidad de entrada: \textit{features} visuales vs.\ glosas predichas}
 
-\subsubsection{Comparativa de tamaños de modelo}
-% 1.5B vs 7B vs 14B
-% Tabla BLEU/ROUGE + tiempo de inferencia + VRAM
+El primer eje de ablación compara dos fuentes de información distintas para condicionar la traducción: las \textit{features} visuales proyectadas por el VLMapper y las glosas predichas por el módulo CTC como texto plano.
+Ambas modalidades parten del mismo reconocedor y, por tanto, contienen información equivalente sobre la secuencia de signos, pero la representan de formas radicalmente distintas.
+Las \textit{features} visuales son vectores continuos de alta dimensión que preservan la incertidumbre del reconocedor, mientras que las glosas son una decisión discreta y que descarta toda la información de extra que pueda existir.
 
-\subsubsection{Resultados finales}
-% Mejor configuración encontrada
-% Comparación directa con mBART
+\begin{table}[H]
+	\centering
+	\resizebox{\textwidth}{!}{\begin{tabular}{ll|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Entrada}}
+		    & \multirow{2}{*}{\textbf{Config. LoRA}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		        & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+
+		Visual  & LoRA-Att  & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
+		                           & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
+		Visual  & LoRA-All  & 28.50 & 18.95 & 13.99 & 11.17 & 27.43
+		                           & 27.42 & 18.40 & 13.45 & 10.73 & 25.53 \\
+		Glosas  & LoRA-Att  & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
+		                           & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
+		Glosas  & LoRA-All & 35.39 & 25.91 & 20.17 & 16.42 & 36.12
+		                           & 35.35 & 26.08 & 20.31 & 16.65 & 35.69 \\ \hline
+	\end{tabular}}
+	\caption{Ablación sobre la modalidad de entrada y la cobertura de LoRA 	con Qwen2.5-1.5B\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:ablation_input}
+\end{table}
+
+Los resultados muestran que ninguna de las configuraciones de esta ablación supera a mBART ($22.48$ en BLEU-4 en test), pero revelan patrones de comportamiento relevantes.
+
+En primer lugar, las features visuales con LoRA-Att ($16.31$ BLEU-4) y las glosas con LoRA-All ($16.65$ BLEU-4) obtienen resultados prácticamente equivalentes, lo que sugiere que ambas modalidades contienen una cantidad similar de información útil para la traducción cuando se usa la configuración de LoRA adecuada.
+
+En segundo lugar, la combinación de features visuales con LoRA-All produce el peor resultado de la tabla ($10.73$ BLEU-4), muy por debajo de las demás configuraciones.
+Este colapso apunta a que ampliar los adaptadores al bloque FFN cuando la entrada son features visuales continuas desestabiliza el aprendizaje: el modelo tiene dificultades para alinear simultáneamente el espacio visual y ajustar las capas de proyección del FFN con tan pocos datos de entrenamiento.
+
+% En tercer lugar, las glosas como entrada producen un WER ligeramente inferior al de las features visuales en ambas configuraciones de LoRA\@.
+% Esto es esperable: al no procesar features visuales, el módulo de reconocimiento opera en modo estándar sin la interferencia del gradiente de la traducción, preservando mejor su comportamiento original.
+
+\subsection{Impacto del \textit{prompt}}
+
+Para aislar la contribución del prompt de instrucción (\textit{``Übersetze diese Glossen ins Deutsche''} que significa ``Traduce estas glosas al alemán''), se compara la configuración LoRA-All con features visuales con y sin prompt.
+
+\begin{table}[H]
+	\centering
+	\resizebox{\textwidth}{!}{\begin{tabular}{l|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Prompt}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		      & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+		Con prompt  & 28.50 & 18.95 & 13.99 & 11.17 & 27.43
+		                    & 27.42 & 18.40 & 13.45 & 10.73 & 25.53 \\
+		Sin prompt  & 40.62 & 30.33 & 23.92 & 19.58 & 39.83
+		                    & 42.21 & 31.69 & 24.98 & 20.55 & 40.01 \\ \hline
+	\end{tabular}}
+	\caption{Impacto del prompt de instrucción en la configuración LoRA-All con features visuales. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:ablation_prompt}
+\end{table}
+
+El resultado es sorprendente: eliminar el prompt mejora el BLEU-4 en casi $10$ puntos ($10.73 \rightarrow 20.55$) y el ROUGE-L en más de $14$ puntos ($25.53 \rightarrow 40.01$).
+Una explicación plausible es que, durante el \textit{finetuning} con LoRA-All, el modelo aprende a condicionar la generación directamente sobre los tokens visuales del prefijo.
+En ese contexto, el prompt textual no aporta información adicional y actúa como ruido que desplaza la atención del modelo de las features visuales hacia una señal textual redundante.
+Cuando el prompt desaparece, los tokens visuales ocupan toda la ventana de contexto relevante y el modelo puede explotarlos con mayor eficacia.
+Este resultado sugiere que, en el régimen de \textit{finetuning} con suficiente capacidad de adaptación, el prompt de instrucción es prescindible e incluso contraproducente.
+
+\subsection{\textit{Finetuning} completo vs.\ LoRA}
+
+Finalmente se compara el \textit{finetuning} completo de Qwen2.5-1.5B con la aproximación LoRA, en las dos modalidades de entrada disponibles.
+
+\begin{table}[H]
+	\centering
+	\resizebox{\textwidth}{!}{\begin{tabular}{ll|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Entrada}}
+		    & \multirow{2}{*}{\textbf{Estrategia}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		        & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+
+		Visual & LoRA-Att       & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
+		                                & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
+		Visual & \textit{Full}  & 38.98 & 28.96 & 23.03 & 18.99 & 38.98
+		                                & 39.26 & 29.07 & 22.74 & 18.68 & 37.04 \\
+		Glosas & LoRA-Att       & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
+		                                & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
+		Glosas & \textit{Full}  & 34.64 & 25.12 & 19.55 & 15.98 & 34.31
+		                                & 35.05 & 25.43 & 19.57 & 16.00 & 34.89 \\ \hline
+	\end{tabular}}
+	\caption{Comparativa entre \textit{finetuning} completo y LoRA-Att
+	con Qwen2.5-1.5B\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:ablation_ft}
+\end{table}
+
+El \textit{finetuning} completo supera a LoRA-Att en la modalidad visual ($18.68$ vs $16.31$ en BLEU-4), pero la diferencia es más modesta de lo esperado: apenas $2.37$ puntos pese a actualizar todos los parámetros del modelo.
+En la modalidad de glosas, la diferencia es prácticamente nula ($16.00$ vs $15.63$), lo que sugiere que para entradas textuales discretas LoRA tiene capacidad suficiente para adaptar el modelo.
+
+El coste del \textit{finetuning} completo en términos de memoria y tiempo de entrenamiento (una $2$-$3$h más) es significativamente mayor que el de LoRA, por lo que la ganancia obtenida no justifica su uso salvo en el caso de features visuales, donde la mayor flexibilidad paramétrica parece ayudar a alinear el espacio visual con el espacio lingüístico de Qwen.
+
+\subsection{Mejor configuración de Qwen2.5-1.5B}
+
+De todos los experimentos anteriores, la configuración que obtiene el mejor resultado es \textbf{LoRA-All sin prompt con features visuales} ($20.55$ BLEU-4, $40.01$ ROUGE-L en test), que será la referencia para la comparativa con modelos de mayor tamaño en la sección siguiente.
+Aunque este resultado sigue siendo inferior a mBART ($22.48$ BLEU-4), la diferencia se ha reducido a menos de $2$ puntos, lo que representa un avance significativo respecto al escenario \textit{zero-shot}.
+
+\section{Escalado a Qwen2.5-7B}
+
+Una vez identificada la mejor configuración para Qwen2.5-1.5B, se evalúa si escalar el modelo de lenguaje a \textbf{Qwen2.5-7B} produce una mejora proporcional en la calidad de la traducción.
+Dado que el \textit{finetuning} completo es inviable bajo las restricciones de memoria de una única A100 de 40\,GB para un modelo de este tamaño, se emplea exclusivamente LoRA-Att con features visuales, la configuración más comparable a la mejor variante de 1.5B\@.
+
+\begin{table}[H]
+	\centering
+	\resizebox{\textwidth}{!}{\begin{tabular}{l|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Modelo}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		      & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+		Qwen2.5-1.5B LoRA-Att  & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
+		                               & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
+		Qwen2.5-7B LoRA-Att   & 42.23 & 31.57 & 24.81 & 20.31 & 40.95
+		                               & 42.61 & 31.90 & 24.82 & 20.03 & 41.26 \\ \hline
+	\end{tabular}}
+	\caption{Comparativa entre Qwen2.5-1.5B y Qwen2.5-7B con LoRA-Att y features visuales. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:qwen7b}
+\end{table}
+
+El salto de 1.5B a 7B parámetros produce una mejora sustancial: el BLEU-4 pasa de $16.31$ a $20.03$ en test ($+3.72$ puntos) y el ROUGE-L de $36.50$ a $41.26$ ($+4.76$ puntos), con la misma configuración de LoRA y sin ningún cambio en el resto del pipeline.
+Esta mejora es consistente entre validación y test, lo que descarta que sea un artefacto de sobreajuste al conjunto de validación.
+
+Resulta especialmente significativo que Qwen2.5-7B con LoRA-Att alcance un rendimiento comparable al \textit{finetuning} completo de Qwen2.5-1.5B ($20.03$ vs $18.68$ en BLEU-4), superándolo en más de un punto pese a actualizar un número de parámetros muy inferior (unos $40$M vs. $1600$M).
+Esto sugiere que la capacidad del modelo base es un factor más determinante que la estrategia de \textit{finetuning} cuando el corpus de entrenamiento es reducido: un modelo más grande con menos parámetros adaptados generaliza mejor que un modelo más pequeño con todos sus parámetros actualizados.
+
+No obstante, Qwen2.5-7B sigue sin alcanzar la línea base de mBART ($22.48$ BLEU-4), quedando a $2.45$ puntos de distancia.
+La pregunta natural es si esta brecha se cerraría con un modelo aún mayor; sin embargo, realizar cualqueir tipo de adaptación con Qwen2.5-14B excede la capacidad de memoria disponible en el entorno experimental, por lo que su evaluación queda restringida al escenario \textit{zero-shot} presentado anteriormente.
 
 % ----------------------------------------------------------------
 
 \section{Comparativa global y discusión}
 
 \subsection{Resumen de resultados}
-% Tabla unificada con todos los sistemas:
-% mBART, Spotter+Qwen (1.5B/7B/14B), MSKA+Qwen-LoRA
 
-\subsection{Comparativa con el estado del arte}
-% Tabla comparando con otros trabajos en Phoenix-2014T
-% (los que citas en SOTA.tex)
+La Tabla~\ref{tab:global} recoge todos los sistemas evaluados, ordenados por BLEU-4 en test, para facilitar la comparación directa.
+
+\begin{table}[H]
+	\centering
+	\resizebox{\textwidth}{!}{
+	\begin{tabular}{llll|ccccc|ccccc}
+		\hline
+		\multirow{2}{*}{\textbf{Sistema}}
+		    & \multirow{2}{*}{\textbf{Modelo}}
+		    & \multirow{2}{*}{\textbf{Entrada}}
+		    & \multirow{2}{*}{\textbf{Estrategia}}
+		    & \multicolumn{5}{c|}{\textbf{Dev}}
+		    & \multicolumn{5}{c}{\textbf{Test}} \\
+	            & & & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+		             & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+
+		MSKA-mBART
+		    & mBART & Visual & \textit{Full}
+		    & 45.49 & 34.03 & 26.58 & 21.43 & 45.20
+		    & 45.03 & 34.51 & 27.43 & \textbf{22.48} & \textbf{45.00} \\
+
+		MSKA-Qwen-7B
+		    & Qwen2.5-7B  & Visual & LoRA-Att
+		    & 42.23 & 31.57 & 24.81 & 20.31 & 40.95
+		    & 42.61 & 31.90 & 24.82 & 20.03 & 41.26 \\
+
+		MSKA-Qwen-1.5B (sin prompt)
+		    & Qwen2.5-1.5B & Visual & LoRA-All
+		    & 40.62 & 30.33 & 23.92 & 19.58 & 39.83
+		    & 42.21 & 31.69 & 24.98 & 20.55 & 40.01 \\
+
+		MSKA-Qwen-1.5B (\textit{full})
+		    & Qwen2.5-1.5B & Visual & \textit{Full}
+		    & 38.98 & 28.96 & 23.03 & 18.99 & 38.98
+		    & 39.26 & 29.07 & 22.74 & 18.68 & 37.04 \\
+
+		MSKA-Qwen-1.5B (LoRA-All + glosas)
+		    & Qwen2.5-1.5B & Glosas & LoRA-All
+		    & 35.39 & 25.91 & 20.17 & 16.42 & 36.12
+		    & 35.35 & 26.08 & 20.31 & 16.65 & 35.69 \\
+
+		MSKA-Qwen-1.5B (LoRA-Att)
+		    & Qwen2.5-1.5B & Visual & LoRA-Att
+		    & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
+		    & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
+
+		MSKA-Qwen-1.5B (LoRA-Att + glosas)
+		    & Qwen2.5-1.5B & Glosas & LoRA-Att
+		    & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
+		    & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
+
+		MSKA-Qwen-1.5B (\textit{full} + glosas)
+		    & Qwen2.5-1.5B & Glosas & \textit{Full}
+		    & 34.64 & 25.12 & 19.55 & 15.98 & 34.31
+		    & 35.05 & 25.43 & 19.57 & 16.00 & 34.89 \\
+
+		Spotter+Qwen (\textit{zero-shot})
+		    & Qwen2.5-14B & Glosas & ---
+		    & --- & --- & --- & --- & ---
+		    & 12.11 & 4.12 & 1.38 & 0.46 & 9.85 \\ \hline
+	\end{tabular}}
+	\caption{Comparativa global de todos los sistemas evaluados sobre
+	PHOENIX-2014T\@. Mejor resultado en negrita.
+	B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
+	\label{tab:global}
+\end{table}
+
+\subsection{Discusión}
+
+Tres conclusiones principales emergen de la comparativa global.
+
+\textbf{mBART sigue siendo la referencia más sólida.}
+Con $22.48$ BLEU-4 y $45.00$ ROUGE-L en test, ninguna configuración basada en Qwen logra superarlo.
+La ventaja de mBART no es sorprendente: su arquitectura \textit{encoder-decoder} con atención cruzada está específicamente diseñada para tareas de traducción, y su preentrenamiento multilingüe incluye alemán de forma explícita y masiva.
+Qwen, en cambio, es un modelo causal de propósito general que debe aprender a comportarse como un traductor a partir de un corpus de apenas $7.096$ muestras.
+
+\textbf{El tamaño del modelo importa más que la estrategia de \textit{finetuning}.}
+Qwen2.5-7B con LoRA-Att supera al \textit{finetuning} completo de Qwen2.5-1.5B ($20.03$ vs $18.68$ en BLEU-4), lo que indica que la capacidad representacional del modelo base es el factor limitante principal en este régimen de datos escasos.
+Bajo esta lógica, un modelo más grande como Qwen2.5-14B ajustado con LoRA podría cerrar o incluso superar la brecha con mBART, aunque su evaluación queda fuera del alcance de este trabajo por restricciones de computación.
+
+\textbf{El prompt de instrucción es contraproducente en el régimen de \textit{finetuning}.}
+El experimento sin prompt obtiene el segundo mejor resultado global ($20.55$ BLEU-4) pese a usar un modelo de solo 1.5B parámetros, superando al \textit{finetuning} completo del mismo modelo.
+Esto sugiere que, cuando el modelo dispone de suficiente capacidad de adaptación mediante LoRA-All, el prompt textual compite con los tokens visuales por la atención del modelo en lugar de complementarlos.
 
 \subsection{Análisis de errores}
-% Tipos de error más frecuentes
-% Casos donde Qwen recupera errores del reconocimiento
-% Casos donde Qwen falla pese a buen reconocimiento
-% Ejemplos cualitativos concretos
+
+% TODO: incluir ejemplos cualitativos de traducciones del mejor sistema (Qwen2.5-7B LoRA-Att) comparados con mBART y con la referencia.
+% Especialmente interesante: casos donde Qwen recupera errores del reconocedor que mBART no recupera, y casos donde mBART es claramente superior.
 
 \subsection{Coste computacional}
-% Comparar parámetros entrenables: mBART vs LoRA
-% Tiempo de inferencia por muestra
-% Viabilidad para uso en tiempo real
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Wandb
+\begin{table}[H]
+	\centering
+	\begin{tabular}{llcc}
+		\hline
+		\textbf{Sistema} & \textbf{Estrategia}
+		    & \textbf{Parámetros entrenables}
+		    & \textbf{VRAM (GB)} \\ \hline
+		MSKA-mBART            & \textit{Full}     & TODO & TODO \\
+		MSKA-Qwen-1.5B        & LoRA-Att          & TODO & TODO \\
+		MSKA-Qwen-1.5B        & LoRA-All          & TODO & TODO \\
+		MSKA-Qwen-1.5B        & \textit{Full}     & TODO & TODO \\
+		MSKA-Qwen-7B          & LoRA-Att          & TODO & TODO \\ \hline
+		\end{tabular}
+		\caption{Coste computacional de los distintos sistemas.}
+	\label{tab:compute}
+\end{table}

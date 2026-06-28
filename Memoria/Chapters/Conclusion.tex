@@ -1,3 +1,10 @@
 \chapter{Conclusión y trabajo futuro}
 
 
+Un dato revelador es que el WER sobre el conjunto de entrenamiento se sitúa en torno al $7\%$, frente al $27\%$ obtenido en dev y test.
+
+Esta brecha de aproximadamente $20$ puntos porcentuales es una señal clara de sobreajuste: el modelo memoriza con alta precisión las secuencias de glosas del corpus de entrenamiento pero generaliza de forma limitada a muestras no vistas.
+
+Este fenómeno es esperable dado el tamaño reducido del corpus ($7.096$ muestras de entrenamiento) y la complejidad de la arquitectura.
+
+El hecho de que ninguna de las técnicas de aumentación logre cerrar significativamente esta brecha refuerza la hipótesis de que el problema no es trivialmente soluble mediante perturbaciones sobre los keypoints, y apunta a la necesidad de datos adicionales o estrategias de regularización más agresivas como líneas de trabajo futuro.

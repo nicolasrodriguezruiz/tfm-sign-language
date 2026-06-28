@@ -6,7 +6,7 @@ import aux.utils as utils
 import torch.utils.data.dataset as Dataset
 from PIL import Image
 import os
-from Recognition.Tokenizer import GlossTokenizer_S2G
+from Recognition.Tokenizer import GlossTokenizer_S2G, TextTokenizer
 from transformers import AutoTokenizer
 import numpy as np
 
@@ -16,14 +16,10 @@ class S2T_Dataset(Dataset.Dataset):
     Dataset para reconocimiento/traducción de lenguaje de señas.
     Soporta dos tareas:
       - S2G (Sign-to-Gloss): reconocimiento de señas a glosas.
-      - S2T (Sign-to-Text): traducción de señas a texto natural (alemán, Phoenix14t).
+      - S2T (Sign-to-Text): traducción de señas a texto natural.
 
     Los datos de entrada son keypoints corporales (coordenadas de articulaciones)
     extraídos de vídeos de lenguaje de señas.
-
-    En S2T el texto se tokeniza con el tokenizador de Qwen2.5-1.5B en lugar de MBart.
-    No se necesita shift_tokens_right ni pruneids: Qwen es decoder-only y gestiona
-    internamente el teacher forcing a partir de los labels.
     """
 
     def __init__(self, path, tokenizer, config, args, phase, training_refurbish=False):
@@ -31,6 +27,8 @@ class S2T_Dataset(Dataset.Dataset):
         self.args = args
         self.training_refurbish = training_refurbish
         self.phase = phase
+        # Leer config de augmentación de keypoints (solo se aplica en entrenamiento)
+        self.augmentation_cfg = config['data'].get('augmentation', {})
 
         # Número máximo de frames por muestra
         self.clip_len = 400
@@ -42,33 +40,19 @@ class S2T_Dataset(Dataset.Dataset):
         else:
             self.tmin, self.tmax = 1, 1
 
-        # Dimensiones de los frames según el dataset (Phoenix14t usa 210x260)
-        if config['data']['dataset_name'].lower() == 'csl-daily':
-            self.w, self.h = 512, 512
-        else:
-            self.w, self.h = 210, 260
-
-        # Leer config de augmentación de keypoints (solo se aplica en entrenamiento)
-        self.augmentation_cfg = config['data'].get('augmentation', {})
+        # Dimensiones de los frames
+        self.w, self.h = 210, 260
 
         self.raw_data = utils.load_dataset_file(path)
-        self.tokenizer = tokenizer  # GlossTokenizer_S2G para las glosas
+        self.tokenizer = tokenizer
         self.max_length = config['data']['max_length']
         self.list = [key for key in self.raw_data]
 
-        # En S2T cargamos el tokenizador de Qwen para el texto.
-        # A diferencia de MBart, Qwen no necesita pruneids ni shift_tokens_right:
-        # se tokeniza directamente y se marcan las posiciones de padding con -100.
+        # El tokenizador de texto solo se necesita en la tarea de traducción (S2T)
         if self.config['task'] == 'S2T':
-            qwen_model_name = config['model']['TranslationNetwork'].get(
-                'pretrained_model_name_or_path', 'Qwen/Qwen2.5-1.5B'
+            self.text_tokenizer = TextTokenizer(
+                self.config['model']['TranslationNetwork']['TextTokenizer']
             )
-            self.text_tokenizer = AutoTokenizer.from_pretrained(
-                qwen_model_name, trust_remote_code=True
-            )
-            if self.text_tokenizer.pad_token is None:
-                self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
-            self.text_max_length = config['data'].get('text_max_length', 128)
 
     def __len__(self):
         return len(self.raw_data)
@@ -165,14 +149,6 @@ class S2T_Dataset(Dataset.Dataset):
         ])
         return np.dot(points, rotation_matrix.T)
 
-    def translate_points(self, points, translation):
-        """Traslada los puntos sumando el vector `translation`."""
-        return points + translation
-
-    def scale_points(self, points, scale_factor):
-        """Escala los puntos multiplicando por `scale_factor`."""
-        return points * scale_factor
-
     def random_joint_dropout(self, keypoints, dropout_prob):
         """
         Enmascara articulaciones enteras aleatoriamente poniendo sus coordenadas a 0.
@@ -257,44 +233,11 @@ class S2T_Dataset(Dataset.Dataset):
 
         return keypoints
 
+
+
     # ------------------------------------------------------------------ #
-    #  Construcción del batch                                              #
+    #  Construcción del batch                                            #
     # ------------------------------------------------------------------ #
-
-    def _tokenize_text_for_qwen(self, text_batch):
-        """
-        Tokeniza un batch de frases en alemán con el tokenizador de Qwen.
-
-        A diferencia de MBart, Qwen es decoder-only y no necesita:
-          - shift_tokens_right (lo gestiona HuggingFace internamente con labels)
-          - pruneids (Qwen ya tiene un vocabulario apropiado)
-          - token de idioma al inicio (no es un modelo multilingüe encoder-decoder)
-
-        Los tokens de padding se marcan con -100 en labels para que la loss
-        no se calcule sobre ellos.
-
-        Returns:
-            labels:            IDs del texto con -100 en posiciones de padding. (B, L)
-            decoder_input_ids: IDs del texto con pad_token_id en posiciones de padding. (B, L)
-                               Qwen los usa para teacher forcing internamente.
-        """
-        encoded = self.text_tokenizer(
-            text_batch,
-            padding='longest',
-            truncation=True,
-            max_length=self.text_max_length,
-            return_tensors='pt',
-        )
-        input_ids = encoded['input_ids']  # (B, L)
-
-        # labels: -100 donde hay padding (PyTorch ignora estos en la loss)
-        labels = input_ids.clone()
-        labels[labels == self.text_tokenizer.pad_token_id] = -100
-
-        return {
-            'labels':            labels,
-            'decoder_input_ids': input_ids,
-        }
 
     def collate_fn(self, batch):
         """
@@ -304,9 +247,9 @@ class S2T_Dataset(Dataset.Dataset):
           1. Para cada muestra, seleccionar los frames según get_selected_index.
           2. Hacer padding en la dimensión temporal para igualar longitudes.
           3. Normalizar y augmentar los keypoints.
-          4. Construir las máscaras de atención para el recognition transformer
+          4. Construir las máscaras de atención para el transformer
              (1 = posición real, 0 = padding).
-          5. Tokenizar glosas y, si la tarea es S2T, también el texto con Qwen.
+          5. Tokenizar glosas y, si la tarea es S2T, también el texto.
 
         Las longitudes se reducen dos veces a la mitad (factor /4 total) porque
         el encoder aplica dos capas de downsampling x2.
@@ -328,6 +271,7 @@ class S2T_Dataset(Dataset.Dataset):
         padded_keypoints = []
         for keypoints, len_ in zip(keypoint_batch, src_length_batch):
             if len_ < max_length:
+                # Repetir el último frame para completar
                 last_frame = keypoints[:, -1, :].unsqueeze(1)
                 padding = torch.tile(last_frame, [1, max_length - len_, 1])
                 keypoints = torch.cat([keypoints, padding], dim=1)
@@ -337,14 +281,15 @@ class S2T_Dataset(Dataset.Dataset):
         keypoints = torch.stack(padded_keypoints, dim=0)
         keypoints = self.augment_preprocess_inputs(self.phase, keypoints)
 
-        # --- 4. Máscaras de atención para el recognition ---
+        # --- 4. Máscaras de atención ---
         src_length_batch = torch.tensor(src_length_batch)
 
-        # El encoder reduce la longitud temporal en dos pasos de /2 → /4 total
+        # El encoder reduce la longitud temporal en dos pasos de /2 → longitud / 4 total
         enc_lengths = (((src_length_batch - 1) / 2) + 1).long()
         enc_lengths = (((enc_lengths - 1) / 2) + 1).long()
 
         max_enc_len = max(enc_lengths)
+        # mask shape: (batch, 1, max_enc_len) — True donde hay datos reales
         mask = torch.zeros(len(enc_lengths), 1, max_enc_len, dtype=torch.bool)
         for i, l in enumerate(enc_lengths):
             mask[i, :, :l] = True
@@ -352,7 +297,8 @@ class S2T_Dataset(Dataset.Dataset):
         # --- 5. Tokenización ---
         gloss_input = self.tokenizer(tgt_batch)
 
-        src_input = {
+        # --- Ensamblado del diccionario de entrada al modelo ---
+        batch = {
             'name':            name_batch,
             'keypoint':        keypoints,
             'gloss':           tgt_batch,
@@ -363,21 +309,18 @@ class S2T_Dataset(Dataset.Dataset):
         }
 
         if self.config['task'] == 'S2T':
-            # Tokenizar el texto con Qwen (no MBart)
-            t = self._tokenize_text_for_qwen(text_batch)
-            src_input['translation_inputs'] = {
-                **t,
-                # Las glosas ground truth se pasan para el ablation study
-                # (use_gloss_tokens: true + gloss_source: ground_truth)
+            t = self.text_tokenizer(text_batch)
+            batch['translation_inputs'] = {
+                **t,  # input_ids, attention_mask, labels, etc. del tokenizador de texto
                 'gloss_ids':     gloss_input['gloss_labels'],
                 'gloss_lengths': gloss_input['gls_lengths'],
             }
-            src_input['text'] = text_batch
+            batch['text'] = text_batch
 
-        return src_input
+        return batch
 
     # ------------------------------------------------------------------ #
-    #  Utilidades                                                          #
+    #  Utilidades heredadas  (no utilizadas aquí pero repo lo tiene)     #
     # ------------------------------------------------------------------ #
 
     def pil_list_to_tensor(self, pil_list, int2float=True):
@@ -393,6 +336,7 @@ class S2T_Dataset(Dataset.Dataset):
         Muestrea clip_len frames uniformemente distribuidos a lo largo del vídeo.
         En entrenamiento elige aleatoriamente dentro de cada segmento.
         En validación/test usa el centro de cada segmento.
+        (Adaptado de SlowFast/SSv2.)
         """
         seg_size = float(num_frames - 1) / self.clip_len
         seq = []
@@ -407,7 +351,8 @@ class S2T_Dataset(Dataset.Dataset):
 
     def apply_spatial_ops(self, x, spatial_ops_func):
         """
-        Aplica spatial_ops_func sobre (B, T, C, H, W) en chunks de 16 frames.
+        Aplica `spatial_ops_func` sobre un tensor (B, T, C, H, W) procesando
+        en chunks de 16 frames para no saturar memoria.
         """
         B, T, C_, H, W = x.shape
         x = x.view(-1, C_, H, W)
@@ -418,6 +363,7 @@ class S2T_Dataset(Dataset.Dataset):
 
     def __str__(self):
         return f'#total {self.phase} set: {len(self.list)}.'
+
 
 
 

@@ -38,7 +38,7 @@ from pathlib import Path
 from collections import defaultdict
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModelForCausalLM
-
+import pandas as pd
 
 from Recognition.Tokenizer import GlossTokenizer_S2G
 from Recognition.recognition import Recognition
@@ -116,9 +116,9 @@ def load_qwen(model_name, device):
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    
+
     tokenizer.padding_side = 'left'
-    
+
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
@@ -161,12 +161,12 @@ def generate_from_glosses(
         ]
         # El tokenizador se encarga de poner los <|im_start|> y <|im_end|> de forma perfecta
         formatted_text = qwen_tokenizer.apply_chat_template(
-            messages, 
-            tokenize=False, 
+            messages,
+            tokenize=False,
             add_generation_prompt=True
         )
         inputs_text.append(formatted_text)
-    
+
     encoded = qwen_tokenizer(
         inputs_text,
         return_tensors='pt',
@@ -246,6 +246,7 @@ def evaluate(args, config):
             'pretrained_model_name_or_path', 'Qwen/Qwen2.5-1.5B'
         )
     )
+    print(f"Usando modelo: {qwen_model_name}")
     qwen_tokenizer, qwen_model = load_qwen(qwen_model_name, device)
 
     prompt_str = config['data'].get('prompt', '')
@@ -257,14 +258,14 @@ def evaluate(args, config):
     dataset_name = config['data']['dataset_name'].lower()
 
     print(f"\nIniciando evaluación baseline (glosas → Qwen)...\n")
-    
-    
+
+
     # Extraer parámetros de generación desde el config YAML
     test_cfg = config.get('testing', {})
-    
+
     # Parámetros para el decodificador CTC (reconocimiento)
     rec_beam_size = test_cfg.get('recognition', {}).get('beam_size', args.beam_size)
-    
+
     # Parámetros para Qwen (traducción)
     trans_cfg = test_cfg.get('translation', {})
     gen_kwargs = {
@@ -276,8 +277,8 @@ def evaluate(args, config):
         'early_stopping': trans_cfg.get('early_stopping', False),
         'temperature': trans_cfg.get('temperature', 1.0),
         'do_sample': trans_cfg.get('do_sample', False),
-    }    
-    
+    }
+
     with torch.no_grad():
         for step, batch in enumerate(
             metric_logger.log_every(dataloader, print_freq=20, header=f'[{args.split}]')
@@ -304,10 +305,10 @@ def evaluate(args, config):
             #     (' '.join(g).upper() if tokenizer_gls.lower_case else ' '.join(g))
             #     for g in pred_gls_tokens
             # ]
-            
+
             # Convertir IDs → tokens de glosas  y limpiar UNK
             pred_gls_tokens = tokenizer_gls.convert_ids_to_tokens(ctc_decoded)
-            
+
             # --- Limpiar tokens <UNK> (y otros tokens especiales residuales) ---
             cleaned_gls_tokens = [
                 [t for t in g if t.upper() not in ['<UNK>', '<PAD>', '<BOS>', '<EOS>']]
@@ -319,11 +320,6 @@ def evaluate(args, config):
                 (' '.join(g).upper() if tokenizer_gls.lower_case else ' '.join(g))
                 for g in cleaned_gls_tokens
             ]
-            
-            
-            
-            
-            
 
             # Glosas → Qwen → texto
             txt_hyp = generate_from_glosses(
@@ -422,6 +418,24 @@ def evaluate(args, config):
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
+    # ── Guardar resultados en CSV ─────────────────────────
+    csv_file = output_dir / f'baseline_gloss2qwen_{args.split}.csv'
+
+    csv_data = []
+    for n in names:
+        csv_data.append({
+            'Video_ID': n,
+            'Referencia': results[n]['txt_ref'],
+            'Prediccion': results[n]['txt_hyp'],
+            'Glosas_Predichas': results[n]['gls_pred'] # Útil para depurar después
+        })
+
+    df = pd.DataFrame(csv_data)
+    df.to_csv(csv_file, index=False, encoding='utf-8')
+
+
+    print(f"Predicciones listas para BLEURT guardadas en: {csv_file}")
+    #
     print(f"\nResultados guardados en: {output_file}")
     print("=" * 60)
 
