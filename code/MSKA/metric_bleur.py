@@ -1,10 +1,7 @@
 import torch
 import yaml
-import gc
-import os
 import pandas as pd
 from tqdm import tqdm
-import evaluate
 from torch.utils.data import DataLoader
 
 from slm.S2T_Dataset import S2T_Dataset
@@ -24,8 +21,8 @@ class DummyArgs:
         self.slm = False
 
 def main():
-    config_path = 'configs/abalation/SLT_SLM_LoRA_Att_Qwen7_Gloss.yaml'
-    checkpoint_path = '/home/user/work/data/outputs_final/SLT_SLM_Att_7B/best_checkpoint.pth'
+    config_path = ''
+    checkpoint_path = ''
     csv_output_path = 'resultados_test_s2t.csv'
 
     with open(config_path, 'r', encoding='utf-8') as f:
