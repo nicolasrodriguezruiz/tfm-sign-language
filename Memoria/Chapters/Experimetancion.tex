@@ -727,26 +727,75 @@ Bajo esta lógica, un modelo más grande como Qwen2.5-14B ajustado con LoRA podr
 El experimento sin prompt obtiene el segundo mejor resultado global ($20.55$ BLEU-4) pese a usar un modelo de solo 1.5B parámetros, superando al \textit{finetuning} completo del mismo modelo.
 Esto sugiere que, cuando el modelo dispone de suficiente capacidad de adaptación mediante LoRA-All, el prompt textual compite con los tokens visuales por la atención del modelo en lugar de complementarlos.
 
-\subsection{Análisis de errores}
+% \subsection{Análisis de errores}
+%
+% Para complementar el análisis cuantitativo de la Tabla~\ref{tab:global}, se presentan ejemplos cualitativos que ilustran los patrones de error más frecuentes del mejor sistema basado en Qwen (Qwen2.5-7B LoRA-Att) en comparación con mBART y la referencia.
+%
+% \begin{table}[H]
+%     \centering
+%     \small
+%     \renewcommand{\arraystretch}{1.5}
+%     \begin{tabular}{p{0.22\textwidth} p{0.22\textwidth} p{0.22\textwidth} p{0.22\textwidth}}
+%         \hline
+%         \textbf{Referencia} & \textbf{Glosas (SLR)} & \textbf{mBART} & \textbf{Qwen2.5-7B} \\ \hline
+%
 
-% TODO: incluir ejemplos cualitativos de traducciones del mejor sistema (Qwen2.5-7B LoRA-Att) comparados con mBART y con la referencia.
-% Especialmente interesante: casos donde Qwen recupera errores del reconocedor que mBART no recupera, y casos donde mBART es claramente superior.
-
+%     \end{tabular}
+%     \caption{Ejemplos cualitativos de traducción sobre el conjunto de prueba. Las glosas corresponden a las predicciones del módulo SLR-\textit{JointDropout}.}
+%     \label{tab:translation_qualitative}
+% \end{table}
+%
 \subsection{Coste computacional}
-Wandb
+La Tabla~\ref{tab:compute} resume el coste computacional de cada sistema, medido en número de parámetros entrenables y consumo de memoria durante el entrenamiento.
+El uso de memoria se reporta mediante dos fuentes complementarias: la estimación proporcionada por \textbf{Weights \& Biases} (\textit{Wandb}), que monitoriza la memoria GPU reservada por el proceso, y la medición directa de \textbf{PyTorch} mediante \texttt{torch.cuda.max\_memory\_allocated}, que refleja la memoria efectivamente ocupada por tensores en el pico de uso.
+La diferencia entre ambas cifras corresponde a la memoria reservada pero no utilizada por el gestor de memoria de CUDA\@.
+
 \begin{table}[H]
-	\centering
-	\begin{tabular}{llcc}
-		\hline
-		\textbf{Sistema} & \textbf{Estrategia}
-		    & \textbf{Parámetros entrenables}
-		    & \textbf{VRAM (GB)} \\ \hline
-		MSKA-mBART            & \textit{Full}     & TODO & TODO \\
-		MSKA-Qwen-1.5B        & LoRA-Att          & TODO & TODO \\
-		MSKA-Qwen-1.5B        & LoRA-All          & TODO & TODO \\
-		MSKA-Qwen-1.5B        & \textit{Full}     & TODO & TODO \\
-		MSKA-Qwen-7B          & LoRA-Att          & TODO & TODO \\ \hline
-		\end{tabular}
-		\caption{Coste computacional de los distintos sistemas.}
-	\label{tab:compute}
+    \centering
+    \resizebox{\textwidth}{!}{\begin{tabular}{llccc}
+        \hline
+        \textbf{Sistema} & \textbf{Estrategia}
+            & \textbf{Parámetros (M)}
+            & \textbf{VRAM Wandb (GB)}
+            & \textbf{VRAM PyTorch (GB)}\\ \hline
+        MSKA-mBART            & \textit{Full}     & 657.70 & 37.2 & 32.23\\
+        MSKA-Qwen-1.5B        & LoRA-Att          &  17.43 & 36.0 & 13.12\\
+        MSKA-Qwen-1.5B        & LoRA-All          &  73.86 & 38.4 & 14.11\\
+        MSKA-Qwen-1.5B        & \textit{Full}     & 1543.70 & 36.8 & 19.55\\
+        MSKA-Qwen-7B          & LoRA-Att          &  40.37 & 32.8 & 28.88\\ \hline
+    \end{tabular}}
+    \caption{Coste computacional de los distintos sistemas. Parámetros en millones. VRAM Wandb: memoria GPU reservada por el proceso; VRAM PyTorch: pico de memoria efectivamente ocupada por tensores (\texttt{torch.cuda.max\_memory\_allocated}).}
+    \label{tab:compute}
 \end{table}
+
+Varios aspectos resultan destacables.
+
+En primer lugar, \textbf{mBART} es el segundo sistema con mayor número de parámetros entrenables ($657.70$M), consecuencia directa de su \textit{finetuning} completo, y también el que más memoria efectiva consume ($32.23$\,GB según PyTorch), lo que deja un margen muy reducido dentro del presupuesto de $40$\,GB de la A100.
+
+En segundo lugar, las variantes \textbf{LoRA} de Qwen-1.5B reducen drásticamente los parámetros entrenables: LoRA-Att entrena solo $17.43$M de parámetros ($\sim$1.1\% del total del modelo), mientras que LoRA-All amplía esta cifra a $73.86$M al incorporar también las capas \textit{feed-forward}.
+Sin embargo, la diferencia en consumo de memoria efectiva entre ambas variantes es modesta ($13.12$ vs.\ $14.11$\,GB), lo que indica que el coste en memoria no proviene de los adaptadores en sí, sino de los activaciones y gradientes del modelo base congelado.
+
+En tercer lugar, el \textbf{\textit{finetuning} completo de Qwen-1.5B} actualiza $1543.70$M de parámetros (todos los del modelo más el VLMapper), pero su consumo de memoria ($19.55$\,GB) es moderado gracias al tamaño reducido del modelo base, lo que hace viable su entrenamiento en una única GPU.
+
+Finalmente, \textbf{Qwen-7B con LoRA-Att} actualiza apenas $40.37$M de parámetros, pero su consumo de memoria efectiva ($28.88$\,GB) es el segundo más alto de la tabla debido al mayor tamaño del modelo base que debe mantenerse en memoria durante el paso hacia adelante.
+Esta configuración ocupa el punto óptimo en la relación rendimiento-coste: con solo el $2.5\times$ de memoria respecto a Qwen-1.5B LoRA-Att, obtiene una mejora de $+3.72$ puntos de BLEU-4, la mayor ganancia individual de toda la batería de experimentos.
+
+% \subsection{Coste computacional}
+% Wandb
+% \begin{table}[H]
+% 	\centering
+% 	\begin{tabular}{llccc}
+% 		\hline
+% 		\textbf{Sistema} & \textbf{Estrategia}
+% 		    & \textbf{Parámetros entrenables (Millones)}
+% 		    & \textbf{VRAM-Wandb (GB)}
+% 		    & \textbf{VRAM-Pytorch (GB)}\\ \hline
+% 		MSKA-mBART            & \textit{Full}     & 657.70 & 37.2 & 32.23\\
+% 		MSKA-Qwen-1.5B        & LoRA-Att          & 17.43 & 36.0 & 13.124\\
+% 		MSKA-Qwen-1.5B        & LoRA-All          & 73.86 & 38.4 & 14.11\\
+% 		MSKA-Qwen-1.5B        & \textit{Full}     & 1543.7 & 36.8 & 19.55\\
+% 		MSKA-Qwen-7B          & LoRA-Att          & 40.37 & 32.8 & 28.88\\ \hline
+% 		\end{tabular}
+% 		\caption{Coste computacional de los distintos sistemas.}
+% 	\label{tab:compute}
+% \end{table}
