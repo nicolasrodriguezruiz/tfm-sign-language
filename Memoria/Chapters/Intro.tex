@@ -14,3 +14,37 @@ Desde el punto de vista técnico, Sign2Text es un problema especialmente complej
 Además de esta complejidad multimodal, la naturaleza visual de la tarea presenta consideraciones relevantes en materia de privacidad. Procesar vídeos de personas requiere garantías sobre el tratamiento de datos personales, especialmente en entornos sensibles como la sanidad o la educación. Por ello, un enfoque que minimice la exposición de datos desde el origen resulta deseable. A raiz de esto nace la traducción de signos basados en \textit{keypoints}, esto es puntos predeterminados en el cuerpo humano que resumen la información de la postura, expresión e información de manos, capturando la información gestual relevante sin preservar la identidad visual de la persona, permitiendo así un procesamiento más ligero, portable y respetuoso con la privacidad. De forma paralela, el uso de este enfoque, reduce drásticamente la dimensionalidad de los datos, optimizando los costes computacionales de entrenamiento e inferencia y facilitando su despliegue en equipos menos potentes.
 
 \section{Objetivo}
+El objetivo principal de este trabajo es explorar la viabilidad de sustituir el decodificador de traducción clásico del sistema MSKA-SLT, basado en mBART, por un \textbf{Modelo de Lenguaje Pequeño} (\textit{Small Language Model}, SLM) de arquitectura \textit{decoder-only}, con el fin de dotar al sistema de mayor capacidad de razonamiento contextual manteniendo la ejecución local y la privacidad del usuario.
+
+Para alcanzar este objetivo principal, se plantean los siguientes \textbf{objetivos específicos}:
+
+\begin{enumerate}
+
+    \item \textbf{Reimplementar y validar el sistema MSKA-SLT como línea base.}
+    Reproducir la arquitectura original de reconocimiento y traducción de lengua de signos basada en MSKA sobre el corpus PHOENIX-2014T, verificando que los resultados obtenidos son coherentes con los publicados en la literatura para establecer un punto de referencia riguroso.
+
+    \item \textbf{Diseñar e integrar el módulo de proyección visual (\textit{VLMapper}).}
+    Desarrollar el componente encargado de alinear el espacio de representaciones visuales producido por el reconocedor MSKA-SLR con el espacio de \textit{embeddings} del modelo de lenguaje, permitiendo la inyección de información visual como prefijo de contexto en un modelo \textit{decoder-only}.
+
+    \item \textbf{Evaluar la capacidad de traducción en modo \textit{zero-shot}.}
+    Analizar el comportamiento del SLM sin ningún entrenamiento específico para la tarea, usando únicamente un prompt de instrucción en alemán sobre las glosas predichas por el reconocedor, siguiendo el paradigma del trabajo Spotter+GPT, para caracterizar el límite inferior del sistema antes de cualquier adaptación.
+
+    \item \textbf{Adaptar el SLM mediante \textit{finetuning} eficiente con LoRA.}
+    Entrenar el sistema completo sobre PHOENIX-2014T aplicando adaptadores de bajo rango (\textit{Low-Rank Adaptation}) en distintas configuraciones (LoRA-Att, LoRA-All) y estrategias (features visuales vs.\ glosas, con y sin prompt de instrucción), analizando el impacto de cada decisión de diseño sobre la calidad de la traducción.
+
+    \item \textbf{Estudiar el efecto del escalado del modelo de lenguaje.}
+    Comparar el rendimiento de Qwen2.5-1.5B y Qwen2.5-7B bajo la misma configuración de LoRA para determinar si la capacidad representacional del modelo base es el factor limitante principal en un régimen de datos reducido como el de la lengua de signos.
+
+    \item \textbf{Cuantificar el coste computacional de cada configuración.}
+    Medir el número de parámetros entrenables y el consumo de memoria GPU de cada variante experimental, evaluando la relación rendimiento-coste de cada aproximación de cara a su viabilidad en escenarios con recursos limitados.
+
+\end{enumerate}
+
+\section{Estructura del documento}
+
+La memoria se organiza en los siguientes capítulos.
+El Capítulo~\ref{ch:sota} revisa el estado del arte en traducción automática de lengua de signos, desde los paradigmas históricos hasta los enfoques más recientes basados en modelos de lenguaje, y presenta los conjuntos de datos relevantes.
+El Capítulo~\ref{ch:fundamentos} expone los fundamentos teóricos necesarios para comprender el trabajo: mecanismos de atención, \textit{transformers}, CTC y LoRA.
+El Capítulo~\ref{ch:metodologia} detalla las decisiones de diseño adoptadas: el estimador de pose, el proceso de normalización, la arquitectura MSKA y la integración del SLM mediante prefijo visual.
+El Capítulo~\ref{ch:experimentacion} presenta los experimentos realizados y analiza los resultados, incluyendo el estudio de ablación y la comparativa global.
+Finalmente, el Capítulo~\ref{ch:conclusion} recoge las conclusiones del trabajo y propone líneas de investigación futura.

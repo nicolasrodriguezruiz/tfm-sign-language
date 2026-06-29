@@ -53,7 +53,7 @@ Cuando la nitidez decae debido a la rapidez de un gesto, entra en acción su mó
 Este componente rompe con la rigidez de analizar imágenes aisladas y prefiere conectar los fotogramas vecinos para dar continuidad al esqueleto.
 Si un punto clave desaparece durante un par de cuadros por culpa del desenfoque, el sistema se apoya en el contexto inmediato anterior y posterior para recomponer la trayectoria, evitando deformaciones anómalas.
 
-\subsubsection{El desafío del \textit{jittering} y la delegación temporal}
+\subsubsection*{El desafío del \textit{jittering} y la delegación temporal}
 Conviene aclarar que, pese a las virtudes de \textit{Pose Flow} para mantener el hilo de las identidades, este módulo no realiza un pulido cinemático fino.
 El núcleo predictivo de AlphaPose sigue operando fotograma a fotograma, una inercia técnica que suele introducir micro-vibraciones (\textit{jittering}) de unos pocos píxeles en las coordenadas resultantes.
 
@@ -64,7 +64,9 @@ Por este motivo, en este trabajo se ha tomado la decisión de no suavizar artifi
 Preferimos delegar esa incertidumbre en la propia arquitectura de la red predictiva (los flujos de \textit{MSKA} y sus módulos de atención).
 Confiamos en que la capacidad de la arquitectura \textit{Transformer} para capturar dependencias temporales largas mediante la autoatención sea suficiente para absorber este ruido, logrando dar sentido a las fluctuaciones sin sacrificar la riqueza expresiva del signo original.
 
-\subsubsection{Configuración técnica y formato de salida}
+
+
+\subsubsection*{Configuración técnica y formato de salida}
 Alphapose tiene la capacidad de cambiar la topologia que representan los puntos clave del esqueleto.
 Existen principalmente dos opciones adecuadas para esta tarea: \textbf{COCO-WholeBody}, una extensión del clásico MS-COCO que cubre el cuerpo entero con $133$ puntos, y \textbf{HALPE-136}, que proporciona una anotación de $136$ puntos clave.
 Elegimos esta última opción porque introduce anclas de referencia espacial estratégicas en el torso, como el centro de la cadera, el cuello y la cabeza.
@@ -91,6 +93,23 @@ El producto final tras procesar cada vídeo es un archivo estructurado en format
 Cada fotograma se traduce en un diccionario que almacena la lista plana de coordenadas bidimensionales $(x, y)$ combinadas con su respectivo índice de confianza $(c)$ para cada punto anatómico detectado, reflejando la estructura del siguiente fragmento:
 
 \lstinputlisting[language=json]{code/keypoints-format.txt}
+
+% La configuración empleada en este trabajo es la siguiente:
+% \begin{table}[H]
+%     \centering
+%     \begin{tabular}{ll}
+%         \hline
+%         \textbf{Parámetro}       & \textbf{Valor} \\ \hline
+%         Topología de keypoints   & HALPE-136 (136 puntos) \\
+%         Detector de personas     & YOLOv3 (umbral de confianza $0.1$) \\
+%         Seguimiento temporal     & \textit{Pose Flow} activado \\
+%         Formato de salida        & JSON por vídeo \\
+%         Canales por keypoint     & 3 $(x,\, y,\, c)$ \\ \hline
+%     \end{tabular}
+%     \caption{Configuración de AlphaPose empleada en la extracción de \textit{keypoints}.}
+%     \label{tab:alphapose_config}
+% \end{table}
+
 
 \section{Normalización de los Datos}
 Las coordenadas brutas producidas por AlphaPose se expresan en píxeles absolutos del fotograma, lo que las hace dependientes de la resolución del vídeo de origen.
@@ -324,7 +343,6 @@ Este bloque actúa como un adaptador de dominio muy básico: proyecta las repres
 
 
 \subsubsection{MBART como decodificador}
-
 El artículo opta por utilizar \textbf{mBART} (\textit{Multilingual BART}) \cite{mBART} como la red de traducción principal.
 
 mBART es un modelo de lenguaje preentrenado con una arquitectura tipo \textit{transformer} \textit{encoder-decoder} que ha demostrado un rendimiento sobresaliente en tareas de traducción automática multilingüe.
@@ -349,13 +367,41 @@ La secuencia unificada que procesa el modelo adopta la estructura:
 \texttt{[Tokens Visuales] + [Prompt Textual] + [Traducción Objetivo]}.
 \end{center}
 
+\subsubsection{El módulo de proyección visual (\textit{VLMapper})}
+El \textit{VLMapper} es el puente entre el espacio de representaciones del reconocedor visual y el espacio de \textit{embeddings} del modelo de lenguaje.
+Su función es proyectar la secuencia de características producida por MSKA-SLR, de dimensión $T/4 \times 512$, al espacio semántico en que opera Qwen, cuya dimensión de \textit{embedding} es $d_{\text{LM}}$ (1536 para Qwen2.5-1.5B, 3584 para Qwen2.5-7B).
+
+Arquitectónicamente, el \textit{VLMapper} es un \textbf{perceptrón multicapa (MLP) de dos capas} con activación \texttt{GELU} entre ellas:
+\begin{equation*}
+    \text{VLMapper}(\mathbf{H}) = W_2 \cdot \texttt{GELU}(W_1 \mathbf{H} + b_1) + b_2
+\end{equation*}
+donde $\mathbf{H} \in \mathbb{R}^{(T/4) \times 512}$ es la representación de la glosa producida por MSKA-SLR, $W_1 \in \mathbb{R}^{512 \times 512}$, $W_2 \in \mathbb{R}^{512 \times d_{\text{LM}}}$.
+
+La salida del \textit{VLMapper} es, por tanto, una secuencia de $T/4$ vectores en $\mathbb{R}^{d_{\text{LM}}}$, que se tratan como \textbf{tokens visuales continuos} y se concatenan al inicio del contexto del modelo de lenguaje.
+
+El \textit{VLMapper} se entrena conjuntamente con los adaptadores LoRA durante el \textit{finetuning}: sus pesos \textbf{no se congelan}, de modo que puede ajustarse para alinear progresivamente el espacio visual con el espacio lingüístico de Qwen a lo largo del entrenamiento.
+Esta decisión de diseño está motivada por el bajo número de parámetros del proyector ($\approx 0.5$\,M para Qwen2.5-1.5B y $\approx 1.8$\,M para Qwen2.5-7B), que hacen viable su entrenamiento completo sin riesgo de sobreajuste.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lcc}
+        \hline
+        \textbf{Modelo LM} & \textbf{$d_{\text{LM}}$} & \textbf{Parámetros del VLMapper (M)} \\ \hline
+        Qwen2.5-1.5B & 1536 & $\approx 0.5$ \\
+        Qwen2.5-7B   & 3584 & $\approx 1.8$ \\ \hline
+    \end{tabular}
+    \caption{Dimensión de \textit{embedding} del modelo de lenguaje y parámetros del \textit{VLMapper} para cada variante experimental.}
+    \label{tab:vlmapper}
+\end{table}
+
+\subsubsection*{Entrenamiento}
 La función de pérdida se aplica únicamente sobre los tokens de la traducción objetivo.
 De este modo, el modelo no recibe penalización por su comportamiento sobre el contexto de entrada, concentrando toda la señal de supervisión en aprender a generar la traducción correcta condicionada a la información visual.
 
-Dado que un ajuste fino completo de un modelo de lenguaje podría desestabilizaría sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicado en \textit{Sección}~\ref{sec:LoRA}).
+Dado que un \textit{finetunning} completo de un modelo de lenguaje podría desestabilizaría sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicado en \textit{Sección}~\ref{sec:LoRA}).
 
 Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \textit{zero-shot}, siguiendo la línea del trabajo \textbf{Spotter+GPT} \cite{SpotterGPT} presentado en el estado del arte.
 En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
+
 
 \subsection{Tokenizador}
 Todo sistema de traducción automática requiere convertir las secuencias de texto en representaciones numéricas que la red pueda procesar.

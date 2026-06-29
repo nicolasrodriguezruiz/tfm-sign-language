@@ -1,4 +1,4 @@
-\chapter{Estado del Arte}
+\chapter{Estado del Arte}\label{ch:sota}
 En este capítulo analizaremos el contexto general de la traducción de lengua de signos, desde su evolución hasta la actualidad.
 Finalmente, estudiaremos el estado del arte específico a los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
 
@@ -168,11 +168,10 @@ A continuación, exploramos los conjuntos de datos más relevantes que han marca
     \item \textbf{How2Sign \cite{How2Sign}:} Este corpus masivo de Lengua de Signos Americana (ASL) ejemplifica el paradigma moderno.
     Basado en vídeos instructivos extraídos de internet, presenta grabaciones en entornos reales con múltiples ángulos y un vocabulario extremadamente amplio y continuo, suponiendo un reto mayúsculo de generalización para los modelos actuales.
 
-    \item \textbf{Sign4All \cite{sign4all}:} Un conjunto de datos de reciente aparición que destaca por su enfoque en la inclusión y la captura de alta calidad.
-    La generación de los datos contó con 8 participantes grabados a una resolución de 2560$\times$1440 y 30 fps, suponiendo un salto de calidad respecto a corpus clásicos como PHOENIX.
-    El conjunto original consta de $7.756$ muestras de vídeo segmentadas manualmente junto con anotaciones esqueléticas, ampliado mediante técnicas de aumento de datos a $61.409$ muestras para respaldar el entrenamiento de arquitecturas de aprendizaje profundo.
-    Al igual que CSL-Daily, y debido a preocupaciones sobre la privacidad de los participantes, el acceso a este \textit{dataset} está restringido y requiere la solicitud de un Acuerdo de Uso de Datos (DUA), aunque estos permiten el uso a estudiantes.
-    Un conjunto de datos de reciente aparición que destaca por su enfoque en la inclusión y la captura de alta calidad para tareas multimodales.
+    \item \textbf{Sign4All \cite{sign4all}:} Un conjunto de datos reciente que destaca por su enfoque en la inclusión y la captura de alta calidad.
+    La generación de los datos contó con $8$ participantes grabados a una resolución de $2560\times1440$ y $30$ fps, suponiendo un salto de calidad respecto a corpus clásicos.
+    El conjunto original consta de $7.756$ muestras de vídeo segmentadas manualmente junto con \textit{keypoints}, ampliado mediante técnicas de aumento de datos a $61.409$ muestras para respaldar el entrenamiento de arquitecturas de aprendizaje profundo.
+    Al igual que CSL-Daily, y debido a preocupaciones sobre la privacidad de los participantes, el acceso a este \textit{dataset} está restringido y requiere la solicitud de un Acuerdo de Uso de Datos (DUA), aunque estos permiten el uso a estudiantes..
     Debido a su reciente introducción \textbf{23 de febrero de 2026} y a sus prometedoras características técnicas, su integración y su calidad se contemplan como una sólida línea de investigación para el trabajo futuro de este proyecto.
 \end{itemize}
 
