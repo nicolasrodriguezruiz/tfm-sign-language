@@ -134,9 +134,7 @@ En segundo lugar, el ratio medio de aproximadamente $5$ frames por token implica
 El vocabulario de glosas del conjunto de entrenamiento contiene \texttt{1094} entradas únicas, incluyendo los tokens especiales requeridos por la decodificación CTC.
 Cada glosa recibe un identificador numérico único construido a partir del conjunto de entrenamiento; las glosas no vistas durante el entrenamiento se mapean al token \texttt{<UNK>} en inferencia.
 
-%La naturaleza cerrada de este vocabulario, acotado al dominio meteorológico, es uno de los factores que permite al módulo de reconocimiento alcanzar tasas de error competitivas pese al tamaño reducido del corpus.
 
-% ----------------------------------------------------------------
 
 \section{Reconocimiento de Lengua de Signos (SLR)}
 En esta sección se evalúa el módulo de reconocimiento de forma aislada sobre la tarea S2G, midiendo el impacto de las distintas técnicas de aumento de datos sobre la calidad del reconocimiento de glosas.
@@ -337,11 +335,7 @@ Estos resultados servirán como referencia cuantitativa para evaluar si la susti
 Antes de explorar el \textit{finetuning}, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, siguiendo la línea del trabajo Spotter+GPT descrito en el estado del arte.
 En este experimento no se realiza ningún entrenamiento adicional: el módulo de reconocimiento predice una secuencia de glosas mediante CTC \textit{beam search}, y dicha secuencia se pasa directamente a Qwen como texto plano mediante un prompt de instrucción, sin ningún tipo de entrenamiento ni acceso a features visuales.
 
-%Este experimento permite responder a una pregunta concreta: ¿puede un modelo de lenguaje traducir glosas a texto alemán coherente sin haber sido entrenado para ello?
-%La respuesta tiene implicaciones directas sobre la viabilidad de sistemas híbridos ligeros que no requieran entrenamiento específico de dominio.
-
 \subsection{Configuración}
-
 Se emplea \textbf{Qwen2.5-14B-Instruct} como modelo de lenguaje, elegido por su tamaño suficiente para exhibir capacidades de razonamiento \textit{zero-shot} y por su disponibilidad bajo las restricciones de memoria de una única A100 de $40$\,GB en inferencia con precisión \texttt{bfloat16}.
 
 El prompt de instrucción, formulado en alemán para maximizar la coherencia lingüística con la tarea basandonos en el de \textit{Spotter+GPT} \cite{SpotterGPT}, tiene la siguiente estructura:
@@ -384,28 +378,6 @@ Las glosas predichas por el módulo de reconocimiento se concatenan al final del
 	\caption{Resultados del experimento \textit{zero-shot} sobre el conjunto de test de PHOENIX-2014T\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
 	\label{tab:zeroshot_results}
 \end{table}
-
-% Los resultados son significativamente inferiores a la línea base de mBART ($0.46$ vs $22.48$ en BLEU-4), lo que descarta el escenario \textit{zero-shot} como una alternativa viable para este dominio.
-%
-% La causa principal no reside en la capacidad lingüística de Qwen, sino en la naturaleza de las glosas que recibe.
-% Las glosas de PHOENIX-2014T son palabras clave en alemán en mayúsculas que siguen la gramática espacial de la lengua de signos alemana (DGS), estructuralmente muy distinta del alemán hablado: carecen de artículos, conjugaciones verbales y conectores sintácticos.
-% Transformar esta representación esquemática en una oración fluida requiere un conocimiento implícito del dominio meteorológico y de la correspondencia entre la gramática de la DGS y el alemán estándar que Qwen no posee sin entrenamiento específico.
-%
-% A esto se suma el impacto acumulado de los errores del reconocedor: con un WER de aproximadamente $27\%$, una de cada cuatro glosas es incorrecta, errónea o ausente.
-% Mientras que un modelo entrenado aprende a ser robusto ante estas imperfecciones, Qwen en modo \textit{zero-shot} las trata como entrada fiable, propagando los errores directamente a la traducción.
-%
-% Este resultado contrasta con el éxito reportado por Spotter+GPT en el estado del arte, donde se emplea GPT-3.5 con un vocabulario de signos más amplio y heterogéneo.
-%
-% La diferencia sugiere que el enfoque \textit{zero-shot} puede funcionar en dominios con mayor variedad léxica, donde el LLM dispone de más contexto para inferir el significado, pero resulta insuficiente en dominios cerrados y gramaticalmente alejados del lenguaje natural como el meteorológico de PHOENIX\@.
-%
-% En conclusión, el escenario \textit{zero-shot} confirma que el \textit{finetuning} es imprescindible para alinear un modelo de lenguaje general con la tarea específica de traducción de lengua de signos, independientemente del tamaño del modelo empleado.
-%
-%
-%
-%
-%
-%
-% \subsection{Análisis}
 
 Los resultados cuantitativos sitúan el sistema en un BLEU-4 de $0.46$ y un ROUGE-L de $9.85$, valores muy inferiores a la línea base de mBART ($22.48$ y $45.00$ respectivamente).
 Lo cual es razonable dado que el modelo en ningún momento se ha entrenado para predecir exactamente las frases del corpus.
@@ -477,11 +449,6 @@ El tercer y más grave patrón es la \textbf{alucinación multilingüe}: en dos 
 Esto apunta a una inestabilidad del modelo cuando recibe entradas que no encajan con sus distribuciones de entrenamiento. Las glosas en mayúsculas con morfología alemana pero sintaxis de lengua de signos constituyen un tipo de input inusual que puede activar patrones de otros idiomas del corpus de preentrenamiento.
 Este problema aparece tanto con glosas predichas como con glosas de referencia, lo que confirma que el origen es la naturaleza de las glosas como input, no a los errores del reconocedor.
 
-% En conjunto, el experimento \textit{zero-shot} confirma que las capacidades lingüísticas de Qwen son insuficientes para abordar la traducción de lengua de signos sin ningún tipo de entrenamiento, independientemente de la calidad de las glosas de entrada.
-% La pequeña diferencia de BLEURT entre glosas predichas ($0.5014$) y de referencia ($0.5339$) refuerza esta conclusión: mejorar el reconocedor no resolvería el problema fundamental, que es la falta de alineación entre el espacio de las glosas y el espacio lingüístico del alemán hablado.
-%
-%
-% En conjunto, el experimento \textit{zero-shot} ofrece una lectura matizada.
 Comparando con el trabajo Spotter+GPT, que emplea GPT-3.5-turbo y alcanza un BLEURT de $0.49$ con su detector visual y $0.79$ con glosas de referencia, nuestro sistema obtiene resultados similares en el escenario con glosas predichas ($0.50$ vs $0.49$) pero notablemente inferiores en el escenario con glosas de referencia ($0.53$ vs $0.79$).
 
 Esto muestra que cuando la entrada es ruidosa (glosas predichas), ambos sistemas se comportan de forma comparable, lo que sugiere que el cuello de botella en ese escenario es el reconocedor, no el modelo de lenguaje.
@@ -727,24 +694,6 @@ Bajo esta lógica, un modelo más grande como Qwen2.5-14B ajustado con LoRA podr
 El experimento sin prompt obtiene el segundo mejor resultado global ($20.55$ BLEU-4) pese a usar un modelo de solo 1.5B parámetros, superando al \textit{finetuning} completo del mismo modelo.
 Esto sugiere que, cuando el modelo dispone de suficiente capacidad de adaptación mediante LoRA-All, el prompt textual compite con los tokens visuales por la atención del modelo en lugar de complementarlos.
 
-% \subsection{Análisis de errores}
-%
-% Para complementar el análisis cuantitativo de la Tabla~\ref{tab:global}, se presentan ejemplos cualitativos que ilustran los patrones de error más frecuentes del mejor sistema basado en Qwen (Qwen2.5-7B LoRA-Att) en comparación con mBART y la referencia.
-%
-% \begin{table}[H]
-%     \centering
-%     \small
-%     \renewcommand{\arraystretch}{1.5}
-%     \begin{tabular}{p{0.22\textwidth} p{0.22\textwidth} p{0.22\textwidth} p{0.22\textwidth}}
-%         \hline
-%         \textbf{Referencia} & \textbf{Glosas (SLR)} & \textbf{mBART} & \textbf{Qwen2.5-7B} \\ \hline
-%
-
-%     \end{tabular}
-%     \caption{Ejemplos cualitativos de traducción sobre el conjunto de prueba. Las glosas corresponden a las predicciones del módulo SLR-\textit{JointDropout}.}
-%     \label{tab:translation_qualitative}
-% \end{table}
-%
 \subsection{Coste computacional}
 La Tabla~\ref{tab:compute} resume el coste computacional de cada sistema, medido en número de parámetros entrenables y consumo de memoria durante el entrenamiento.
 El uso de memoria se reporta mediante dos fuentes complementarias: la estimación proporcionada por \textbf{Weights \& Biases} (\textit{Wandb}), que monitoriza la memoria GPU reservada por el proceso, y la medición directa de \textbf{PyTorch} mediante \texttt{torch.cuda.max\_memory\_allocated}, que refleja la memoria efectivamente ocupada por tensores en el pico de uso.
@@ -779,23 +728,3 @@ En tercer lugar, el \textbf{\textit{finetuning} completo de Qwen-1.5B} actualiza
 
 Finalmente, \textbf{Qwen-7B con LoRA-Att} actualiza apenas $40.37$M de parámetros, pero su consumo de memoria efectiva ($28.88$\,GB) es el segundo más alto de la tabla debido al mayor tamaño del modelo base que debe mantenerse en memoria durante el paso hacia adelante.
 Esta configuración ocupa el punto óptimo en la relación rendimiento-coste: con solo el $2.5\times$ de memoria respecto a Qwen-1.5B LoRA-Att, obtiene una mejora de $+3.72$ puntos de BLEU-4, la mayor ganancia individual de toda la batería de experimentos.
-
-% \subsection{Coste computacional}
-% Wandb
-% \begin{table}[H]
-% 	\centering
-% 	\begin{tabular}{llccc}
-% 		\hline
-% 		\textbf{Sistema} & \textbf{Estrategia}
-% 		    & \textbf{Parámetros entrenables (Millones)}
-% 		    & \textbf{VRAM-Wandb (GB)}
-% 		    & \textbf{VRAM-Pytorch (GB)}\\ \hline
-% 		MSKA-mBART            & \textit{Full}     & 657.70 & 37.2 & 32.23\\
-% 		MSKA-Qwen-1.5B        & LoRA-Att          & 17.43 & 36.0 & 13.124\\
-% 		MSKA-Qwen-1.5B        & LoRA-All          & 73.86 & 38.4 & 14.11\\
-% 		MSKA-Qwen-1.5B        & \textit{Full}     & 1543.7 & 36.8 & 19.55\\
-% 		MSKA-Qwen-7B          & LoRA-Att          & 40.37 & 32.8 & 28.88\\ \hline
-% 		\end{tabular}
-% 		\caption{Coste computacional de los distintos sistemas.}
-% 	\label{tab:compute}
-% \end{table}
