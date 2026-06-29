@@ -1,119 +1,56 @@
 \chapter{Fundamentos}
 
 \section{Medidas de precisión en traducción}
-A diferencia de las tareas de aprendizaje automático tradicional, como la clasificación o la regresión, donde el rendimiento puede medirse de forma exacta mediante métricas como el accuracy o el error cuadrático medio, la traducción de lenguaje natural carece de una única respuesta correcta.
+La evaluación de sistemas de traducción automática no admite una única respuesta correcta: distintas formulaciones válidas del mismo contenido pueden diferir léxicamente.
+Por ello se emplean métricas automáticas que aproximan el juicio humano de forma escalable.
 
-El lenguaje humano es inherentemente complejo, subjetivo y altamente combinatorio.
-Ante una tarea de traducción, resumen o generación de texto, existen múltiples formas válidas de expresar la misma idea utilizando diferentes estructuras sintácticas o sinónimos.
-Esta flexibilidad hace que comparar la salida de un modelo algorítmico con un texto de referencia sea un problema no trivial.
+\subsection{WER}\label{sec:WER}
 
-Históricamente, el estándar de oro para evaluar la calidad del texto generado ha sido la evaluación humana.
-Contar con lingüistas o hablantes nativos que juzguen la fluidez, la coherencia y la adecuación de un texto garantiza resultados fiables.
-No obstante, la evaluación manual es un proceso costoso, lento y difícilmente escalable.
-En el contexto actual, donde los modelos de lenguaje requieren iteraciones constantes y pruebas sobre conjuntos de datos masivos, depender exclusivamente del juicio humano resulta inviable.
-
-En este contexto surgen, entre otras, las medidas aquí expuestas, buscando obtener la mayor correlacción con el criterio de un evaluador humano.
-
-\subsection{WER}
-La métrica \textbf{\textit{Word Error Rate} (WER)} tiene su origen en la evaluación de los primeros sistemas de \textbf{Reconocimiento Automático de Habla} (\textit{ASR}, por sus siglas en inglés) desarrollados entre las décadas de $1980$ y $1990$.
-Ante la necesidad de cuantificar el rendimiento de los modelos ocultos de Markov (\textit{HMM}) en la transcripción de voz a texto, la comunidad científica adoptó y adaptó la \textbf{distancia de Levenshtein}.
-Mientras que Levenshtein medía la distancia de edición a nivel de caracteres, el WER elevó esta abstracción al nivel de palabras (o tokens), convirtiéndose en la métrica estándar para medir la robustez de las secuencias decodificadas frente a una transcripción de referencia.
-
-\subsubsection*{Funcionamiento}
-El WER se define como la distancia de edición mínima (a nivel de palabra) requerida para alinear la secuencia producida por el modelo con la secuencia de referencia (la transcripción real o \textit{ground truth}), normalizada por la longitud de la referencia.
-
-Matemáticamente, se basa en la suma de tres tipos de errores de edición.
-Si denotamos la secuencia de referencia como $R$ y la secuencia de hipótesis (la salida del modelo) como $H$, el cálculo se realiza mediante programación dinámica para encontrar la alineación óptima que minimice la siguiente función.
+La \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER) mide la distancia de edición mínima a nivel de palabra entre la hipótesis del modelo y la referencia, normalizada por la longitud de esta última:
 \begin{equation*}
-WER = \frac{S+D+I}{N},
+  \mathrm{WER} = \frac{S + D + I}{N},
 \end{equation*}
-donde,
-\begin{itemize}
-    \item \textbf{S} es el número de palabras en la referencia que han sido reemplazadas por una palabra incorrecta en la hipótesis,
-    \item \textbf{D} es el número de palabras presentes en la referencia que el modelo ha omitido,
-    \item \textbf{I} es el número de palabras añadidas por el modelo que no existen en la referencia, y,
-    \item \textbf{N} es el número total de palabras en la secuencia de referencia.
-\end{itemize}
-
-A pesar de su adopción generalizada, el WER presenta grandes deficiencias al evaluar lenguajes humanos.
-Su principal limitación es la absoluta ausencia de comprensión semántica, ya que penaliza por igual errores menores (como omitir una partícula) y sustituciones que alteran completamente el significado de la frase.
-Además, resulta hipersensible al reordenamiento y carece de un límite superior acotado, permitiendo valores por encima del $100\%$ que dificultan su interpretación intuitiva frente a otras métricas de precisión.
-
-
-A pesar de estas limitaciones, el WER es la métrica indispensable en reconocimiento de signos por su naturaleza secuencial y por exigencia empírica.
-A nivel teórico, la extracción de glosas es un problema de alineamiento temporal similar al reconocimiento automático de voz, donde esa hipersensibilidad a ligeros cambios en el orden de las glosas no es un defecto, ya que una glosa fuera de tiempo indica un error real de segmentación del modelo.
+donde $S$, $D$ e $I$ son el número de sustituciones, eliminaciones e inserciones respectivamente, y $N$ es el total de palabras en la referencia.
+Es la métrica estándar para el reconocimiento de glosas, dado que penaliza directamente los errores de segmentación temporal propios de la tarea.
 
 \subsection{BLEU}
-Propuesta en 2002, \textbf{BLEU} (\textit{BiLingual Evaluation Understudy}) \cite{BLEU} es una de las métricas más utilizadas para evaluar la calidad de una traducción automática.
-Su premisa fundamental consiste en medir la similitud entre el texto generado por un modelo y una o varias traducciones humanas de referencia.
-Para ello, BLEU no evalúa palabras aisladas, sino secuencias de $n$ palabras, conocidas como $n$-gramas.
-Esto permite cuantificar simultáneamente la adecuación (si se usa el vocabulario correcto) y la fluidez (si el orden y la coherencia son adecuados).
-
-Para evitar que un modelo obtenga una puntuación artificialmente alta repitiendo una misma palabra correcta, BLEU utiliza una precisión modificada o “recortada” (\textit{clipped}).
-Esto significa que el número de veces que se contabiliza un acierto para un $n$-grama en la traducción generada se limita al número máximo total de veces que dicho $n$-grama aparece en la referencia.
-
-BLEU es una métrica a nivel de \textbf{corpus}, el cálculo no se promedia independientemente frase por frase, sino que se suman los aciertos recortados de todas las oraciones y se dividen por el número total de $n$-gramas generados en todo el texto candidato.
+\textbf{BLEU} (\textit{BiLingual Evaluation Understudy}) \cite{BLEU} evalúa la calidad de la traducción midiendo la precisión de $n$-gramas entre el texto generado y la referencia.
+Para evitar que repetir palabras correctas infle artificialmente la puntuación, utiliza una precisión recortada (\textit{clipped}):
 \begin{equation*}
-	p_n = \frac{\sum_{C \in \{\text{Candidatos}\}} \sum_{n\text{-grama} \in C} \text{Count}_{\text{clip}}(n\text{-grama})}{\sum_{C' \in \{\text{Candidatos}\}} \sum_{n\text{-grama}' \in C'} \text{Count}(n\text{-grama}')}
+  p_n = \frac{
+    \sum_{C}\sum_{n\text{-grama}\in C}\mathrm{Count}_{\mathrm{clip}}(n\text{-grama})
+  }{
+    \sum_{C}\sum_{n\text{-grama}\in C}\mathrm{Count}(n\text{-grama})
+  }.
 \end{equation*}
 
-Sin embargo, basarse únicamente en esta precisión presenta un sesgo ya que las traducciones extremadamente cortas podrían obtener puntuaciones perfectas omitiendo información difícil de traducir.
-Para contrarrestar esta tendencia, la métrica introduce la penalización por brevedad $BP$.
-Esta penalización reduce la puntuación final si la longitud total $c$ de las traducciones generadas es menor o igual a la longitud total $r$ del corpus de referencia.
+La puntuación final incorpora una penalización por brevedad $BP$ que descuenta traducciones más cortas que la referencia:
 \begin{equation*}
-	\text{BP} =
-	\begin{cases}
-		1                   & \ \text{si } c > r \\
-		e^{1 - \frac{r}{c}} & \ \text{si } c \leq r
-	\end{cases}
+  \mathrm{BLEU} = BP \cdot \exp\!\left(\sum_{n=1}^{N} w_n \log p_n\right),
+  \qquad
+  BP = \begin{cases} 1 & c > r \\ e^{1-r/c} & c \leq r \end{cases}
 \end{equation*}
-Finalmente, la puntuación total de BLEU se obtiene combinando la penalización por brevedad con las precisiones de los $n$-gramas, ponderadas por pesos uniformes $w_n = 1/N$
+donde $c$ y $r$ son las longitudes totales del texto generado y de referencia.
+Su principal limitación es la ausencia de comprensión semántica: sinónimos o paráfrasis válidas son penalizados igual que errores reales.
+Se reportan BLEU-1 a BLEU-4 ($N=1,\dots,4$) siguiendo la convención habitual en traducción de lengua de signos.
+
+
+\subsection{ROUGE-L}
+\textbf{ROUGE-L} \cite{ROUGE} evalúa la similitud mediante la subsecuencia común más larga (LCS) entre el texto generado y la referencia, combinando exhaustividad y precisión en una puntuación $F_1$:
 \begin{equation*}
-	\text{BLEU} = \text{BP} \cdot \exp\!\left( \sum_{n=1}^{N} w_n \log P_n \right)
-\end{equation*}
-
-El resultado final de BLEU es un valor entre $0$ y $1$ (o $0$ y $100$), donde un valor más cercano a $1$ (o $100$) indica una mayor calidad global de la traducción.
-
-Al basarse estrictamente en la coincidencia léxica exacta, no comprende sinónimos ni parafraseos.
-Una traducción perfectamente válida que utilice vocabulario diferente al de la referencia obtendrá una puntuación BLEU muy baja.
-Además, no tiene en cuenta la estructura gramatical o el significado global de la frase.
-
-Implementacion de \cite{SBleu}.
-
-\subsection{ROUGE}
-Introducida en $2004$, \textbf{ROUGE} (\textit{Recall-Oriented Understudy for Gisting Evaluation}) \cite{ROUGE}.
-Su formulación matemática se centra en la exhaustividad (\textit{recall}).
-El objetivo principal es verificar cuánta de la información crucial, presente en los resúmenes de referencia humanos, ha sido capturada por el modelo.
-
-Aunque ROUGE es una familia de métricas, las formulaciones más relevantes se dividen en dos enfoques principales: el conteo de $n$-gramas (ROUGE-N) y la subsecuencia común más larga (ROUGE-L).
-
-\textbf{ROUGE-N} mide el solapamiento de $n$-gramas entre el resumen candidato (generado por la máquina) y los resúmenes de referencia.
-Se calcula con la siguiente fórmula.
-\begin{equation*}
-	\text{ROUGE-N}_{\textit{Recall}} = \frac{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}_{\text{match}}(n\text{-grama})}{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}(n\text{-grama})},
-\end{equation*}
-donde $\text{Count}_{\text{match}}(n\text{-grama})$ es el número máximo de $n$-gramas que coocurren tanto en el resumen candidato como en el conjunto de resúmenes de referencia, y el denominador es el número total de $n$-gramas presentes en las referencias.
-
-Sin embargo, para evitar que un modelo genere un texto excesivamente largo que contenga todas las palabras del diccionario (lo que daría una exhaustividad del 100 \%), las implementaciones modernas de ROUGE también calculan la \textbf{precisión}, cambiando el denominador para contar los $n$-gramas del texto candidato.
-\begin{equation*}
-	\text{ROUGE-N}_{\textit{Precision}} = \frac{\sum_{S \in \{\text{Referencias}\}} \sum_{n\text{-grama} \in S}\text{Count}_{\text{match}}(n\text{-grama})}{\sum_{n\text{-grama} \in \text{Candidato}} \text{Count}(n\text{-grama})}
+  R = \frac{|\mathrm{LCS}|}{|ref|}, \quad
+  P = \frac{|\mathrm{LCS}|}{|hyp|}, \quad
+  F_1 = \frac{2RP}{R+P}.
 \end{equation*}
 
-Finalmente, se combinan ambas métricas utilizando el $F_1$-\textit{score} (la media armónica).
-\begin{equation*}
-	F_1 = 2 \, \frac{\textit{Precision} \cdot \textit{Recall}}{\textit{Precision} + \textit{Recall}}
-\end{equation*}
-
-Por su parte, \textbf{ROUGE-L} evalúa la similitud entre textos mediante la \textbf{subsecuencia común más larga} (LCS).
-Para entender qué es una subsecuencia, conviene distinguirla de una subcadena, mientras que una subcadena exige que las palabras sean consecutivas, una \textbf{subsecuencia} solo exige que aparezcan en el mismo orden relativo, aunque haya otras palabras intercaladas.
-
-BLEU castiga que el modelo invente texto mediante la precisión, y utiliza la penalización por brevedad para evitar textos excesivamente cortos.
-ROUGE, en cambio, castiga que el modelo omita información clave mediante la exhaustividad, y confía en la puntuación $F_1$ para penalizar indirectamente a los modelos que generan textos excesivamente largos.
-
-Al igual que BLEU, ROUGE sufre de la misma limitación semántica, al basarse en solapamientos léxicos directos, no es capaz de puntuar correctamente el uso de sinónimos o paráfrasis.
+A diferencia de BLEU, no exige que los $n$-gramas sean contiguos, lo que la hace más tolerante a pequeñas reordenaciones.
+Comparte con BLEU la limitación de basarse en coincidencia léxica exacta.
 
 \subsection{BLEURT}
-
+\textbf{BLEURT} (\textit{Bilingual Evaluation Understudy with Representations from Transformers}) \cite{BLEURT} es una métrica neuronal entrenada para correlacionar con el juicio humano.
+A diferencia de BLEU y ROUGE, no compara $n$-gramas sino representaciones semánticas obtenidas a partir de un modelo BERT preentrenado y ajustado sobre pares de frases con puntuaciones humanas.
+Esto le permite valorar correctamente sinónimos y paráfrasis que las métricas léxicas penalizarían.
+Se emplea aquí exclusivamente en el experimento \textit{zero-shot} (Sección~\ref{sec:zeroshot}), donde la formulación libre de las traducciones hace que BLEU resulte poco informativo.
 
 \section{Transformers}
 La arquitectura \textbf{Transformer}, introducida por Vaswani et al. \cite{vaswani2023attentionneed}, supuso un cambio de paradigma absoluto en el procesamiento de secuencias, desplazando a las redes neuronales recurrentes.
@@ -122,146 +59,40 @@ Esto permite que cada elemento de una entrada (ya sea un \textit{token} de texto
 
 A continuación, repasaremos sus fundamentos estructurales para entender su aplicación en nuestro modelo.
 
-\subsection{De la recurrencia a la atención}
-Para entender la innovación de los \textit{transformers}, es necesario conocer las limitaciones de sus predecesores.
-Históricamente, las redes recurrentes (como LSTM y GRU) dominaron estas tareas procesando la información de manera estrictamente secuencial.
 
-Sin embargo, procesar la información de forma estrictamente secuencial arrastraba dos problemas estructurales:
-\begin{itemize}
-    \item \textbf{Restricciones de paralelización:} El cálculo de cada elemento queda bloqueado hasta que finaliza el anterior.
-    En la práctica, esta dependencia paso a paso inutiliza la ventaja del procesamiento paralelo de las \textbf{GPUs}, volviendo el entrenamiento muy lento a medida que crece el tamaño de la entrada.
-    \item \textbf{Degradación del contexto temporal:} Relacionar el principio y el final de una secuencia larga resulta algorítmicamente complejo.
-    A medida que la información atraviesa los distintos estados ocultos, la señal original va perdiendo fuerza (debido al desvanecimiento del gradiente), lo que limita la capacidad de la red para ``recordar'' elementos distantes.
-\end{itemize}
+\subsection{Mecanismo de atención}\label{sub:attention}
 
-Los \textit{transformers} solucionan esto abandonando por completo la recurrencia.
-En su lugar, exponen toda la secuencia de forma simultánea.
-El modelo evalúa las dependencias globales en un solo paso mediante la atención, vinculando cualquier par de posiciones de forma directa.
-Al descartar el procesamiento secuencial, se logra una eficiencia computacional sin precedentes y se evita la degradación de la señal a lo largo de la entrada.
-
-Dado que este enfoque paralelo pierde la noción temporal inherente del orden de los datos, la arquitectura se apoya en codificaciones posicionales explícitas.
-Es natural plantearse si esta enorme capacidad de abstracción semántica y espacial, que ha revolucionado los lenguajes hablados, se traslada con la misma eficacia a la lengua de signos utilizando los \textit{keypoints} como representación visual.
-
-%La herramienta matemática que permite abandonar la recurrencia y procesar la entrada de forma global es el mecanismo de atención.
-
-
-
-%
-%
-% \section{Transformers}
-% La aparición de la arquitectura \textbf{transformer}, introducida por \textbf{Vaswani et al.} \cite{vaswani2023attentionneed}, supuso un cambio de paradigma en el procesamiento de secuencias, desplazando a las redes recurrentes en tareas de modelado de lenguaje.
-% La relevancia de este modelo en el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de auto-atención (\textit{self-attention}), el cual permite que cada elemento de una secuencia (ya sea una palabra o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
-% Por ello, dedicaremos esta sección a entender el funcionamiento de los \textit{transformers} con cierto nivel de detalle.
-%
-% \subsection{¿Por qué Transformers?}
-% Para entender la relevancia e inovación de los transformers es necesario conocer lo que les precedía. En particular, las \textit{long short-term memory} y las \textit{gated recurrent neural networks} dominaron el procesamiento de secuencias mediante mecanismos de computación recurrente, los cuales procesan la información de manera secuencial siguiendo el orden temporal de la entrada. Estas arquitecturas presentaban dos limitaciones fundamentales: la dificultad para captar dependencias de largo alcance debido al desvanecimiento del gradiente y la imposibilidad de paralelizar el entrenamiento, lo que restringe enormemente la eficiencia computacional con secuencias largas.
-%
-% Los transformers proponen abandonar por completo la recurrencia en favor del mecanismo de atención, lo que les permite captar dependencias de largo alcance en los textos de forma directa y con operaciones fácilmente paralelizables. En lugar de procesar la secuencia elemento a elemento, estos modelos consideran simultáneamente todos los tokens de entrada mediante el mecanismo de auto-atención, que calcula la relevancia relativa entre cada par de posiciones de la secuencia.
-%
-% Este enfoque introduce varias ventajas clave. En primer lugar, elimina la dependencia estrictamente secuencial del cómputo, permitiendo un uso mucho más eficiente del hardware moderno, especialmente en arquitecturas paralelas como las \textbf{GPUs}. En segundo lugar, facilita el modelado de relaciones a larga distancia sin los problemas asociados al desvanecimiento del gradiente, ya que cualquier elemento de la secuencia puede interactuar directamente con cualquier otro en un solo paso de atención.
-%
-% Además, los transformers incorporan mecanismos como las codificaciones posicionales para preservar la información sobre el orden de la secuencia, compensando así la ausencia de recurrencia. Esta combinación de atención global y representación posicional ha demostrado ser altamente efectiva en tareas de modelado del lenguaje y traducción automática, superando ampliamente a las arquitecturas recurrentes tradicionales.
-%
-% Es natural plantearse si esta habilidad y facilidad que presentan los transoformers en la traducción de lenguajes se translada a la lengua de signos utilizando los \textit{keypoints} como representación de los signos.
-
-
-
-
-
-
-\subsection{Mecanismo de atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
-La función de atención permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos. Conceptualmente, el proceso consiste en comparar una consulta (\textit{query}) con un conjunto de claves (\textit{keys}) mediante una función de compatibilidad. Esta función mide el grado de similitud entre la consulta y cada clave, generando unos pesos que reflejan la importancia relativa de cada elemento.
-
-Al transformar estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores (\textit{values}), produciendo así una representación final que enfatiza los componentes más pertinentes de la entrada.
-
-La variante más extendida de este mecanismo es la Atención de Producto Escalar Escalado (\textit{Scaled Dot-Product Attention}). En la práctica, para aprovechar la alta optimización de los cálculos paralelos, esta operación se realiza matricialmente, procesando simultáneamente un conjunto de consultas $Q$, claves $K$ y valores $V$:
-\begin{equation*}Attention(Q,K,V) = \text{softmax}\left( \frac{QK^T}{\sqrt{d_k}}\right)V\end{equation*}
-
-En esta formulación, $d_k$ representa la dimensión de las claves. La división por $\sqrt{d_k}$ actúa como un factor de escalado crucial: evita que, al trabajar con dimensiones altas, los productos escalares adquieran magnitudes muy elevadas. Si esto ocurriera, la función \textit{softmax} se saturaría (asignando un peso cercano a $1$ al valor máximo y $0$ al resto), lo que provocaría que los gradientes fueran minúsculos, estancando así el entrenamiento.
-\input{Chapters/diagramas/attention.tex}
-
-\subsubsection*{Atención Multicabeza (\textit{Multi-Head Attention})}
-El propósito del mecanismo descrito es enriquecer el significado de cada \textit{token} contextualizándolo con el resto de la secuencia. Sin embargo, surge un problema de capacidad representativa: si utilizamos una única función de atención, el modelo se ve forzado a promediar todos los aspectos relacionales de la entrada, diluyendo las interacciones complejas.
-
-Para solucionar esto, Vaswani et al. \cite{vaswani2023attentionneed} proponen no utilizar una única función con dimensiones completas ($d_{\text{modelo}}$). En su lugar, proyectan linealmente las consultas, claves y valores $h$ veces con diferentes matrices de pesos hacia dimensiones menores ($d_k$ y $d_v$). De esta forma, el modelo puede "prestar atención" simultáneamente a distintos tipos de relaciones en diferentes subespacios de representación.
-
-Matemáticamente, la atención multicabeza se calcula concatenando los resultados de cada "cabeza" y aplicando una proyección lineal final:
-\begin{align*}
-MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
-\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
-\end{align*}
-
-Donde $W^Q_i \in \mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^K_i \in \mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i \in \mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O \in \mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son las matrices de pesos entrenables que definen cada una de las proyecciones.
-\input{Chapters/diagramas/multiheadAttention.tex}
-
-
-
-
-
-
-
-
-
-
-
-
-\subsection{Mecanismo de atención}\label{sub:attention} % \textit{Self-Attention Mechanism}
-La función de atención es un mecanismo que permite a un modelo identificar y priorizar la información más relevante dentro de un conjunto de datos.
-Para ello, compara una consulta, \textit{query} con un conjunto de claves, \textit{keys}, mediante una función de compatibilidad, que mide qué tan bien coincide la \textit{query} con cada \textit{key}, generando pesos que reflejan la importancia de cada elemento.
-Transformando estos pesos en una distribución de probabilidad mediante la función \textit{softmax}, se calcula una combinación ponderada de los valores \textit{values}, produciendo así una representación que enfatiza los componentes más pertinentes.
-
-La función de atención más relevante es la \textit{Scaled Dot-Product Attention} cuya entrada son claves y consultas de dimensión $d_k$ y valores de dimensión $d_v$.
-En la práctica, se saca provecho de que la multiplicación entre matrices está muy optimizada.
+La función de atención permite que cada elemento de una secuencia se contextualice con el resto de forma paralela, sin depender de un orden estrictamente secuencial. Dadas una consulta $Q$, unas claves $K$ y unos valores $V$, la variante más extendida es la \textit{Scaled Dot-Product Attention}:
 \begin{equation*}
-Attention(Q,K,V) = softmax\left( \frac{QK'}{\sqrt{d_k}}\right)V.
+  \mathrm{Attention}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V,
 \end{equation*}
-Se añade el factor de escalado $\sqrt{d_k}$, pues si las matrices de \textit{query} y \textit{key} son de una muy alta dimensión, es posible que los valores exploten en tamaño, donde la función \textit{softmax} se vuelve muy ``extrema'', es decir, asigna casi todo el peso a un solo elemento y hace que los gradientes sean muy pequeños, dificultando el entrenamiento.
-\input{Chapters/diagramas/attention.tex}
+donde el factor $\sqrt{d_k}$ evita que los productos escalares saturen la \textit{softmax} y degraden los gradientes en dimensiones altas.
 
-La idea detrás de los mecanismos de atención es, como se menciona, enriquecer el significado de cada uno de los \textit{tokens} teniendo en cuenta los otros de la consulta.
-Esto permite que el modelo tenga la información más completa posible a la hora de realizar la traducción.
-Un problema que surge es la limitada capacidad de una sola cabeza de prestar atención a multiples aspectos de la entrada, pues al tratar de hacerlo se diluyen las relaciones al mezclarse, potencialmente limitando la capacidad de comprensión del modelo.
+Para capturar simultáneamente distintos tipos de dependencias, se proyectan $Q$, $K$ y $V$ en $h$ subespacios independientes mediante la \textbf{atención multicabeza} (\textit{Multi-Head Attention}):
+\begin{align*}
+  \mathrm{MultiHead}(Q,K,V)
+    &= \mathrm{Concat}(\mathit{head}_1,\dots,\mathit{head}_h)\,W^O,\\
+  \mathit{head}_i
+    &= \mathrm{Attention}(QW^Q_i,\,KW^K_i,\,VW^V_i).
+\end{align*}
+En nuestro sistema, este mecanismo se aplica sobre secuencias de \textit{keypoints} corporales, donde cada cabeza puede especializarse en relaciones espaciales distintas (por ejemplo, la coordinación entre manos o la relación entre postura y expresión facial).
 
-Así, en vez de tener una única función de atención con \textit{keys}, \textit{values} y \textit{queries} $d_{\text{modelo}}$-dimensinales, \textbf{Vaswani et al.} proponen utilizar $h$ diferentes proyecciones lineales a dimensión $d_k$, para consultas y claves, y $d_v$ para valores.
-De esta forma el modelo puede ``prestar atención'' a distintos aspectos de la entrada de forma simultánea.
-
-En este caso, la atención multi-cabeza se calcula como sigue\begin{align*}
-MultiHead(Q,K,V) =\hspace{0.25em} &Concat(head_1, head_2, \dots, head_h)W^O\\
-\text{con }&head_i = Attention(QW^Q_i, KW^K_i, VW^V_i),
-\end{align*} donde $W^Q_i,W^K_i\in\mathbb{R}^{d_{\text{modelo}}\times d_k}$, $W^V_i\in\mathbb{R}^{d_{\text{modelo}}\times d_v}$ y $W^O\in\mathbb{R}^{hd_v\times d_{\text{modelo}}}$ son matrices de pesos entrenables. En particular las matrices $W$ son las proyecciones.
 \input{Chapters/diagramas/multiheadAttention.tex}
 
+\subsection{Codificación posicional}\label{sub:positional-encoding}
 
-\subsection{Codificación Posicional} % \textit{Positional Encoding}}
-\begin{equation}\label{eq:PE_sin}
-PE(p,2i)=\sin(p/10000^{2i/C_{in}})
-\end{equation}
-
-\begin{equation}\label{eq:PE_cos}
-PE(p,2i + 1)=\cos(p/10000^{2i/C_{in}})
-\end{equation}
-
-Donde,
-\begin{itemize}
-	\item $p$ es la posición del elemento en la secuencia.
-	\item $i$ es la dimensión del vector de codificación.
-	\item $C_{in}$ es el número de canales de entrada.
-\end{itemize}
-
-\subsection{FIXME}
-Las funciones de codificación utilizan ondas sinusoidales y cosenoidales de diferentes frecuencias.
-Denotando $p$ a la posición de la articulación en la secuencia, $i$ a la dimensión específica del vector de codificación posicional y $C_{in}$ la profundidad del canal de entrada la codificación posicional se calcula mediante las siguientes fórmulas.
+Dado que la atención procesa todos los elementos en paralelo, el modelo carece de noción de orden por sí solo. La codificación posicional añade esta información sumando a cada elemento un vector que depende de su posición $p$ en la secuencia:
 \begin{align*}
-  PE(p, 2i) = \sin(p / 10000^{2i / C_{in}})\\
-  PE(p, 2i+1) = \cos(p / 10000^{2i / C_{in}})
+  PE(p,\,2i)   &= \sin\!\left(\frac{p}{10000^{2i/C}}\right),\\
+  PE(p,\,2i+1) &= \cos\!\left(\frac{p}{10000^{2i/C}}\right),
 \end{align*}
-
-La naturaleza periódica proporciona diferentes representaciones para cada posición, lo que permite al modelo comprender mejor las relaciones posicionales relativas entre los elementos de la secuencia.
-Las articulaciones dentro de un mismo fotograma se codifican secuencialmente, mientras que las articulaciones idénticas en diferentes fotogramas comparten una codificación común.
+donde $i$ indexa la dimensión del vector y $C$ es el tamaño del canal de entrada.
+El uso de frecuencias distintas permite representar posiciones absolutas y, al mismo tiempo, capturar relaciones relativas entre elementos distantes.
+En el contexto de datos esqueléticos, esta codificación se adapta para separar la dimensión espacial (identidad de cada articulación) de la temporal (instante del fotograma), como se detalla en la Sección~\ref{sec:DSTA}.
 
 
 \section{Clasificación Temporal Conexionista}\label{sec:CTC}
-La \textit{Connectionist Temporal Classification} es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
+La \textit{Connectionist Temporal Classification} (CTC) es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
 
 Esto es especialmente importante en tareas perceptuales y de visión por computador, donde la secuencia de entrada, por ejemplo, una serie de fotogramas de vídeo que capturan a un signante, es habitualmente más larga que la secuencia objetivo de glosas o etiquetas a predecir.
 Al ser de longitudes distintas y carecer de una segmentación temporal explícita, no existe una correspondencia o alineación a priori entre ambas secuencias.
@@ -376,7 +207,7 @@ Esa única operación produce matemáticamente el mismo resultado exacto que si 
 Como ocurre en otros modelos de atención pura, las articulaciones del esqueleto se organizan en forma de tensor para poder introducirlas en las redes neuronales.
 Estos tensores carecen de orden o estructura que indique por sí mismo qué representa cada uno (por ejemplo, el índice de la articulación o el índice del fotograma), es necesario usar un módulo de codificación posicional que asigne un identificador único a cada articulación.
 
-Ahora bien, en texto, las palabras van una detrás de otra (1D).
+Ahora bien, en texto, las palabras van una detrás de otra ($1$D).
 Pero los datos del esqueleto tienen dos dimensiones, el espacio (las diferentes articulaciones) y el tiempo (los fotogramas).
 
 Una estrategia ingenua de codificación unificaría estas dimensiones, asignando el valor $p$ de forma secuencial a través de todo el tensor aplanado.
@@ -457,3 +288,25 @@ En cada una de estas capas, el tensor de entrada se procesa secuencialmente: pri
 Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
 
 \section{LoRA}\label{sec:LoRA}
+
+El \textit{finetuning} completo de un modelo de lenguaje grande actualiza todos sus parámetros, lo que resulta prohibitivo en memoria y cómputo a medida que el modelo crece.
+\textbf{LoRA} (\textit{Low-Rank Adaptation}) \cite{LoRA} propone una alternativa eficiente: congelar los pesos preentrenados e inyectar actualizaciones de \textbf{rango reducido} en las capas seleccionadas.
+
+La intuición es que, aunque los modelos preentrenados tienen millones de parámetros, los cambios necesarios para adaptarlos a una tarea concreta residen en un subespacio de dimensión mucho menor.
+Formalmente, dado un peso $W_0 \in \mathbb{R}^{d \times k}$, LoRA descompone su actualización como el producto de dos matrices de rango bajo:
+\begin{equation*}
+  W = W_0 + \Delta W = W_0 + BA,
+  \qquad B \in \mathbb{R}^{d \times r},\; A \in \mathbb{R}^{r \times k},
+  \quad r \ll \min(d, k).
+\end{equation*}
+Durante el entrenamiento, $W_0$ permanece congelado y solo se actualizan $A$ y $B$, reduciendo drásticamente el número de parámetros entrenables.
+$A$ se inicializa con una distribución gaussiana y $B$ a cero, de modo que $\Delta W = 0$ al inicio y el modelo parte del comportamiento preentrenado.
+
+La escala de la actualización se controla mediante un hiperparámetro $\alpha$, de forma que la contribución efectiva de los adaptadores es:
+\begin{equation*}
+  W = W_0 + \frac{\alpha}{r}\,BA.
+\end{equation*}
+El cociente $\alpha/r$ actúa como un factor de escala global: aumentar $\alpha$ amplifica la influencia de los adaptadores, mientras que aumentar $r$ incrementa la capacidad expresiva de $\Delta W$ a costa de más parámetros entrenables. En la práctica, fijar $\alpha = 2r$ es una elección habitual que mantiene las actualizaciones en una escala comparable a los pesos originales.
+
+LoRA se aplica típicamente sobre las proyecciones de atención ($W_Q, W_K, W_V, W_O$), aunque puede extenderse a las capas \textit{feed-forward} del bloque transformer cuando se requiere mayor capacidad de adaptación.
+La elección de qué capas adaptar supone un compromiso entre rendimiento y coste computacional que se analiza empíricamente en la Sección~\ref{sec:ablation}.

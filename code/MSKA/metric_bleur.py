@@ -18,7 +18,7 @@ class DummyArgs:
         self.num_workers = 4
         self.pin_mem = True
         self.batch_size = 16
-        self.slm = False
+        self.slm = True
 
 def main():
     config_path = ''

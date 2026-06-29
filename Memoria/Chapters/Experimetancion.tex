@@ -5,6 +5,8 @@ La experimentación se organiza en tres bloques progresivos.
 En primer lugar, se estudia el módulo de reconocimiento de forma aislada, analizando el impacto de las distintas técnicas de aumentación de datos sobre la tasa de error en glosas.
 En segundo lugar, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, estableciendo una línea base comparable al enfoque Spotter+GPT descrito en el estado del arte.
 Finalmente, se presenta el sistema completo con \textit{finetuning} mediante LoRA, incluyendo un estudio de ablación sobre las modalidades de entrada y una comparativa con la variante basada en mBART.
+
+Para la métrica BLEU se utiliza la implementación propuesta en \textit{A Call for Clarity in Reporting BLEU Scores} \cite{SBleu}.
 \section{Configuración experimental}
 
 \subsection{Entorno de entrenamiento}
@@ -659,7 +661,7 @@ La Tabla~\ref{tab:global} recoge todos los sistemas evaluados, ordenados por BLE
 
 		MSKA-mBART
 		    & mBART & Visual & \textit{Full}
-		    & 45.49 & 34.03 & 26.58 & 21.43 & 45.20
+		    & 45.49 & 34.03 & 26.58 & \textbf{21.43} & \textbf{45.20}
 		    & 45.03 & 34.51 & 27.43 & \textbf{22.48} & \textbf{45.00} \\
 
 		MSKA-Qwen-7B
