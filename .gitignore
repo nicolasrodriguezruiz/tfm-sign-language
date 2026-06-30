@@ -211,6 +211,7 @@ __marimo__/
 *.log
 *.out
 *.toc
+*.tof
 
 # Otrascosas
 Investigacion/

@@ -1,10 +1,77 @@
 \chapter{Conclusión y trabajo futuro}\label{ch:conclusion}
 
+\section{Conclusiones}
 
-Un dato revelador es que el WER sobre el conjunto de entrenamiento se sitúa en torno al $7\%$, frente al $27\%$ obtenido en dev y test.
+Este trabajo ha explorado la viabilidad de sustituir el decodificador de traducción clásico (mBART) de un sistema basado en \textit{keypoints} por un Modelo Pequeño de Lenguaje (SLM) de arquitectura \textit{decoder-only}, integrando Qwen2.5 en el pipeline MSKA-SLR sobre el corpus PHOENIX-2014T\@.
+Los resultados obtenidos permiten extraer varias conclusiones.
 
-Esta brecha de aproximadamente $20$ puntos porcentuales es una señal clara de sobreajuste: el modelo memoriza con alta precisión las secuencias de glosas del corpus de entrenamiento pero generaliza de forma limitada a muestras no vistas.
+\textbf{La hipótesis principal no se confirma en el rango de modelos explorado.}
+Ninguna configuración de Qwen logra superar la línea base de mBART ($22.48$ BLEU-4, $45.00$ ROUGE-L en test).
+La mejor variante, MSKA-Qwen-1.5B con LoRA-All y sin prompt, alcanza $20.55$ BLEU-4, quedando a $1.93$ puntos de distancia.
+Qwen2.5-7B no reduce esta brecha ($20.03$ BLEU-4).
+La ventaja de mBART se explica por su arquitectura \textit{encoder-decoder} con atención cruzada, diseñada específicamente para traducción, y por su preentrenamiento multilingüe que incluye alemán de forma masiva, factores que compensan eficazmente los errores del reconocedor visual.
 
-Este fenómeno es esperable dado el tamaño reducido del corpus ($7.096$ muestras de entrenamiento) y la complejidad de la arquitectura.
+\textbf{El cuello de botella principal reside en la escasez de datos}
+El módulo de reconocimiento SLR presenta un WER de $27.24\%$ con la mejor configuración, y las técnicas de aumento de datos exploradas apenas reducen este valor en $0.09$ puntos.
+Las curvas de entrenamiento revelan un sobreajuste persistente: la pérdida de entrenamiento converge a valores en torno a $15$, mientras que la de validación se estabiliza cerca de $45$ desde las primeras épocas.
+Con solo $7.096$ muestras de entrenamiento, la capacidad de regularización de las técnicas exploradas es insuficiente para mitigar este problema de forma sustancial.
+Este mismo límite afecta al módulo de traducción: los SLM de propósito general necesitan una cantidad de ejemplos muy superior para aprender a alinear el espacio visual con el espacio lingüístico desde casi cero.
 
-El hecho de que ninguna de las técnicas de aumentación logre cerrar significativamente esta brecha refuerza la hipótesis de que el problema no es trivialmente soluble mediante perturbaciones sobre los keypoints, y apunta a la necesidad de datos adicionales o estrategias de regularización más agresivas como líneas de trabajo futuro.
+\textbf{El tamaño del modelo base importa más que la estrategia de \textit{finetuning}.}
+Qwen2.5-7B con LoRA-Att supera al \textit{finetuning} completo de Qwen2.5-1.5B ($20.03$ vs $18.68$ BLEU-4) actualizando un número de parámetros muy inferior ($40$M frente a
+$1543$M).
+Esto sugiere que en regímenes de datos limitados, la capacidad representacional preentrenada del modelo base es el factor determinante, no la intensidad del \textit{finetuning}.
+
+\textbf{El prompt de instrucción es contraproducente en el régimen de \textit{finetuning}.}
+El experimento sin prompt mejora el BLEU-4 en más de $4$ puntos respecto a la misma configuración con prompt ($20.55$ vs $16.31$).
+Una vez que el modelo dispone de suficiente capacidad de adaptación a través de LoRA-All, el texto del prompt compite con los tokens visuales por la atención del modelo en lugar de complementarlos.
+
+\textbf{El enfoque \textit{zero-shot} es insuficiente para traducción precisa.}
+El experimento Spotter+Qwen obtiene un BLEU-4 de apenas $0.46$, aunque el BLEURT de $0.50$ indica que una fracción de las traducciones preserva el significado.
+Los fallos más graves son la alucinación multilingüe y la ruptura de la instrucción, ambos causados por la naturaleza inusual de las glosas como entrada para un modelo de
+instrucción.
+Estos problemas aparecen incluso con glosas de referencia perfectas, lo que confirma que el origen es estructural y no atribuible al reconocedor.
+
+\textbf{La tendencia de escalado es prometedora pero inconclusa.}
+La mejora de $+3.72$ puntos de BLEU-4 al pasar de 1.5B a 7B parámetros sugiere que la brecha con mBART podría cerrarse con modelos más grandes.
+Sin embargo, la evaluación de Qwen2.5-14B con \textit{finetuning} excede las restricciones de memoria disponibles, por lo que esta hipótesis no puede verificarse
+dentro del alcance de este trabajo.
+
+\section{Trabajo futuro}
+
+\textbf{Mejora del enfoque \textit{zero-shot} con modelos de mayor escala.}
+Los resultados del experimento Spotter+Qwen muestran que Qwen2.5-14B no sigue consistentemente las instrucciones del prompt cuando la entrada son glosas, produciendo
+alucinaciones multilingües y respuestas fuera de formato.
+Este comportamiento está documentado en modelos Qwen de tamaño reducido, donde la capacidad de seguimiento de instrucciones (\textit{instruction following}) es más frágil.
+La literatura sobre escalado de modelos establece que las capacidades \textit{zero-shot} emergen de forma abrupta a partir de ciertos umbrales de escala, con mejoras medias
+de en torno a un $6\%$ en razonamiento \textit{zero-shot} por cada orden de magnitud
+en parámetros.
+En este sentido, explorar modelos de mayor tamaño (70B o superiores) en el escenario \textit{zero-shot} constituye una línea natural de continuación.
+
+\textbf{Modelos de lenguaje especializados en alemán.}
+Una alternativa al escalado es el uso de modelos preentrenados específicamente sobre corpus en alemán.
+Un ejemplo reciente es \textbf{LLäMmlein} \cite{llammlein}, un modelo entrenado íntegramente desde cero en alemán con variantes de $120$M y $1$B parámetros y un tokenizador BPE adaptado al alemán.
+Aunque esta opción limita la generalización del sistema a otros idiomas, puede suponer una ventaja competitiva significativa en PHOENIX-2014T, cuya tarea objetivo es
+exclusivamente la traducción al alemán.
+
+\textbf{\textit{Finetuning} de modelos más grandes y eliminación del prompt.}
+Las restricciones de memoria de una única GPU A100 impidieron ajustar Qwen2.5-14B con LoRA.
+Hacerlo constituye la continuación más directa de este trabajo, dado que la tendencia observada (a mayor modelo, mejor el BLEU-4) no ha mostrado signos de
+saturación dentro del rango explorado.
+Paralelamente, convendría verificar si la eliminación del prompt sigue siendo beneficiosa a mayor escala, o si modelos más grandes son capaces de aprovechar la instrucción textual sin que esta compita con los tokens visuales.
+
+\textbf{Validación en otros conjuntos de datos.}
+Todos los experimentos se han realizado sobre PHOENIX-2014T, un corpus de dominio
+restringido.
+Validar las estrategias desarrolladas sobre conjuntos de datos como \textbf{CSL-Daily} o \textbf{How2Sign} permitiría evaluar la capacidad de generalización real del sistema.% y determinar si las conclusiones obtenidas son específicas del dominio meteorológico o transferibles a escenarios de vocabulario abierto.
+
+\textbf{Modelos con capacidades visuales nativas (\textit{Vision-Language Models}).}
+Una limitación fundamental del sistema actual es que la información visual se comprime en una representación de \textit{keypoints} 2D antes de llegar al modelo de lenguaje.
+Los modelos multimodales modernos (\textit{Vision-Language Models}) procesan directamente los píxeles del vídeo, lo que podría preservar información gestual que se pierde en la discretización al esqueleto.
+Integrar un VLM preentrenado como decodificador visual-lingüístico conjunto representa una dirección arquitectónica de alto potencial, aunque a costa de una complejidad
+computacional significativamente mayor.
+
+\textbf{Aprendizaje \textit{few-shot}.}
+A medio camino entre el \textit{zero-shot} y el \textit{finetuning} completo, el aprendizaje \textit{few-shot} permitiría al modelo adaptar su comportamiento a la tarea
+de traducción de glosas mediante un número reducido de ejemplos en el contexto, sin necesidad de actualizar sus pesos.
+Esta estrategia podría mitigar los problemas de seguimiento de instrucciones observados en el experimento \textit{zero-shot} con un coste computacional mínimo.
