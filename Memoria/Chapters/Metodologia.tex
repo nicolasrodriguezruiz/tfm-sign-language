@@ -4,6 +4,21 @@ En primer lugar, se justificará el método seleccionado para la extracción vis
 Posteriormente, se describirá el proceso de preprocesado y normalización de los datos espaciales.
 Finalmente, se desglosará la arquitectura base de los modelos.
 
+El sistema desarrollado en este trabajo sigue un flujo de procesamiento de dos etapas que transforma una secuencia de vídeo en una traducción en lenguaje natural, tal como se ilustra en la \textit{Figura}~\ref{fig:pipeline}.
+En la primera etapa, el vídeo se procesa mediante \textbf{AlphaPose} para extraer una secuencia de \textit{keypoints} anatómicos, que se normalizan antes de ser introducidos
+en el modelo de reconocimiento.
+El módulo \textbf{MSKA-SLR} procesa esta secuencia espacio-temporal para obtener una representación de glosas que actúa como puente semántico entre la señal visual y el
+lenguaje natural.
+En la segunda etapa, un \textbf{VLMapper} proyecta esa representación al espacio de \textit{embeddings} de un Modelo Pequeño de Lenguaje (\textbf{Qwen}), que genera la traducción final en alemán.
+Las secciones de este capítulo siguen este mismo orden, detallando las decisiones de diseño de cada componente.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{MSKA/pipeline_overview.pdf}
+    \caption{Visión general del \textit{pipeline} del sistema. Las fases de preprocesamiento visual, reconocimiento (SLR) y traducción (SLT) se detallan en las secciones siguientes.}
+    \label{fig:pipeline}
+\end{figure}
+
 \section{Extracción de \textit{Keypoints}}
 Extraer \textit{keypoints} significa, en esencia, traducir el cuerpo humano a un mapa estructurado de puntos anatómicos.
 Al capturar imágenes o vídeo, el sistema localiza coordenadas bidimensionales que representan articulaciones, extremidades y rasgos faciales.
@@ -25,7 +40,7 @@ Además, por defecto, procesa los fotogramas de manera aislada.
 Sin un hilo conductor temporal implícito, el resultado suele sufrir de temblores constantes (\textit{jittering}).
 En lengua de signos, donde la trayectoria del movimiento es tan elocuente como la propia postura de las manos, estas oscilaciones artificiales distorsionan el mensaje original.
 
-\subsection{El ecosistema MMPose y la adopción de AlphaPose}
+\subsection{La elección de AlphaPose}
 Al evaluar el panorama actual de la estimación de pose, es imperativo reconocer la transición de la industria hacia librerías modulares como \textbf{MMPose}.
 A diferencia de los \textit{frameworks} monolíticos, MMPose se ha consolidado como el estándar moderno gracias a su extrema versatilidad.
 Permite intercambiar arquitecturas (\textit{backbones}), cabezales de detección y funciones de pérdida con facilidad, integrando casi de inmediato los modelos más recientes y eficientes del estado del arte, como RTMPose.
@@ -33,7 +48,7 @@ Permite intercambiar arquitecturas (\textit{backbones}), cabezales de detección
 Frente a este ecosistema tan dinámico, \textbf{AlphaPose} \cite{alphapose} representa una herramienta pionera con una arquitectura mucho más enfocada y cerrada.
 No obstante, utilizaremos AlphaPose en este trabajo por dos motivos.
 En primer lugar, una inercia histórica, AlphaPose ha sido la base de numerosas investigaciones previas, lo que garantiza un entorno probado, maduro y directamente comparable con la literatura existente.
-En segundo lugar, y más importante, su diseño integral ``listo para usar'' incorpora nativamente soluciones específicas para el seguimiento de personas en vídeo, algo que en librerías más modulares requiere un ensamblaje ligerametne más manual.
+En segundo lugar, y más importante, su diseño integral ``listo para usar'' incorpora nativamente soluciones específicas para el seguimiento de personas en vídeo, algo que en librerías más modulares requiere una configuración ligerametne más manual.
 
 \subsection{Configuración y arquitectura de AlphaPose}
 El primer acierto de esta herramienta radica en cómo gestiona el espacio cuando hay más de una persona en escena.
@@ -131,7 +146,8 @@ En esta sección se presentará la arquitectura principal del modelo \textit{Mul
 Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
 \subsection{Data Augmentation}\label{sec:DATAAUG}
-Como mencionabamos en la \textit{ch:SOTA}, existe una falta de datos, los conjuntos de datos disponibles son escasos y apenas tienen, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
+Como mencionabamos en el \textit{Capítulo}~\ref{ch:SOTA}, el coste de contratar a los expertos significa que los datos disponibles son escasos, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
+Una cantidad relativamente baja para tareas de aprendizaje profundo de esta escala.
 %Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
 Así, y con la intención de reducir el sobreajuste se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
 % Así, para compensar esta escasez de datos se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
@@ -140,11 +156,11 @@ La postura y la ubicación del intérprete varían de forma natural al realizar 
 Esto permite introducir variabilidad controlada en los datos sin corromper su semántica ni generar muestras inverosímiles.
 Entre las transformaciones espaciales más comunes y efectivas se encuentran las \textbf{rotaciones}, las \textbf{traslaciones} y los \textbf{cambios de escala (zoom)}.
 
-Sorprendentemente, los autores observaron que la eficacia del modelo comenzó a disminuir específicamente al integrar los métodos de traslación y cambio de escala.
+Sorprendentemente, Mo Guan et al. \cite{MSKA} observaron que la eficacia del modelo comenzó a disminuir específicamente al integrar los métodos de traslación y cambio de escala.
 Su hipótesis es que estas estrategias de aumento introdujeron discrepancias en la alineación de los datos con el conjunto de validación.
 En lugar de ayudar a generalizar, estas alteraciones terminaron provocando un sobreajuste. Así, decidieron mantener únicamente las rotaciones.
 
-Ademaś de estos métodos, proponemos dos métodos de aumento de datos y regularización especificos para la tarea de reconocimiento de la pose: \textbf{\textit{Joint Dropout}} y \textbf{ruido gaussiano}, su funcionamiento y la motivación de su uso se explicará en las secciones siguientes.
+Además de estos métodos, proponemos dos métodos de aumento de datos y regularización especificos para la tarea de reconocimiento de la pose: \textbf{\textit{Joint Dropout}} y \textbf{ruido gaussiano}, su funcionamiento y la motivación de su uso se explicará en las secciones siguientes.
 
 \subsubsection*{Rotaciones}
 El objetivo es que el modelo sea robusto ante pequeñas variaciones en la inclinación o el ángulo del intérprete.
@@ -173,11 +189,11 @@ Si una matriz $\mathbf{P} \in \mathbb{R}^{n \times 2}$ contiene las coordenadas 
 }_{\text{Matriz de rotaciones traspuesta}}
 \end{equation*}
 
-\begin{note}
+
 Al multiplicar la matriz de coordenadas (donde cada fila es un punto) por la derecha, necesitamos la matriz de rotación traspuesta.
 La traspuesta de la matriz de rotación estándar para un ángulo $\alpha$ en sentido antihorario cambia el signo del seno inferior al seno superior.
 Esto nos permite realizar la rotación del fotograma en un paso.
-\end{note}
+
 
 Es importante acotar el rango de esta transformación; rotaciones extremas (por ejemplo, de $180^{\circ}$) carecen de sentido práctico, ya que introducen escenarios que el modelo jamás encontrará en un entorno real.
 Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
@@ -194,14 +210,17 @@ Si la proporción es $>1$ se está añadiendo redundancia o manteniendo la infor
 A nivel de implementación, la expansión de la secuencia se realiza duplicando fotogramas de forma aleatoria, mientras que su reducción se logra descartándolos, preservando en todo momento el orden cronológico original.
 
 \subsubsection*{\textit{Joint Dropout}}
-Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la perdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
+Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la pérdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
 
-El método consiste en eliminar la información de ciertos keypoints agrupandolos por extremidad, por ejemplo \textit{mano derecha}, \textit{mano izquierda}, \textit{brazo izquierdo} y \textit{brazo derecho}.
+El método consiste en eliminar la información de ciertos keypoints agrupándolos por extremidad, por ejemplo \textit{mano derecha}, \textit{mano izquierda}, \textit{brazo izquierdo} y \textit{brazo derecho}.
 Además los investigadores señalan que la oclusión debe afectar la duración completa de la acción para forzar a la red a aprender de las extremidades restantes.
 
-Se implementa una versión simplificada de la técnica, que trata con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el papel mencionado.
+Se implementan dos versiones simplificadas de la técnica, que tratan con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el papel mencionado.
 Como detalle, no tiene sentido la oclusión total de las extremidades, ya que esto privaría a la red de características representativas e introduciría ruido perjudicial en el entrenamiento.
-Así, basandonos en \cite{JDrop} nos limitamos a eliminar $2$ extremidades como máximo.
+Así, basándonos en \cite{JDrop} nos limitamos a eliminar $2$ extremidades como máximo.
+
+La llamada \textit{Structured Joint Dropout} que corresponde exactamente con la técnica implementada en el papel y una versión menos agresiva que simplemete enmascara puntos al azar sin tener en cuenta a que extremidad pertenecen.
+Con esta variación buscamos reducir la cantidad de información que ocultamos al modelo, como veremos, ya estamos separando las extremidades, eliminar una por completo podría entorpecer el aprendizaje sin tener efecto regularizador.
 
 \subsubsection*{Ruido Gaussiano}
 Otra situación que occure frecuentemente en este tipo de tareas son los micromovimientos de la persona, las interferencias del entorno y los temblores naturales que ocurren al capturar el movimiento.
@@ -241,7 +260,7 @@ Además, el procesamiento independiente permite que la red asigne implícitament
 Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
 
 \subsubsection{Módulo de Atención de Keypoints}
-Este módulo integra los mecanismos de atención espacio-temporal descritos en la \textit{Sección \ref{sec:DSTA}}.
+Este módulo integra los mecanismos de atención espacio-temporal descritos en la \textit{Sección}~\ref{sec:DSTA}.
 Los pesos de estos bloques son independientes y no se comparten entre los distintos flujos.
 El siguiente diagrama ilustra la adaptación de esta estructura a los \textit{keypoints} corporales.
 \begin{figure}[H]
@@ -281,16 +300,16 @@ Estas estructuras modelan el contexto temporal final de los datos, extrayendo la
 Cada cabeza está compuesta por una capa lineal temporal, una de normalización por lotes (\textit{batch normalization}), una de activación \textit{ReLU} y un bloque convolucional temporal, que contiene dos capas de convolución $1D$ con un tamaño de kernel de $3$.
 Termina con otra lineal y un último \textit{ReLU}.
 
+Produce lo que los autores denominan la \textbf{representación de la glosa}, con dimensiones $T/4\times512$.
+Finalmente, un clasificador lineal acoplado a una activación \textit{softmax} estima la distribución de probabilidades para predecir la glosa articulada.
+Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el modelo de traducción recibe la representación de la glosa.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/headNet.pdf}
     \caption{Esquema las redes de cabecera.}
     \label{fig:att_body}
 \end{figure}
-
-Produce lo que los autores denominan la \textbf{representación de la glosa}, con dimensiones $T/4\times512$.
-Finalmente, un clasificador lineal acoplado a una activación \textit{softmax} estima la distribución de probabilidades para predecir la glosa articulada.
-Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el modelo de traducción recibe la representación de la glosa.
 
 Cada cabezal se entrena y se corrige utilizando la función de pérdida CTC expuesta en la \textit{Sección \ref{sec:CTC}} de manera independiente.
 
@@ -312,17 +331,28 @@ En segundo lugar, para complementar la naturaleza global de la pérdida CTC y lo
 Esta técnica calcula el promedio de las probabilidades emitidas por las cuatro redes de cabecera principales y lo utiliza como un \textit{pseudo-objetivo}.
 
 A través de una pérdida de destilación ($\mathcal{L}_{Dist}$), se minimiza la divergencia KL (\textit{Kullback-Leibler})\footnote{La divergencia de Kullback-Leibler (KL), también llamada entropía relativa, es una medida estadística que cuantifica cuánto difiere una distribución de probabilidad de otra \cite{klDivergence}.} entre este pseudo-objetivo unificado y las predicciones individuales de cada flujo.
+Formalmente, sea $P^s \in \mathbb{R}^{|\mathcal{V}|}$ la distribución de probabilidad sobre el vocabulario de glosas predicha por el flujo $s$, y sea $\bar{P} = \frac{1}{|\mathcal{S}|}\sum_{s \in \mathcal{S}} P^{s}$ el promedio del ensamblado, con $\mathcal{S} = \{left,\, right,\, body,\, fuse\}$.
+La pérdida de destilación se define como:
+\begin{equation*}
+    \mathcal{L}_{Dist}
+    = \sum_{s \in \mathcal{S}}
+      D_{\mathrm{KL}}\!\left(\bar{P} \;\Big\|\; P^{s}\right), %\mathrm{sg}(\bar{P})
+    \qquad
+    D_{\mathrm{KL}}(P \| Q)
+    = \sum_{v} P_{v} \log \frac{P_{v}}{Q_{v}}.
+\end{equation*}
 
-Para asegurar la estabilidad del entrenamiento, se aplica una operación de \textbf{parada de gradiente} sobre el ensamblaje.
+
+Para asegurar la estabilidad del entrenamiento, se aplica una operación de \textbf{parada de gradiente} sobre el ensamblado.
 Al desconectar el \textit{pseudo-objetivo} del grafo computacional durante la retropropagación, se garantiza que la pérdida de destilación actúe únicamente sobre los pesos de los flujos individuales.
-Esto evita la retroalimentación del error hacia el ensamblaje, previniendo el colapso del modelo y asegurando que el objetivo de referencia actúe como un ancla estática.
+Esto evita la retroalimentación del error hacia el ensamblado, previniendo el colapso del modelo y asegurando que el objetivo de referencia actúe como un ancla estática.
 
 Así, la función de pérdida global es la siguiente.
 \begin{equation*}
     \mathcal{L}_{SLR} = \mathcal{L}_{CTC} + \mathcal{L}_{Dist}
 \end{equation*}
 
-De este modo, el conocimiento unificado del ensamblaje se transfiere a cada flujo individual.
+De este modo, el conocimiento unificado del ensamblado se transfiere a cada flujo individual.
 Esto garantiza que cada cabezal no solo aprenda de sus propias características locales, sino que optimice sus predicciones basándose en la comprensión global de toda la red.
 
 
