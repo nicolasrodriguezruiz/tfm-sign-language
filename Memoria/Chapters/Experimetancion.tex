@@ -135,7 +135,6 @@ El vocabulario de glosas del conjunto de entrenamiento contiene \texttt{1094} en
 Cada glosa recibe un identificador numérico único construido a partir del conjunto de entrenamiento; las glosas no vistas durante el entrenamiento se mapean al token \texttt{<UNK>} en inferencia.
 
 
-
 \section{Reconocimiento de Lengua de Signos (SLR)}
 En esta sección se evalúa el módulo de reconocimiento de forma aislada sobre la tarea S2G, midiendo el impacto de las distintas técnicas de aumento de datos sobre la calidad del reconocimiento de glosas.
 
@@ -330,7 +329,7 @@ Estos resultados servirán como referencia cuantitativa para evaluar si la susti
 
 % ----------------------------------------------------------------
 
-\section{Traducción \textit{zero-shot}: Spotter + Qwen}
+\section{Traducción \textit{zero-shot}: Spotter + Qwen}\label{sec:zeroshot}
 
 Antes de explorar el \textit{finetuning}, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, siguiendo la línea del trabajo Spotter+GPT descrito en el estado del arte.
 En este experimento no se realiza ningún entrenamiento adicional: el módulo de reconocimiento predice una secuencia de glosas mediante CTC \textit{beam search}, y dicha secuencia se pasa directamente a Qwen como texto plano mediante un prompt de instrucción, sin ningún tipo de entrenamiento ni acceso a features visuales.

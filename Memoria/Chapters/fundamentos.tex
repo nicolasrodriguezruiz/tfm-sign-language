@@ -13,16 +13,22 @@ La \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER) mide la di
 donde $S$, $D$ e $I$ son el número de sustituciones, eliminaciones e inserciones respectivamente, y $N$ es el total de palabras en la referencia.
 Es la métrica estándar para el reconocimiento de glosas, dado que penaliza directamente los errores de segmentación temporal propios de la tarea.
 
+La puntiación está entre $0$ y $1$, aunque comúnmente se transforma a porcentaje, cuanto más cercano a cero mejor.
+
 \subsection{BLEU}
 \textbf{BLEU} (\textit{BiLingual Evaluation Understudy}) \cite{BLEU} evalúa la calidad de la traducción midiendo la precisión de $n$-gramas entre el texto generado y la referencia.
+Las palabras deben aparecer exactamente en el mismo orden tanto en la predicción como en la referencia.
 Para evitar que repetir palabras correctas infle artificialmente la puntuación, utiliza una precisión recortada (\textit{clipped}):
-\begin{equation*}
-  p_n = \frac{
+\begin{align*}
+  p_n &= \frac{
     \sum_{C}\sum_{n\text{-grama}\in C}\mathrm{Count}_{\mathrm{clip}}(n\text{-grama})
   }{
-    \sum_{C}\sum_{n\text{-grama}\in C}\mathrm{Count}(n\text{-grama})
-  }.
-\end{equation*}
+    \sum_{C}\sum_{n\text{-grama}'\in C}\mathrm{Count}(n\text{-grama}')
+  }, \hspace{2px}\text{donde} \\
+  \text{Count}_{\text{clip}}(n\text{-gram}) &= \min \left(
+                              \text{Count}(n\text{-gram}),
+                              \max_{R \in \{\text{References}\}} \text{Count}_R(n\text{-gram}) \right).
+\end{align*}
 
 La puntuación final incorpora una penalización por brevedad $BP$ que descuenta traducciones más cortas que la referencia:
 \begin{equation*}
@@ -34,18 +40,22 @@ donde $c$ y $r$ son las longitudes totales del texto generado y de referencia.
 Su principal limitación es la ausencia de comprensión semántica: sinónimos o paráfrasis válidas son penalizados igual que errores reales.
 Se reportan BLEU-1 a BLEU-4 ($N=1,\dots,4$) siguiendo la convención habitual en traducción de lengua de signos.
 
-
+El resultado final de BLEU es un valor entre $0$ y $1$ (o $0$ y $100$), donde un valor más cercano a $1$ (o $100$) indica una mayor calidad global de la traducción.
 
 \subsection{ROUGE-L}
 \textbf{ROUGE-L} \cite{ROUGE} evalúa la similitud mediante la subsecuencia común más larga (LCS) entre el texto generado y la referencia, combinando exhaustividad y precisión en una puntuación $F_1$:
 \begin{equation*}
-  R = \frac{|\mathrm{LCS}|}{|ref|}, \quad
-  P = \frac{|\mathrm{LCS}|}{|hyp|}, \quad
-  F_1 = \frac{2RP}{R+P}.
+  R = \frac{|\text{LCS}(\text{ref}, \text{hyp})|}{|\text{ref}|}, \quad
+  P = \frac{|\text{LCS}(\text{ref}, \text{hyp})|}{|\text{hyp}|}, \quad
+  F_\beta = \frac{(1 + \beta^2)RP}{R + \beta^2P}
 \end{equation*}
+donde $|\text{ref}|$ y $|\text{hyp}|$ representan la longitud en palabras de la referencia y de la hipótesis, respectivamente.
+Comúnmente se emplea $\beta = 1$ para obtener la puntuación $F_1$ estándar, o un valor de $\beta$ alto para priorizar el impacto del \textit{recall}.
 
 A diferencia de BLEU, no exige que los $n$-gramas sean contiguos, lo que la hace más tolerante a pequeñas reordenaciones.
 Comparte con BLEU la limitación de basarse en coincidencia léxica exacta.
+
+El resultado final de ROUGE-L es un valor entre $0$ y $1$ (o $0$ y $100$), donde un valor más cercano a $1$ (o $100$) indica una mayor calidad global de la traducción.
 
 \subsection{BLEURT}
 \textbf{BLEURT} (\textit{Bilingual Evaluation Understudy with Representations from Transformers}) \cite{BLEURT} es una métrica neuronal entrenada para correlacionar con el juicio humano.
@@ -53,7 +63,15 @@ A diferencia de BLEU y ROUGE, no compara $n$-gramas sino representaciones semán
 Esto le permite valorar correctamente sinónimos y paráfrasis que las métricas léxicas penalizarían.
 Se emplea aquí exclusivamente en el experimento \textit{zero-shot} (Sección~\ref{sec:zeroshot}), donde la formulación libre de las traducciones hace que BLEU resulte poco informativo.
 
-\section{Transformers}
+El resultado final de ROUGE-L es un valor entre $0$ y $1$, donde un valor más cercano a $1$ indica una mayor calidad global de la traducción.
+
+\section{Modelos de Lenguaje}\label{sub:transformer}
+
+En esta sección se presentan los fundamentos de los modelos de lenguaje que sustentan el sistema desarrollado en este trabajo.
+Se parte de la arquitectura \textit{Transformer}, que constituye el bloque constructivo común a todos ellos, para después describir cómo el escalado masivo de esta arquitectura da lugar a los Modelos Grandes de Lenguaje (LLMs) y, finalmente, cómo la técnica LoRA permite adaptar dichos modelos a tareas específicas de forma eficiente.
+
+Además de los LLM, el diseño de atención pura de los \textit{transformer} se utilizaŕa para el sistema de reconocimiento de señas mendiante bloques de atención espacial y temporal especificos expuestos más adelante.
+
 La arquitectura \textbf{Transformer}, introducida por Vaswani et al. \cite{vaswani2023attentionneed}, supuso un cambio de paradigma absoluto en el procesamiento de secuencias, desplazando a las redes neuronales recurrentes.
 Su relevancia para el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de autoatención (\textit{self-attention}).
 Esto permite que cada elemento de una entrada (ya sea un \textit{token} de texto o un \textit{keypoint} del cuerpo) sea procesado en relación con todos los demás de forma paralela.
@@ -89,11 +107,69 @@ Dado que la atención procesa todos los elementos en paralelo, el modelo carece 
 \end{align*}
 donde $i$ indexa la dimensión del vector y $C$ es el tamaño del canal de entrada.
 El uso de frecuencias distintas permite representar posiciones absolutas y, al mismo tiempo, capturar relaciones relativas entre elementos distantes.
-En el contexto de datos esqueléticos, esta codificación se adapta para separar la dimensión espacial (identidad de cada articulación) de la temporal (instante del fotograma), como se detalla en la Sección~\ref{sec:DSTA}.
+En el contexto de datos esqueléticos, esta codificación se adapta para separar la dimensión espacial (identidad de cada articulación) de la temporal (instante del fotograma), como se detalla en la \textit{Sección}~\ref{sec:DSTA}.
+
+\subsection{Modelos Grandes del Lenguje (LLM)}
+Los \textbf{Modelos Grandes de Lenguaje} (\textit{Large Language Models}, LLMs) son modelos \textit{Transformer} de arquitectura exclusivamente decodificadora (\textit{decoder-only}) preentrenados sobre corpus de texto de escala masiva mediante el objetivo de predicción del siguiente \textit{token}.
+A diferencia de los modelos \textit{encoder-decoder} clásicos, el decodificador procesa la secuencia de forma autorregresiva: en cada paso genera un \textit{token} condicionado a todos los anteriores, lo que lo convierte en un generador de texto fluido y coher
+
+El efecto más relevante del escalado es la aparición de \textbf{capacidades emergentes}: habilidades que no estaban presentes en modelos pequeños y surgen de forma espontánea al aumentar el número de parámetros y el volumen de datos de preentrenamiento.
+Entre estas capacidades destacan el razonamiento en cadena, la traducción entre idiomas y la ejecución de tareas en modalidad \textit{zero-shot} (sin ejemplos de entrenamiento específicos para la tarea).
+En el contexto de este trabajo, estas propiedades son especialmente valiosas: permiten que el modelo reciba una secuencia ruidosa de glosas y reconstruya su significado en lenguaje natural sin haber sido entrenado explícitamente para ello, tal como se explorará en la Sección~\ref{sec:zeroshot}.
+
+Dado que los LLMs pueden contar con cientos de miles de millones de parámetros, su ajuste fino completo resulta inabordable en entornos con recursos computacionales limitados.
+\textbf{LoRA} propone una solución a este problema que se describe a continuación.
+
+
+\subsection{LoRA}\label{sec:LoRA}
+
+El \textit{finetuning} completo de un modelo de lenguaje grande actualiza todos sus parámetros, lo que resulta prohibitivo en memoria y cómputo a medida que el modelo crece.
+\textbf{LoRA} (\textit{Low-Rank Adaptation}) \cite{LoRA} propone una alternativa eficiente: congelar los pesos preentrenados e inyectar actualizaciones de \textbf{rango reducido} en las capas seleccionadas.
+
+La intuición es que, aunque los modelos preentrenados tienen millones de parámetros, los cambios necesarios para adaptarlos a una tarea concreta residen en un subespacio de dimensión mucho menor.
+Formalmente, dado un peso $W_0 \in \mathbb{R}^{d \times k}$, LoRA descompone su actualización como el producto de dos matrices de rango bajo:
+\begin{equation*}
+  W = W_0 + \Delta W = W_0 + BA,
+  \qquad B \in \mathbb{R}^{d \times r},\; A \in \mathbb{R}^{r \times k},
+  \quad r \ll \min(d, k).
+\end{equation*}
+Durante el entrenamiento, $W_0$ permanece congelado y solo se actualizan $A$ y $B$, reduciendo drásticamente el número de parámetros entrenables.
+$A$ se inicializa con una distribución gaussiana y $B$ a cero, de modo que $\Delta W = 0$ al inicio y el modelo parte del comportamiento preentrenado.
+
+La escala de la actualización se controla mediante un hiperparámetro $\alpha$, de forma que la contribución efectiva de los adaptadores es:
+\begin{equation*}
+  W = W_0 + \frac{\alpha}{r}\,BA.
+\end{equation*}
+El cociente $\alpha/r$ actúa como un factor de escala global: aumentar $\alpha$ amplifica la influencia de los adaptadores, mientras que aumentar $r$ incrementa la capacidad expresiva de $\Delta W$ a costa de más parámetros entrenables. En la práctica, fijar $\alpha = 2r$ es una elección habitual que mantiene las actualizaciones en una escala comparable a los pesos originales.
+
+LoRA se aplica típicamente sobre las proyecciones de atención ($W_Q, W_K, W_V, W_O$), aunque puede extenderse a las capas \textit{feed-forward} del bloque transformer cuando se requiere mayor capacidad de adaptación.
+La elección de qué capas adaptar supone un compromiso entre rendimiento y coste computacional que se analiza empíricamente en el \textit{Capítulo}~\ref{ch:experimentacion}.
 
 
 
-\section{Clasificación Temporal Conexionista}\label{sec:CTC}
+\section{El esqueleto como dato}
+La representación del cuerpo humano como un conjunto estructurado de puntos anatómicos (\textit{keypoints}) es el punto de partida del módulo visual del sistema.
+En esta sección se presentan los fundamentos necesarios para comprender cómo se obtiene y procesa esta representación.
+Primero se describe brevemente el estado del arte en estimación de pose, la tarea que permite extraer los \textit{keypoints} a partir del vídeo.
+A continuación se introduce la \textit{Connectionist Temporal Classification} (CTC), el mecanismo que resuelve el problema de alineación entre la secuencia continua de \textit{keypoints} y la secuencia discreta de glosas.
+Finalmente, se presenta la arquitectura \textit{Decoupled Spatial-Temporal Attention} (DSTA), que modela las dependencias espaciales y temporales del esqueleto.
+
+\subsection{Estimación de pose y extracción de \textit{keypoints}}
+La \textbf{estimación de pose} es la tarea de visión por computador que localiza automáticamente un conjunto predefinido de articulaciones y rasgos anatómicos del cuerpo humano en imágenes o vídeo, produciendo un mapa de \textit{keypoints} con sus coordenadas y un índice de confianza asociado.
+Esta representación abstrae la información visual relevante para el movimiento, descartando ruido irrelevante como el fondo o la apariencia del signante.
+El panorama actual está dominado por un conjunto reducido de herramientas de referencia.
+
+\textbf{OpenPose} \cite{OpenPose} fue pionero en la estimación multipersona en tiempo real mediante un enfoque ascendente (\textit{bottom-up}): detecta todas las articulaciones de la imagen y las agrupa por individuo a posteriori.
+
+Aunque supuso un hito, su coste computacional y su precisión han quedado superados por soluciones más modernas.
+\textbf{MediaPipe Holistic} \cite{mediapipe}, desarrollado por Google, ofrece una solución integrada de alta velocidad que cubre cuerpo, manos y rostro en un único pipeline, aunque está optimizado para escenarios con un único individuo en primer plano.
+
+\textbf{MMPose} (parte del ecosistema OpenMMLab) representa el paradigma modular actual: permite intercambiar arquitecturas y cabezales de detección, integrando de forma inmediata los modelos más recientes del estado del arte como RTMPose, con una precisión superior en condiciones estáticas.
+
+Finalmente, \textbf{AlphaPose} \cite{alphapose} adopta una estrategia descendente (\textit{top-down}) que aísla primero a cada individuo mediante un detector de objetos antes de estimar su postura, lo que lo hace especialmente robusto ante la presencia de terceros en escena.
+La justificación de la herramienta seleccionada para este trabajo y los detalles de su configuración se describen en la Sección~\ref{ch:metodologia}.
+
+\subsection{Clasificación Temporal Conexionista}\label{sec:CTC}
 La \textit{Connectionist Temporal Classification} (CTC) es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
 
 Esto es especialmente importante en tareas perceptuales y de visión por computador, donde la secuencia de entrada, por ejemplo, una serie de fotogramas de vídeo que capturan a un signante, es habitualmente más larga que la secuencia objetivo de glosas o etiquetas a predecir.
@@ -129,7 +205,7 @@ Para un vídeo de $5$ frames, todas estas ``rutas'' de la red neuronal son váli
 \end{itemize}
 
 Durante el entrenamiento, no se intenta forzar que ocurra solo una ruta que se considere ``perfecta''.
-Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las relgas.
+Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las reglas.
 Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin atarse a una plantilla de tiempo rígida.
 
 En su lugar, utiliza una función objetivo (CTCloss) que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
@@ -140,35 +216,32 @@ Si $x$ representa la secuencia de entrada, $z$ es la secuencia objetivo, y $p(z|
 O^{ML}(S,N_w)=-\sum_{(x,z)\in S}\log{p(z|x)}
 \end{equation*}
 
-
-
-\section{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}\label{sec:DSTA}
+\subsection{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}\label{sec:DSTA}
 Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes $RNN$ o $CNN$) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.
 El problema es que estos diseños manuales no siempre son óptimos y limitan la generalización del modelo.
 
-Para solucionar esto, \textbf{Lei Shi et al.} en \cite{DSTA} proponen un enfoque basado exclusivamente en mecanismos de atención inspirado en los \textit{transformers} vistos en la sección \ref{}.
+Para solucionar esto, \textbf{Lei Shi et al.} en \cite{DSTA} proponen un enfoque basado exclusivamente en mecanismos de atención inspirado en los \textit{transformers} vistos en la \textit{Sección}~\ref{sub:transformer}.
 Esto permite que la red aprenda automáticamente las dependencias espaciales y temporales entre las articulaciones sin necesidad de conocer sus posiciones exactas o conexiones anatómicas previas, además implementan una técnica de separación de datos para captar distintos tipos de movimientos.
 
-\subsection{Módulos de atención espacial y temporal}\label{seq:STA}
-Si recordamos en la sección anterior de \textit{transformers} que la entrada de datos es una secuencia bidimensional: una matriz $X\in \mathbb{R}^{N\times C}$, donde $N$ es el número de elementos y $C$ es el número de canales.
+\subsubsection{Módulos de atención espacial y temporal}\label{seq:STA}
+Si recordamos en la sección anterior donde se mencionan los \textit{transformers}, la entrada de datos es una secuencia bidimensional: una matriz $X\in \mathbb{R}^{N\times C}$, donde $N$ es el número de elementos y $C$ es el número de canales.
 
 Sin embargo, los datos dinámicos del esqueleto tienen tres dimensiones: \textbf{espacio}, \textbf{tiempo} y \textbf{canales}.
 Podemos representarlos como un tensor de tercer orden: $X\in \mathbb{R}^{N\times T\times C}$, donde $N$ es el número de articulaciones, $T$ es el número de fotogramas (frames) y $C$ son los canales de coordenadas.
 
-La froma ingénua de representar los datos, ya probado por otros autores anteriores, es aplanar el espacio y el tiempo en una sola dimensión $\hat{N} = NT$, convirtiendo el tensor de tercer orden en $X\in \mathbb{R}^{\hat{N}\times C}$.
-Este enfoque presentaba varias desventajas, a priori, estaban tratando el espacio y el tiempo como si fueran lo mismo y compartieran estructura, lo cual fisicamente no tiene sentido.
-Por otra parte, el coste computacinal de este enfoque es muy alto en tiempo y en memoria.
+La forma ingénua de representar los datos, ya probado por otros autores anteriores, es aplanar el espacio y el tiempo en una sola dimensión $\hat{N} = NT$, convirtiendo el tensor de tercer orden en $X\in \mathbb{R}^{\hat{N}\times C}$.
+Este enfoque presentaba varias desventajas, a priori, estaban tratando el espacio y el tiempo como si fueran lo mismo y compartieran estructura, lo cual físicamente no tiene sentido.
+Por otra parte, el coste computacional de este enfoque es muy alto en tiempo y en memoria.
 
 Este papel propone tres métodos para este desacoplamiento.
 Los explicaremos brevemente utilizando como ejemplo la atención espacial.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{DSTA/strategy.pdf}
-    \caption{Las tres estrategias propuestas en \cite{DSTA}. Grafico sacado de ese papel.}
+    \caption{Las tres estrategias propuestas en \cite{DSTA}. Gráfico sacado de ese papel.}
 \end{figure}
 
-\subsubsection*{Estrategia (a)}
-Aquí se calcula un mapa de atención único para cada fotograma de manera independiente.
+\paragraph{Estrategia (a)} Aquí se calcula un mapa de atención único para cada fotograma de manera independiente.
 \begin{equation*}
 Attention_t = softmax(\sigma(X_t)\phi(X_t)'),
 \end{equation*}
@@ -176,8 +249,7 @@ donde, $Attention_t\in\mathbb{R}{N\times N}$ es el mapa de atención para el fot
 
 Este método no solo tiene un alto coste computacional sino que, además, es incapaz de modelar las relaciones fuera de un mismo fotograma, carece de contexto global.
 
-\subsubsection*{Estrategia (b)}
-En un giro de $180^{\circ}$ los autores proponen otro método.
+\paragraph{Estrategia (b)} En un giro de $180^{\circ}$ los autores proponen otro método.
 En vez de restringirnos en un fotograma, calculamos las relaciones entre todas las articulaciones a lo largo de todos los fotogramas de forma simultánea.
 El mapa de atención resultante se comparte para todos los fotogramas.
 
@@ -187,8 +259,7 @@ Attention = softmax(\sum_t^T\sum_\tau^T(\sigma(X_t)\phi(X_\tau)')).
 
 Aunque es \textbf{muy} potente, este método es aún más computacionalmente pesado.
 
-\subsubsection*{Estrategia (c)}\hypertarget{est:c}{c}
-La estrategia que finalmetente propone el papel consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
+\paragraph{Estrategia (c)}\hypertarget{est:c}{} La estrategia que finalmetente propone el papel consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
 \begin{equation*}
 Attention = softmax(\sum_t^T(\sigma(X_t)\phi(X_t)')).
 \end{equation*}
@@ -204,7 +275,7 @@ por las propiedades de las multiplicaciones de las matrices por bloques, al real
 Esa única operación produce matemáticamente el mismo resultado exacto que si hubieramos multiplicado y sumado cada fotograma por separado. Pasamos de hacer $T$ operaciones a hacer una sola operación (que está muy optimizada en las máquinas modernas).
 
 
-\subsection{Codificación Posicional}
+\subsubsection{Codificación Posicional}
 
 Como ocurre en otros modelos de atención pura, las articulaciones del esqueleto se organizan en forma de tensor para poder introducirlas en las redes neuronales.
 Estos tensores carecen de orden o estructura que indique por sí mismo qué representa cada uno (por ejemplo, el índice de la articulación o el índice del fotograma), es necesario usar un módulo de codificación posicional que asigne un identificador único a cada articulación.
@@ -222,11 +293,9 @@ El problema de esta topología es que la red no puede distinguir adecuadamente l
 \end{figure}
 
 Le estamos añadiendo dificultad a la red a la hora de aprender que la articulación $1$ y la articulación $4$ son, en realidad, la misma parte del cuerpo en diferentes momentos.
-
 Así, para preservar la semántica del esqueleto, los autores proponen separar el proceso en codificación espacial y codificación temporal.
 
-\subsubsection*{Codificación de Posición Espacial}
-Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
+\paragraph{Codificación de Posición Espacial} Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.5\textwidth]{DSTA/DSTA-SPE.pdf}
@@ -234,8 +303,7 @@ Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial
 \end{figure}
 Utilizar esta codificación permite que, sin importar el fotograma, una articulación siempre tenga el mismo vector de identidad espacial.
 
-\subsubsection*{Codificación de Posición Temporal}
-Es el proceso análogo e inverso.
+\paragraph{Codificación de Posición Temporal} Es el proceso análogo e inverso.
 Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
 \begin{figure}[H]
     \centering
@@ -243,7 +311,7 @@ Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial
     \caption{Consideramos $2$ fotogramas con $3$ puntos clave cada uno. Esto es un \textbf{esquema} de lo que ocurre.}
 \end{figure}
 
-\subsection{\textit{Spatial Global Regularization} (SGR) }
+\subsubsection{\textit{Spatial Global Regularization} (SGR) }
 En el procesamiento de imágenes, las redes convolucionales (CNNs) aprovechan que los píxeles cercanos forman bordes y formas, compartiendo pesos locales para encontrar patrones en cualquier parte de la imagen.
 
 En los datos esqueléticos, tenemos un tipo diferente de ventaja, en su mayoría, la anatomía humana es \textbf{universal} y \textbf{constante}.
@@ -253,18 +321,18 @@ Basándose en este conocimiento previo, los autores de la \textbf{DSTA} proponen
 
 Para ello, se crea una matriz entrenable o mapa de atención global de tamaño $N\times N$, compartida para todas las muestras de datos.
 Esta matriz actua como una plantilla que representa los patrones de relaciones que poseen las distintas articulaciones humanas entre sí, que normalmente se mantienen constantes.
-
-Finalmente, este nuevo mapa de atención se combina con el obtenido en la \textit{Sección} \ref{seq:STA} junto con un factor $\alpha$ que se encarga de controlar la potencia de esta regularización.
+Finalmente, este nuevo mapa de atención se combina con el obtenido en la \textit{Sección}~\ref{seq:STA} junto con un factor $\alpha$ que se encarga de controlar la potencia de esta regularización.
 
 Esta regularización se aplica única y exclusivamente a la dimensión espacial, pues la dimensión temporal no posee esta característica de alineación semántica.
 Forzar a la red a aprender un patrón unificado global para el tiempo carece de sentido lógico y, como demostraron empíricamente en sus estudios de ablación, perjudicaría el rendimiento del modelo.
 
-El siguiente diagrama muestra la estructura completa del módulo de atención espacial.
+El siguiente diagrama (\textit{Figura}~\ref{fig:DSTA_ATT}) muestra la estructura completa del módulo de atención espacial.
 La atención temporal es análoga salvo por los matices mencionados.
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\textwidth]{DSTA/attention.pdf}
     \caption{Esquema del módulo de atención \textbf{espacial}. Obtenido de \cite{DSTA}}
+    \label{fig:DSTA_ATT}
 \end{figure}
 
 Así, en resumen, a la matriz de entrada $X\in\mathbb{R}^{N\times TC_{in}}$ se le suma la codificación de posición espacial. Luego, se procesa mediante dos funciones de mapeo lineal para proyectarla a un espacio con dimensiones $N\times TC_e$.
@@ -289,26 +357,4 @@ La arquitectura \textbf{DSTA-Net} organiza este proceso apilando un total de $L$
 En cada una de estas capas, el tensor de entrada se procesa secuencialmente: primero entra al módulo de atención espacial (tratando los datos como $N$ articulaciones) para aprender la estructura física, y luego la matriz resultante se transpone para entrar al módulo de atención temporal (tratando los datos como $T$ fotogramas) para aprender el movimiento.
 Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
 
-\section{LoRA}\label{sec:LoRA}
 
-El \textit{finetuning} completo de un modelo de lenguaje grande actualiza todos sus parámetros, lo que resulta prohibitivo en memoria y cómputo a medida que el modelo crece.
-\textbf{LoRA} (\textit{Low-Rank Adaptation}) \cite{LoRA} propone una alternativa eficiente: congelar los pesos preentrenados e inyectar actualizaciones de \textbf{rango reducido} en las capas seleccionadas.
-
-La intuición es que, aunque los modelos preentrenados tienen millones de parámetros, los cambios necesarios para adaptarlos a una tarea concreta residen en un subespacio de dimensión mucho menor.
-Formalmente, dado un peso $W_0 \in \mathbb{R}^{d \times k}$, LoRA descompone su actualización como el producto de dos matrices de rango bajo:
-\begin{equation*}
-  W = W_0 + \Delta W = W_0 + BA,
-  \qquad B \in \mathbb{R}^{d \times r},\; A \in \mathbb{R}^{r \times k},
-  \quad r \ll \min(d, k).
-\end{equation*}
-Durante el entrenamiento, $W_0$ permanece congelado y solo se actualizan $A$ y $B$, reduciendo drásticamente el número de parámetros entrenables.
-$A$ se inicializa con una distribución gaussiana y $B$ a cero, de modo que $\Delta W = 0$ al inicio y el modelo parte del comportamiento preentrenado.
-
-La escala de la actualización se controla mediante un hiperparámetro $\alpha$, de forma que la contribución efectiva de los adaptadores es:
-\begin{equation*}
-  W = W_0 + \frac{\alpha}{r}\,BA.
-\end{equation*}
-El cociente $\alpha/r$ actúa como un factor de escala global: aumentar $\alpha$ amplifica la influencia de los adaptadores, mientras que aumentar $r$ incrementa la capacidad expresiva de $\Delta W$ a costa de más parámetros entrenables. En la práctica, fijar $\alpha = 2r$ es una elección habitual que mantiene las actualizaciones en una escala comparable a los pesos originales.
-
-LoRA se aplica típicamente sobre las proyecciones de atención ($W_Q, W_K, W_V, W_O$), aunque puede extenderse a las capas \textit{feed-forward} del bloque transformer cuando se requiere mayor capacidad de adaptación.
-La elección de qué capas adaptar supone un compromiso entre rendimiento y coste computacional que se analiza empíricamente en la Sección~\ref{sec:ablation}.
