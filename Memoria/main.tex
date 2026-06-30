@@ -174,21 +174,66 @@
 \selectlanguage{spanish}
 
 \input{Chapters/portada}
+\newpage
+\mbox{}
+\thispagestyle{empty}
 
 \newpage
 \mbox{}
 \thispagestyle{empty}
-\newpage
 
+\newpage
+\mbox{}
+\thispagestyle{empty}
+
+\newpage
 \selectlanguage{english}
+\section*{Abstract}
+\vspace{-0.25cm}
+\hrule
+\vspace{0.5cm}
+Sign Language Translation (SLT) is the task of automatically converting a continuous sign language video into spoken language text.
+Most competitive systems rely on RGB video as input and encoder-decoder architectures for translation, making them computationally expensive and privacy-invasive.
 
+This work explores the integration of Small Language Models (SLMs) with decoder-only architectures as a replacement for the classical encoder-decoder translation module in a keypoint-based SLT pipeline.
+The visual backbone is \textbf{MSKA-SLR}, a multi-stream attention network that processes $2$D anatomical keypoints extracted with AlphaPose, preserving privacy and reducing computational cost.
+The recognition module is coupled to Qwen2.5 models of increasing scale (1.5B and 7B parameters), fine-tuned via Low-Rank Adaptation (LoRA) on the PHOENIX-2014T dataset.
+Additionally, a zero-shot translation scenario is evaluated following the Spotter+GPT paradigm, where predicted glosses are passed directly to a 14B instruction-tuned model without any task-specific training.
+
+Results show that the best Qwen configuration (1.5B, LoRA-All, no instruction prompt) achieves a BLEU-4 of $20.55$ on the test set, narrowing the gap with the mBART baseline ($22.48$) to under two points.
+Scaling to 7B parameters yields BLEU-4 of $20.03$ BLEU-4 under a more constrained fine-tuning budget.
+The zero-shot approach proves insufficient for precise translation (BLEU-4 of $0.46$) but demonstrates partial semantic understanding as measured by BLEURT ($0.50$).
+Contrary to expectations, the instruction prompt is found to be detrimental during fine-tuning, as visual tokens and textual instructions compete for the model's attention.
+
+These findings indicate that decoder-only SLMs are viable but not yet superior alternatives to specialised translation models in data-scarce SLT scenarios, with model scale identified as one of the most promising levers for future improvement.
 \newpage
 \mbox{}
 \thispagestyle{empty}
+
+
 \newpage
-
-
 \selectlanguage{spanish}
+\section*{Resumen}
+\vspace{-0.25cm}
+\hrule
+\vspace{0.5cm}
+La Traducción de Lengua de Signos (SLT) es la tarea de convertir automáticamente un vídeo continuo de lengua de signos en texto de lenguaje hablado.
+La mayoría de los sistemas competitivos dependen de vídeos RGB como entrada y de arquitecturas codificador-decodificador para la traducción, lo que los hace computacionalmente costosos e invasivos para la privacidad.
+
+Este trabajo explora la integración de Modelos de Lenguaje Pequeños (SLMs) con arquitecturas de solo decodificador como reemplazo del módulo clásico de traducción codificador-decodificador en un \textit{pipeline} de SLT basado en puntos clave.
+La red troncal visual es MSKA-SLR, una red de atención multiflujo que procesa puntos clave anatómicos $2$D extraídos con AlphaPose, preservando la privacidad y reduciendo el coste computacional.
+El módulo de reconocimiento se acopla a modelos Qwen2.5 de escala creciente (1.5B y 7B de parámetros), ajustados finamente mediante Adaptación de Bajo Rango (LoRA) en el conjunto de datos PHOENIX-2014T.
+Adicionalmente, se evalúa un escenario de traducción \textit{zero-shot} siguiendo el paradigma Spotter+GPT, donde las glosas predichas se pasan directamente a un modelo de 14B ajustado por instrucciones, sin ningún entrenamiento específico para la tarea.
+
+Los resultados muestran que la mejor configuración de Qwen (1.5B, LoRA-All, sin \textit{prompt} de instrucción) logra un BLEU-4 de 20.55 en el conjunto de prueba, reduciendo la brecha con la línea base mBART (22.48) a menos de dos puntos.
+Escalar a 7B de parámetros produce un BLEU-4 de 20.03 bajo un presupuesto de ajuste fino más restringido.
+El enfoque \textit{zero-shot} resulta insuficiente para una traducción precisa (BLEU-4 de 0.46), pero demuestra una comprensión semántica parcial medida por BLEURT (0.50).
+Contrario a las expectativas, se observa que el \textit{prompt} de instrucción resulta perjudicial durante el ajuste fino, ya que los \textit{tokens} visuales y las instrucciones textuales compiten por la atención del modelo.
+
+Estos hallazgos indican que los SLMs de solo decodificador son alternativas viables, aunque todavía no superiores, a los modelos de traducción especializados en escenarios de SLT con escasez de datos, identificándose la escala del modelo como una de las palancas más prometedoras para futuras mejoras.
+\hrule
+
+
 \newpage
 \mbox{}
 \thispagestyle{empty}
