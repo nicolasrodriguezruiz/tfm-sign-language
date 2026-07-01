@@ -24,13 +24,13 @@ Además en la mayoria de los casos, la lengua de signos de una determinada regi�
 Además de esta complejidad multimodal, la naturaleza visual de la tarea presenta consideraciones relevantes en materia de privacidad. Procesar vídeos de personas requiere garantías sobre el tratamiento de datos personales, especialmente en entornos sensibles como la sanidad o la educación. Por ello, un enfoque que minimice la exposición de datos desde el origen resulta deseable. A raiz de esto nace la traducción de signos basados en \textit{keypoints}, esto es, puntos predeterminados en el cuerpo humano que resumen la información de la postura, expresión e información de manos, capturando la información gestual relevante sin preservar la identidad visual de la persona, permitiendo así un procesamiento más ligero, portable y respetuoso con la privacidad. De forma paralela, el uso de este enfoque, reduce drásticamente la dimensionalidad de los datos, optimizando los costes computacionales de entrenamiento e inferencia y facilitando su despliegue en equipos menos potentes.
 
 \section{Objetivo}
-El objetivo principal de este trabajo es explorar la viabilidad de sustituir el decodificador de traducción clásico del sistema MSKA-SLT, basado en mBART, por un \textbf{Modelo de Lenguaje Pequeño} (\textit{Small Language Model}, SLM) de arquitectura \textit{decoder-only}, con el fin de dotar al sistema de mayor capacidad de razonamiento contextual manteniendo la ejecución local y la privacidad del usuario.
+El objetivo principal de este trabajo es demostrar la viabilidad de un sistema de traducción de lengua de signos a texto (sign2text) basándose en representaciones intermedias (glosas y keypoints) mediante el uso de un \textbf{Modelo Pequeño de Lenguaje} (\textit{Small Language Model}, SLM) de arquitectura \textit{decoder-only}, con el fin de dotar al sistema de mayor capacidad de razonamiento contextual manteniendo la ejecución local y la privacidad del usuario.
 
 Para alcanzar este objetivo principal, se plantean los siguientes \textbf{objetivos específicos}:
 
 \begin{enumerate}
 
-    \item \textbf{Reimplementar y validar el sistema MSKA-SLT como línea base.}
+    \item \textbf{Reimplementar y validar el sistema \textit{Multi-Stream Keypoint Attention} (MSKA) como línea base.}
     Reproducir la arquitectura original de reconocimiento y traducción de lengua de signos basada en MSKA sobre el corpus PHOENIX-2014T, verificando que los resultados obtenidos son coherentes con los publicados en la literatura para establecer un punto de referencia riguroso.
 
     \item \textbf{Diseñar e integrar el módulo de proyección visual (\textit{VLMapper}).}

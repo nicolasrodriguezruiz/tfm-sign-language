@@ -17,8 +17,9 @@ La \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER) mide la di
   \mathrm{WER} = \frac{S + D + I}{N},
 \end{equation*}
 donde $S$, $D$ e $I$ son el número de sustituciones, eliminaciones e inserciones respectivamente, y $N$ es el total de palabras en la referencia.
-Es la métrica estándar para el reconocimiento de glosas, dado que penaliza directamente los errores de segmentación temporal propios de la tarea.
+Cada tipo de error tiene una interpretación concreta en el contexto del reconocimiento de glosas: una \textbf{sustitución} ocurre cuando el modelo predice una glosa distinta a la real; una \textbf{eliminación} se da cuando el modelo omite una glosa que sí aparece en el vídeo; y una \textbf{inserción} sucede cuando el modelo predice una glosa extra que no existe en la secuencia de referencia.
 
+Es la métrica estándar para el reconocimiento de glosas, dado que penaliza directamente los errores de segmentación temporal propios de la tarea.
 La puntiación está entre $0$ y $1$, aunque comúnmente se transforma a porcentaje, cuanto más cercano a cero mejor.
 
 \subsection{BLEU}
@@ -332,9 +333,9 @@ Finalmente, este nuevo mapa de atención se combina con el obtenido en la \texti
 Esta regularización se aplica única y exclusivamente a la dimensión espacial, pues la dimensión temporal no posee esta característica de alineación semántica.
 Forzar a la red a aprender un patrón unificado global para el tiempo carece de sentido lógico y, como demostraron empíricamente en sus estudios de ablación, perjudicaría el rendimiento del modelo.
 
-El siguiente diagrama (\textit{Figura}~\ref{fig:DSTA_ATT}) muestra la estructura completa del módulo de atención espacial.
+La \textit{Figura}~\ref{fig:DSTA_ATT} muestra la estructura completa del módulo de atención espacial.
 La atención temporal es análoga salvo por los matices mencionados.
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{DSTA/attention.pdf}
     \caption{Esquema del módulo de atención \textbf{espacial}. Obtenido de \cite{DSTA}}
@@ -353,13 +354,14 @@ Para que el modelo pueda analizar los datos desde múltiples perspectivas simult
 Los resultados de todas estas cabezas se concatenan y se procesan a través de una capa lineal para proyectarlos al espacio de salida final $R^{N\times TC_{out}}$.
 Al igual que en el \textit{transformer} original, el proceso termina pasando por una capa \textit{feed-forward} que utiliza \textit{leaky ReLU} como función de activación.
 Además, se incluyen dos conexiones residuales a lo largo del módulo para estabilizar el entrenamiento de la red e integrar mejor las diferentes características extraídas.
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{DSTA/pipeline.pdf}
     \caption{Esquema de la red. Obtenido de \cite{DSTA}}
+    \label{fig:DSTA_Net}
 \end{figure}
 
-La arquitectura \textbf{DSTA-Net} organiza este proceso apilando un total de $L$ capas.
+La arquitectura \textbf{DSTA-Net}, ilustrada en la \textit{Figura}~\ref{fig:DSTA_Net}, organiza este proceso apilando un total de $L$ capas.
 En cada una de estas capas, el tensor de entrada se procesa secuencialmente: primero entra al módulo de atención espacial (tratando los datos como $N$ articulaciones) para aprender la estructura física, y luego la matriz resultante se transpone para entrar al módulo de atención temporal (tratando los datos como $T$ fotogramas) para aprender el movimiento.
 Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
 

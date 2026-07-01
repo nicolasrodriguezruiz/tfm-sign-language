@@ -32,11 +32,12 @@ Durante años, el enfoque predominante para abordar la traducción de la lengua 
 Este paradigma, conocido como enfoque basado en glosas o de dos etapas, utiliza las \textbf{glosas} (etiquetas textuales que representan el significado léxico básico de un signo) como representación intermedia.
 Por ejemplo, la oración hablada ``mañana va a llover en el norte'' se anotaría como la secuencia de glosas \texttt{MAÑANA LLOVER NORTE}.
 
-El procesamiento se estructura de la siguiente manera:
-\begin{figure}[H]
+El procesamiento se estructura como se ilustra en la \textit{Figura}~\ref{fig:sig2gloss2text}.
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{SOTA/dos_etapas.pdf}
     \caption{Esquema de la arquitectura basada en glosas}
+    \label{fig:sig2gloss2text}
 \end{figure}
 
 \begin{enumerate}
@@ -68,14 +69,15 @@ Aunque ha habido muchos esfuerzos para solventar esta limitaciones, como la gene
 Estos factores y la disponibilidad de equipos de mayor potencia obligó y permitió a la comunidad investigadora a replantearse la arquitectura fundamental de los sistemas, impulsando la búsqueda de alternativas que mitigaran esta dependencia estricta de las glosas intermedias.
 
 \section{Modelos libre de glosas (una etapa)}
-Para sortear el cuello de botella de la propagación de errores y eliminar la necesidad de costosas anotaciones a nivel de glosa, se exploró el paradigma de traducción de principio a fin (\textit{end-to-end}), comúnmente denominado \textit{Gloss-Free SLT}.
+Para sortear el cuello de botella de la propagación de errores y eliminar la necesidad de costosas anotaciones a nivel de glosa, se exploró el paradigma de traducción de principio a fin (\textit{end-to-end}), comúnmente denominado \textit{Gloss-Free SLT}. Ver \textit{Figura}~\ref{fig:sig2text}.
 
 Estos modelos proponen asociar directamente la secuencia continua de vídeo a la secuencia de texto hablado, unificando la extracción de características espacio-temporales y la generación de lenguaje en una única arquitectura conjunta.
 Al prescindir de la representación intermedia explícita, el modelo se ve forzado a aprender de manera implícita las alineaciones entre el espacio visual de los signos y el espacio semántico del texto.
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{SOTA/una_etapa.pdf}
     \caption{Esquema de la arquitectura basada en modelos de una etapa}
+    \label{fig:sig2text}
 \end{figure}
 
 Enfoques recientes en esta línea han adoptado arquitecturas basadas en \textit{transformers} visuales y de texto, logrando resultados prometedores al permitir que el modelo atienda dinámicamente a toda la secuencia de vídeo original durante el proceso de decodificación.
@@ -109,7 +111,7 @@ Su método, denominado \textbf{Spotter+GPT}, innova al prescindir por completo d
 
 A diferencia de los enfoques convencionales que presentan un bajo rendimiento en vocabularios extensos, Spotter+GPT propone una arquitectura híbrida que combina el reconocimiento visual clásico con las capacidades de razonamiento \textit{zero-shot} (sin entrenamiento previo específico) de un LLM comercial.
 
-La arquitectura del sistema se divide en dos componentes principales:
+La arquitectura del sistema, ilustrada en la \textit{Figura}~\ref{fig:spotterGPT}, se divide en dos componentes principales:
 \begin{itemize}
     \item \textbf{Módulo de Detección Visual (\textit{Sign Spotter}):} Utiliza un modelo I3D (basado en características espacio-temporales densas) entrenado con un gran conjunto de datos para identificar signos individuales.
     Este módulo procesa el vídeo continuo mediante una técnica de ventana deslizante para extraer predicciones de glosas, aplicando posteriormente un filtrado basado en umbrales de confianza para consolidar la secuencia temporal.
@@ -117,10 +119,11 @@ La arquitectura del sistema se divide en dos componentes principales:
     Mediante ingeniería de instrucciones, el modelo transforma esta lista en una oración coherente en el lenguaje hablado de destino, superando de forma dinámica las diferencias en el orden gramatical.
 \end{itemize}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{SPOTT-GPT.png}
     \caption{Estructura del modelo Spotter+GPT propuesto por Sincan et al. \cite{SpotterGPT}}
+    \label{fig:spotterGPT}
 \end{figure}
 
 Los experimentos realizados mostraron resultados mixtos según la métrica empleada.
@@ -128,7 +131,7 @@ En términos de similitud semántica, medida con BLEURT\footnote{BLEURT es una m
 Sin embargo, en términos de solapamiento léxico exacto, medido con BLEU, el modelo \textit{transformer} supera a Spotter+GPT, lo que sugiere que el LLM tiende a parafrasear en lugar de reproducir literalmente la referencia, lo cual tiene sentido, pues el modelo no ve la referencia en ningún momento.
 Además, el enfoque destaca cualitativamente por su gran resiliencia: el LLM logra mantener la coherencia semántica en la oración hablada final incluso cuando el detector visual pierde información o introduce glosas adicionales incorrectas.
 
-\begin{table}[H]
+\begin{table}[htbp]
     \centering
     \begin{tabular}{lccccc}
         \toprule

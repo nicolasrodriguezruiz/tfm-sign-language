@@ -139,18 +139,19 @@ Cada glosa recibe un identificador numérico único construido a partir del conj
 En esta sección se evalúa el módulo de reconocimiento de forma aislada sobre la tarea S2G, midiendo el impacto de las distintas técnicas de aumento de datos sobre la calidad del reconocimiento de glosas.
 
 \subsubsection{Métricas de evaluación}
-El rendimiento del reconocimiento se mide mediante la \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER), explicada en la Sección~\ref{sec:WER}.
+El rendimiento del reconocimiento se mide mediante la \textbf{Tasa de Error de Palabras} (\textit{Word Error Rate}, WER), explicada en la \textit{Sección}~\ref{sec:WER}.
 
 Adicionalmente se reportan las tasas individuales de sustitución (\textit{SUB}), eliminación (\textit{DEL}) e inserción (\textit{INS}) para caracterizar el tipo de error dominante.
+La explicación intuitiva de cada tipo de error se detalla en la \textit{Sección}~\ref{sec:WER}
 
 Antes del cálculo, tanto las hipótesis como las referencias se normalizan mediante la función \texttt{clean\_phoenix\_2014\_trans}, que estandariza mayúsculas y elimina artefactos de puntuación propios del formato de anotación de PHOENIX-2014T\@.
 
 \subsection{Modelo base}
-El modelo de reconocimiento sigue la arquitectura MSKA-SLR descrita en el Capítulo~\ref{ch:metodologia}, entrenado desde pesos aleatorios exclusivamente sobre los datos de PHOENIX-2014T\@.
+El modelo de reconocimiento sigue la arquitectura MSKA-SLR descrita en el \textit{Capítulo}~\ref{ch:metodologia}, entrenado desde pesos aleatorios exclusivamente sobre los datos de PHOENIX-2014T\@.
 
 La configuración base no aplica ninguna técnica de aumentación de datos más allá de la augmentación temporal y la rotación aleatoria, presentes en todos los experimentos.
 
-Los parámetros específicos del módulo de reconocimiento se recogen en la Tabla~\ref{tab:slr_config}.
+Los hiperparámetros específicos del módulo de reconocimiento, MSKA-SLR, se recogen en la \textit{Tabla}~\ref{tab:slr_config}.
 \begin{table}[H]
 	\centering
 	\begin{tabular}{lc}
@@ -168,7 +169,7 @@ Los parámetros específicos del módulo de reconocimiento se recogen en la Tabl
 	\label{tab:slr_config}
 \end{table}
 
-La arquitectura DSTA-Net procesa cuatro flujos independientes ya mencionados en Sección~\ref{ch:metodologia}, cuyos índices de \textit{keypoints} se detallan en la Tabla~\ref{tab:streams}.
+La arquitectura DSTA-Net procesa cuatro flujos independientes ya mencionados en el \textit{capítulo}~\ref{ch:metodologia}, cuyos índices de \textit{keypoints} se detallan en la Tabla~\ref{tab:streams}.
 La decisión final se obtiene promediando uniformemente las distribuciones de probabilidad de los cuatro flujos junto con la cabeza de fusión (\textit{ensemble} uniforme).
 \begin{table}[H]
 	\centering
@@ -187,11 +188,11 @@ La decisión final se obtiene promediando uniformemente las distribuciones de pr
 
 \subsection{Estudio de aumentación de datos}
 Se evalúan cinco configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
-Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout} se describen en detalle en la Sección~\ref{sec:DATAAUG}.
+Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout} se describen en detalle en la \textit{Sección}~\ref{sec:DATAAUG}.
 
 La diferencia entre \textit{Joint Dropout} y \textit{Structured Dropout} es que mientras el primero enmascara articulaciones individuales de forma aleatoria e independiente, cada keypoint tiene una probabilidad
 fija de ser anulado, sin ninguna restricción anatómica.
-El segundo, agrupa los keypoints por extremidades completas tal y como se describe en la sección correspondiente.
+El segundo, agrupa los keypoints por extremidades completas tal y como se describe en la \textit{Sección}~\ref{sec:MSKA_SLR}.
 
 Mientras \textit{Structured Dropout} modela situaciones más realistas, los resultados acontinuación muestran que el \textit{Joint Dropout} obtiene un WER ligeramente inferior ($27.24\%$ frente a $27.59\%$ en test).
 
@@ -209,10 +210,10 @@ Por esta razón decidí realizar una pequeña modificación, en vez de ocultar p
 		    & \textbf{WER}$\downarrow$
 		    & \textbf{WER}$\downarrow$
 		    & \textbf{SUB} & \textbf{DEL} & \textbf{INS} \\ \hline
-		SLR-base                                    & 27.81 & 27.33          & 11.81 & 13.29 & 2.23 \\
-		SLR-\textit{JointDropout}                   & \textbf{27.68} & \textbf{27.24} & 12.28 & 12.51 & 2.44 \\
-		SLR-\textit{StructuredDropout}              & 28.24 & 27.59          & 12.82 & 12.21 & 2.56 \\
-		SLR-\textit{GaussianNoise}                  & 28.56 & 28.13          & 12.82 & 13.15 & 2.16 \\ \hline
+		SLR-base                                    & $27.81$ & $27.33$          & $11.81$ & $13.29$ & $2.23$ \\
+		SLR-\textit{JointDropout}                   & $\mathbf{27.68}$ & $\mathbf{27.24}$ & $12.28$ & $12.51$ & $2.44$ \\
+		SLR-\textit{StructuredDropout}              & $28.24$ & $27.59$          & $12.82$ & $12.21$ & $2.56$ \\
+		SLR-\textit{GaussianNoise}                  & $28.56$ & $28.13$          & $12.82$ & $13.15$ & $2.16$ \\ \hline
 		%SLR-\textit{JointDropout}+\textit{Noise}    & 28.96 & 29.28          & 13.38 & 13.71 & 2.18 \\ \hline
 	\end{tabular}
 	\caption{Comparativa de técnicas de aumentación sobre PHOENIX-2014T\@.
@@ -222,7 +223,7 @@ Por esta razón decidí realizar una pequeña modificación, en vez de ocultar p
 
 \subsubsection*{Análisis de resultados}
 
-Los resultados de la Tabla~\ref{tab:slr_augmentation} son poco prometedores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
+Los resultados de la \textit{Tabla}~\ref{tab:slr_augmentation} son poco prometedores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
 
 La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en test de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos (en validación).
 Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error, las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
@@ -250,6 +251,19 @@ El \textit{StructuredDropout} presenta una convergencia más lenta durante las p
 % En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
 % Técnicas complementarias como el preentrenamiento sobre corpus de mayor tamaño o el aumento de datos mediante síntesis constituyen líneas de mejora más prometedoras que la augmentación espacial sobre keypoints.
 
+
+
+El mejor modelo, \textbf{SLR-\textit{JointDropout}}, será el utilizado como módulo de reconocimiento en todos los experimentos de traducción posteriores.
+
+\subsubsection*{Análisis cualitativo de las predicciones}
+
+Para complementar el análisis cuantitativo, la Tabla~\ref{tab:slr_qualitative} recoge cuatro ejemplos representativos extraídos del conjunto de test, seleccionados para ilustrar los patrones de error más frecuentes observados en el mejor modelo (\textit{JointDropout}).
+
+El primer caso confirma que el modelo funciona correctamente en secuencias cortas con signos frecuentes en el corpus, donde la información de los keypoints es suficientemente discriminativa.
+
+El error de sustitución del segundo ejemplo: \textit{AUFLOESEN} (dispersarse) y \textit{VERSCHWINDEN} (desaparecer) son sinónimos en el contexto meteorológico y comparten una configuración manual similar.
+Este tipo de confusión semántica entre glosas de significado próximo es difícilmente evitable desde el módulo de reconocimiento, y constituye precisamente uno de los casos donde un modelo de lenguaje con capacidad de razonamiento contextual puede recuperar el significado correcto en la etapa de traducción.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{SLR/SLR_hr}
@@ -259,11 +273,6 @@ El \textit{StructuredDropout} presenta una convergencia más lenta durante las p
     \label{fig:slr_curves}
 \end{figure}
 
-El mejor modelo, \textbf{SLR-\textit{JointDropout}}, será el utilizado como módulo de reconocimiento en todos los experimentos de traducción posteriores.
-
-\subsubsection*{Análisis cualitativo de las predicciones}
-
-Para complementar el análisis cuantitativo, la Tabla~\ref{tab:slr_qualitative} recoge cuatro ejemplos representativos extraídos del conjunto de test, seleccionados para ilustrar los patrones de error más frecuentes observados en el mejor modelo (\textit{JointDropout}).
 
 \begin{table}[H]
 	\centering
@@ -280,11 +289,6 @@ Para complementar el análisis cuantitativo, la Tabla~\ref{tab:slr_qualitative} 
 	\label{tab:slr_qualitative}
 \end{table}
 
-El primer caso confirma que el modelo funciona correctamente en secuencias cortas con signos frecuentes en el corpus, donde la información de los keypoints es suficientemente discriminativa.
-
-El error de sustitución del segundo ejemplo: \textit{AUFLOESEN} (dispersarse) y \textit{VERSCHWINDEN} (desaparecer) son sinónimos en el contexto meteorológico y comparten una configuración manual similar.
-Este tipo de confusión semántica entre glosas de significado próximo es difícilmente evitable desde el módulo de reconocimiento, y constituye precisamente uno de los casos donde un modelo de lenguaje con capacidad de razonamiento contextual puede recuperar el significado correcto en la etapa de traducción.
-
 El tercer ejemplo ilustra el error de eliminación: el modelo reconoce la glosa inicial pero omite las dos siguientes, posiblemente porque la secuencia \textit{LANG BLEIBEN} ocurre con menor frecuencia en el corpus y sus keypoints se confunden con ruido temporal.
 
 El cuarto caso es el más significativo desde el punto de vista del análisis, todos los modelos evaluados, producen exactamente la misma predicción errónea sobre este ejemplo (y otros $123$ del conjunto de prueba).
@@ -293,7 +297,7 @@ La sustitución de \textit{ABEND} por \textit{NACHT} (tarde vs.\ noche) y la omi
 % ----------------------------------------------------------------
 
 \section{Traducción mediante mBART}
-El primer sistema de traducción evaluado es la variante original de MSKA acoplada a mBART, que actúa como línea base clásica y punto de referencia para todos los experimentos posteriores con modelos de
+El primer sistema de traducción evaluado es la variante original de MSKA \cite{MSKA} acoplada a mBART, que actúa como línea base clásica y punto de referencia para todos los experimentos posteriores con modelos de
 lenguaje.
 
 A diferencia de los sistemas basados en Qwen, mBART opera como un modelo \textit{encoder-decoder} multilingüe especializado en traducción automática, por lo que no requiere prompt de instrucción ni estrategia de prefijo visual: las representaciones del codificador visual.
@@ -310,8 +314,8 @@ A diferencia de los sistemas basados en Qwen, mBART opera como un modelo \textit
 		    & \multicolumn{5}{c}{\textbf{Test}} \\
 		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
 		      & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
-		MSKA-mBART & 27.57 & 45.49 & 34.03 & 26.58 & 21.43 & 45.20
-		                   & 45.03 & 34.51 & 27.43 & 22.48 & 45.00 \\ \hline
+		MSKA-mBART & $27.57$ & $45.49$ & $34.03$ & $26.58$ & $21.43$ & $45.20$
+		                   & $45.03$ & $34.51$ & $27.43$ & $22.48$ & $45.00$ \\ \hline
 	\end{tabular}
 	}
 	\caption{Resultados de MSKA-mBART sobre PHOENIX-2014T\@.
@@ -372,7 +376,7 @@ Las glosas predichas por el módulo de reconocimiento se concatenan al final del
 	\begin{tabular}{lccccc}
 		\hline
 		\textbf{Modelo} & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
-		Spotter+Qwen2.5-14B (\textit{zero-shot}) & 12.11 & 4.12 & 1.38 & 0.46 & 9.85 \\ \hline
+		Spotter+Qwen2.5-14B (\textit{zero-shot}) & $12.11$ & $4.12$ & $1.38$ & $0.46$ & $9.85$ \\ \hline
 	\end{tabular}
 	\caption{Resultados del experimento \textit{zero-shot} sobre el conjunto de test de PHOENIX-2014T\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
 	\label{tab:zeroshot_results}
@@ -383,8 +387,7 @@ Lo cual es razonable dado que el modelo en ningún momento se ha entrenado para 
 Con la métrica BLEURT, que mide similitud semántica en lugar de coincidencia exacta de $n$-gramas, el sistema alcanza un BLEURT de $0.5014$, lo que indica que una fracción de las traducciones captura el significado correcto aunque con una formulación léxica distinta a la referencia.
 Como punto de comparación, el experimento con glosas de referencia (\textit{ground truth}) en lugar de predichas obtiene un BLEURT de $0.5339$, apenas $0.032$ puntos por encima, lo que sugiere que el cuello de botella no reside únicamente en los errores del reconocedor sino principalmetne en las limitaciones del modelo en capacidad \textit{zero-shot}.
 
-La Tabla~\ref{tab:zeroshot_examples} recoge ejemplos representativos que ilustran cualitativamente el comportamiento del sistema en ambos modos.
-
+La \textit{Tabla}~\ref{tab:zeroshot_examples} recoge ejemplos representativos que ilustran cualitativamente el comportamiento del sistema en ambos modos.
 Podemos destacar tres fallos comunes.
 
 Primero un \textbf{fallo por escasez de glosas}: cuando el reconocedor produce secuencias muy cortas o incompletas (como \textit{PRED BLEIBEN}), el modelo no dispone de suficiente información para construir una oración y responde correctamente con \textit{Keine Übersetzung}.
@@ -397,7 +400,7 @@ El tercer y más grave patrón es la \textbf{alucinación multilingüe}: en dos 
 Esto apunta a una inestabilidad del modelo cuando recibe entradas que no encajan con sus distribuciones de entrenamiento. Las glosas en mayúsculas con morfología alemana pero sintaxis de lengua de signos constituyen un tipo de input inusual que puede activar patrones de otros idiomas del corpus de preentrenamiento.
 Este problema aparece tanto con glosas predichas como con glosas de referencia, lo que confirma que el origen es la naturaleza de las glosas como input, no a los errores del reconocedor.
 
-\begin{table}[H]
+\begin{table}[htbp]
 	\centering
 	\small
 	\renewcommand{\arraystretch}{1.5}
@@ -405,39 +408,39 @@ Este problema aparece tanto con glosas predichas como con glosas de referencia, 
 		\hline
 		\textbf{Modo} & \textbf{BLEURT} & \textbf{Glosas} & \textbf{Referencia} & \textbf{Predicción} \\ \hline
 
-		Pred. & 0.876\par(mejor)
+		Pred. & $0.876$\par(mejor)
 		    & OST REGION MEISTENS SONNE
 		    & richtung osten ist es meist sonnig
 		    & In der Ostregion wird es meistens sonnig sein. \\
 
-		Pred. & 0.075
+		Pred. & $0.075$
 		    & PRED BLEIBEN
 		    & das bleibt auch noch in dieser woche so [...]
 		    & \textit{Keine Übersetzung} \\
 
-		Pred. & 0.071
+		Pred. & $0.071$
 		    & IN-KOMMEND WIEDER KOMMEN
 		    & die luft die in den kommenden tagen [...]
 		    & Inkommend wieder kommen. [\textit{el modelo añade una nota explicando que el contexto es insuficiente, incumpliendo la instrucción}] \\
 
-		Pred. & 0.049\par(peor)
+		Pred. & $0.049$\par(peor)
 		    & JETZT WIE-AUSSEHEN WETTER MORGEN MITTWOCH DREIZEHN JANUAR
 		    & und nun die wettervorhersage für morgen mittwoch [...]
 		    & Morgen Mittwoch, den Dreizehn. Januar [...] \textit{[alucinación en chino]} \\
 
 		\hline
 
-		GT & 0.921\par(mejor)
+		GT & $0.921$\par(mejor)
 		    & SAMSTAG SCHNEE FALLEN
 		    & samstag fällt auch noch schnee
 		    & Am Samstag fällt noch Schnee. \\
 
-		GT & 0.092
+		GT & $0.092$
 		    & HEUTE NACHT ZWOELF REGION KOELN EINS REGION BRANDENBURG
 		    & heute nacht zwölf grad in der kölner bucht [...]
 		    & In der Nacht um zwölf Uhr in der Region um Köln, eins und neun. [\textit{el modelo razona en voz alta en alemán, incumpliendo la instrucción}] \\
 
-		GT & 0.039\par(peor)
+		GT & $0.039$\par(peor)
 		    & DEUTSCHLAND IRLAND TIEF MITTE-MEER HOCH
 		    & deutschland liegt zwischen einem tief bei irland [...]
 		    & \textit{[razonamiento en chino antes de responder Keine Übersetzung]} \\
@@ -483,14 +486,14 @@ Los resultados muestran que ninguna de las configuraciones de esta ablación sup
 		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
 	              & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
 
-		Visual  & LoRA-Att  & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
-	                            & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
-		Visual  & LoRA-All  & 28.50 & 18.95 & 13.99 & 11.17 & 27.43
-		                    & 27.42 & 18.40 & 13.45 & 10.73 & 25.53 \\
-		Glosas  & LoRA-Att  & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
-		                    & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
-		Glosas  & LoRA-All  & 35.39 & 25.91 & 20.17 & 16.42 & 36.12
-		                    & 35.35 & 26.08 & 20.31 & 16.65 & 35.69 \\ \hline
+		Visual  & LoRA-Att  & $34.16$ & $25.38$ & $19.98$ & $16.35$ & $37.05$
+	                            & $34.29$ & $25.54$ & $19.89$ & $16.31$ & $36.50$ \\
+		Visual  & LoRA-All  & $28.50$ & $18.95$ & $13.99$ & $11.17$ & $27.43$
+		                    & $27.42$ & $18.40$ & $13.45$ & $10.73$ & $25.53$ \\
+		Glosas  & LoRA-Att  & $34.00$ & $23.82$ & $18.26$ & $14.84$ & $33.70$
+		                    & $34.71$ & $25.06$ & $19.19$ & $15.63$ & $34.59$ \\
+		Glosas  & LoRA-All  & $35.39$ & $25.91$ & $20.17$ & $16.42$ & $36.12$
+		                    & $35.35$ & $26.08$ & $20.31$ & $16.65$ & $35.69$ \\ \hline
 	\end{tabular}}
 	\caption{Ablación sobre la modalidad de entrada y la cobertura de LoRA 	con Qwen2.5-1.5B\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
 	\label{tab:ablation_input}
@@ -518,10 +521,10 @@ Para aislar la contribución del prompt de instrucción (\textit{``Übersetze di
 		    & \multicolumn{5}{c}{\textbf{Test}} \\
 		    & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
 	            & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
-		Con prompt  & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
-	                            & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
-		Sin prompt  & 40.62 & 30.33 & 23.92 & 19.58 & 39.83
-		                    & 42.21 & 31.69 & 24.98 & 20.55 & 40.01 \\ \hline
+		Con prompt  & $34.16$ & $25.38$ & $19.98$ & $16.35$ & $37.05$
+	                              & $34.29$ & $25.54$ & $19.89$ & $16.31$ & $36.50$ \\
+		Sin prompt  & $40.62$ & $30.33$ & $23.92$ & $19.58$ & $39.83$
+		                      & $42.21$ & $31.69$ & $24.98$ & $20.55$ & $40.01$ \\ \hline
 	\end{tabular}}
 	\caption{Impacto del prompt de instrucción en la configuración LoRA-All con features visuales. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
 	\label{tab:ablation_prompt}
@@ -548,14 +551,14 @@ Finalmente se compara el \textit{finetuning} completo de Qwen2.5-1.5B con la apr
 		    & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
 		        & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
 
-		Visual & LoRA-Att       & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
-		                                & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
-		Visual & \textit{Full}  & 38.98 & 28.96 & 23.03 & 18.99 & 38.98
-		                                & 39.26 & 29.07 & 22.74 & 18.68 & 37.04 \\
-		Glosas & LoRA-Att       & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
-		                                & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
-		Glosas & \textit{Full}  & 34.64 & 25.12 & 19.55 & 15.98 & 34.31
-		                                & 35.05 & 25.43 & 19.57 & 16.00 & 34.89 \\ \hline
+		Visual & LoRA-Att       & $34.16$ & $25.38$ & $19.98$ & $16.35$ & $37.05$
+		                                & $34.29$ & $25.54$ & $19.89$ & $16.31$ & $36.50$ \\
+		Visual & \textit{Full}  & $38.98$ & $28.96$ & $23.03$ & $18.99$ & $38.98$
+		                                & $39.26$ & $29.07$ & $22.74$ & $18.68$ & $37.04$ \\
+		Glosas & LoRA-Att       & $34.00$ & $23.82$ & $18.26$ & $14.84$ & $33.70$
+		                                & $34.71$ & $25.06$ & $19.19$ & $15.63$ & $34.59$ \\
+		Glosas & \textit{Full}  & $34.64$ & $25.12$ & $19.55$ & $15.98$ & $34.31$
+		                                & $35.05$ & $25.43$ & $19.57$ & $16.00$ & $34.89$ \\ \hline
 	\end{tabular}}
 	\caption{Comparativa entre \textit{finetuning} completo y LoRA-Att
 	con Qwen2.5-1.5B\@. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
@@ -586,10 +589,10 @@ Dado que el \textit{finetuning} completo es inviable bajo las restricciones de m
 		    & \multicolumn{5}{c}{\textbf{Test}} \\
 		    & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
 		      & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
-		Qwen2.5-1.5B LoRA-Att  & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
-		                               & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
-		Qwen2.5-7B LoRA-Att   & 42.23 & 31.57 & 24.81 & 20.31 & 40.95
-		                               & 42.61 & 31.90 & 24.82 & 20.03 & 41.26 \\ \hline
+		Qwen2.5-1.5B LoRA-Att  & $34.16$ & $25.38$ & $19.98$ & $16.35$ & $37.05$
+		                               & $34.29$ & $25.54$ & $19.89$ & $16.31$ & $36.50$ \\
+		Qwen2.5-7B LoRA-Att   & $42.23$ & $31.57$ & $24.81$ & $20.31$ & $40.95$
+		                               & $42.61$ & $31.90$ & $24.82$ & $20.03$ & $41.26$ \\ \hline
 	\end{tabular}}
 	\caption{Comparativa entre Qwen2.5-1.5B y Qwen2.5-7B con LoRA-Att y features visuales. B1--B4: BLEU-1 a BLEU-4. R: ROUGE-L\@.}
 	\label{tab:qwen7b}
@@ -610,66 +613,88 @@ La pregunta natural es si esta brecha se cerraría con un modelo aún mayor; sin
 
 \subsection{Resumen de resultados}
 
-La Tabla~\ref{tab:global} recoge todos los sistemas evaluados, ordenados por BLEU-4 en test, para facilitar la comparación directa.
+La \textit{Tabla}~\ref{tab:global} recoge todos los sistemas evaluados, ordenados por BLEU-4 en test, para facilitar la comparación directa.
 
 \begin{table}[H]
 	\centering
 	\resizebox{\textwidth}{!}{
-	\begin{tabular}{llll|ccccc|ccccc}
+	\begin{tabular}{llll|cc|cc}
 		\hline
 		\multirow{2}{*}{\textbf{Sistema}}
 		    & \multirow{2}{*}{\textbf{Modelo}}
 		    & \multirow{2}{*}{\textbf{Entrada}}
 		    & \multirow{2}{*}{\textbf{Estrategia}}
-		    & \multicolumn{5}{c|}{\textbf{Dev}}
-		    & \multicolumn{5}{c}{\textbf{Test}} \\
-	            & & & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
-		             & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+% 		    & \multicolumn{5}{c|}{\textbf{Dev}}
+% 		    & \multicolumn{5}{c}{\textbf{Test}} \\
+		    & \multicolumn{2}{c|}{\textbf{Dev}}
+		    & \multicolumn{2}{c}{\textbf{Test}} \\
+% 	            & & & & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R}
+% 		             & \textbf{B1} & \textbf{B2} & \textbf{B3} & \textbf{B4} & \textbf{R} \\ \hline
+	            & & & & \textbf{B4} & \textbf{R}
+	                  & \textbf{B4} & \textbf{R} \\ \hline
 
 		MSKA-mBART
 		    & mBART & Visual & \textit{Full}
-		    & 45.49 & 34.03 & 26.58 & \textbf{21.43} & \textbf{45.20}
-		    & 45.03 & 34.51 & 27.43 & \textbf{22.48} & \textbf{45.00} \\
+% 		    & $45.49$ & $34.03$ & $26.58$ & $\mathbf{21.43}$ & $\mathbf{45.20}$
+% 		    & $45.03$ & $34.51$ & $27.43$ & $\mathbf{22.48}$ & $\mathbf{45.00}$ \\
+		    & $\mathbf{21.43}$ & $\mathbf{45.20}$
+		    & $\mathbf{22.48}$ & $\mathbf{45.00}$ \\
 
 		MSKA-Qwen-7B
 		    & Qwen2.5-7B  & Visual & LoRA-Att
-		    & 42.23 & 31.57 & 24.81 & 20.31 & 40.95
-		    & 42.61 & 31.90 & 24.82 & 20.03 & 41.26 \\
+% 		    & $42.23$ & $31.57$ & $24.81$ & $20.31$ & $40.95$
+% 		    & $42.61$ & $31.90$ & $24.82$ & $20.03$ & $41.26$ \\
+		    & $20.31$ & $40.95$
+		    & $20.03$ & $41.26$ \\
 
 		MSKA-Qwen-1.5B (sin prompt)
 		    & Qwen2.5-1.5B & Visual & LoRA-All
-		    & 40.62 & 30.33 & 23.92 & 19.58 & 39.83
-		    & 42.21 & 31.69 & 24.98 & 20.55 & 40.01 \\
+% 		    & $40.62$ & $30.33$ & $23.92$ & $19.58$ & $39.83$
+% 		    & $42.21$ & $31.69$ & $24.98$ & $20.55$ & $40.01$ \\
+		    & $19.58$ & $39.83$
+		    & $20.55$ & $40.01$ \\
 
 		MSKA-Qwen-1.5B (\textit{full})
 		    & Qwen2.5-1.5B & Visual & \textit{Full}
-		    & 38.98 & 28.96 & 23.03 & 18.99 & 38.98
-		    & 39.26 & 29.07 & 22.74 & 18.68 & 37.04 \\
+% 		    & $38.98$ & $28.96$ & $23.03$ & $18.99$ & $38.98$
+% 		    & $39.26$ & $29.07$ & $22.74$ & $18.68$ & $37.04$ \\
+		    & $18.99$ & $38.98$
+		    & $18.68$ & $37.04$ \\
 
 		MSKA-Qwen-1.5B (LoRA-All + glosas)
 		    & Qwen2.5-1.5B & Glosas & LoRA-All
-		    & 35.39 & 25.91 & 20.17 & 16.42 & 36.12
-		    & 35.35 & 26.08 & 20.31 & 16.65 & 35.69 \\
+% 		    & $35.39$ & $25.91$ & $20.17$ & $16.42$ & $36.12$
+% 		    & $35.35$ & $26.08$ & $20.31$ & $16.65$ & $35.69$ \\
+		    & $16.42$ & $36.12$
+		    & $16.65$ & $35.69$ \\
 
 		MSKA-Qwen-1.5B (LoRA-Att)
 		    & Qwen2.5-1.5B & Visual & LoRA-Att
-		    & 34.16 & 25.38 & 19.98 & 16.35 & 37.05
-		    & 34.29 & 25.54 & 19.89 & 16.31 & 36.50 \\
+% 		    & $34.16$ & $25.38$ & $19.98$ & $16.35$ & $37.05$
+% 		    & $34.29$ & $25.54$ & $19.89$ & $16.31$ & $36.50$ \\
+		    & $16.35$ & $37.05$
+		    & $16.31$ & $36.50$ \\
 
 		MSKA-Qwen-1.5B (LoRA-Att + glosas)
 		    & Qwen2.5-1.5B & Glosas & LoRA-Att
-		    & 34.00 & 23.82 & 18.26 & 14.84 & 33.70
-		    & 34.71 & 25.06 & 19.19 & 15.63 & 34.59 \\
+% 		    & $34.00$ & $23.82$ & $18.26$ & $14.84$ & $33.70$
+% 		    & $34.71$ & $25.06$ & $19.19$ & $15.63$ & $34.59$ \\
+		    & $14.84$ & $33.70$
+		    & $15.63$ & $34.59$ \\
 
 		MSKA-Qwen-1.5B (\textit{full} + glosas)
 		    & Qwen2.5-1.5B & Glosas & \textit{Full}
-		    & 34.64 & 25.12 & 19.55 & 15.98 & 34.31
-		    & 35.05 & 25.43 & 19.57 & 16.00 & 34.89 \\
+% 		    & $34.64$ & $25.12$ & $19.55$ & $15.98$ & $34.31$
+% 		    & $35.05$ & $25.43$ & $19.57$ & $16.00$ & $34.89$ \\
+		    & $15.98$ & $34.31$
+		    & $16.00$ & $34.89$ \\
 
 		Spotter+Qwen (\textit{zero-shot})
 		    & Qwen2.5-14B & Glosas & ---
-		    & --- & --- & --- & --- & ---
-		    & 12.11 & 4.12 & 1.38 & 0.46 & 9.85 \\ \hline
+% 		    & --- & --- & --- & --- & ---
+% 		    & $12.11$ & $4.12$ & $1.38$ & $0.46$ & $9.85$ \\ \hline
+		    & --- & ---
+		    & $0.46$ & $9.85$ \\ \hline
 	\end{tabular}}
 	\caption{Comparativa global de todos los sistemas evaluados sobre
 	PHOENIX-2014T\@. Mejor resultado en negrita.
@@ -695,7 +720,7 @@ El experimento sin prompt obtiene el segundo mejor resultado global pese a usar 
 Esto sugiere que, el prompt textual compite con los tokens visuales por la atención del modelo en lugar de complementarlos.%cuando el modelo dispone de suficiente capacidad de adaptación mediante LoRA-Att,
 
 \subsection{Coste computacional}
-La Tabla~\ref{tab:compute} resume el coste computacional de cada sistema, medido en número de parámetros entrenables y consumo de memoria durante el entrenamiento.
+La \textit{Tabla}~\ref{tab:compute} resume el coste computacional del entrenamiento del sistema de traducción, medido en número de parámetros entrenables y consumo de memoria durante el entrenamiento.
 El uso de memoria se reporta mediante dos fuentes complementarias: la estimación proporcionada por \textbf{Weights \& Biases} (\textit{Wandb}), que monitoriza la memoria GPU reservada por el proceso, y la medición directa de \textbf{PyTorch} mediante \texttt{torch.cuda.max\_memory\_allocated}, que refleja la memoria efectivamente ocupada por tensores en el pico de uso.
 La diferencia entre ambas cifras corresponde a la memoria reservada pero no utilizada por el gestor de memoria de CUDA\@.
 
@@ -717,7 +742,7 @@ La diferencia entre ambas cifras corresponde a la memoria reservada pero no util
     \label{tab:compute}
 \end{table}
 
-Varios aspectos resultan destacables.
+Varios aspectos resultan destacables:
 
 En primer lugar, \textbf{mBART} es el segundo sistema con mayor número de parámetros entrenables ($657.70$M), consecuencia directa de su \textit{finetuning} completo, y también el que más memoria efectiva consume ($32.23$\,GB según PyTorch), lo que deja un margen muy reducido dentro del presupuesto de $40$\,GB de la A100.
 

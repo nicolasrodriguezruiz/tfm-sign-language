@@ -15,7 +15,7 @@ Las secciones de este capítulo siguen este mismo orden, detallando las decision
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/pipeline_overview.pdf}
-    \caption{Visión general del \textit{pipeline} del sistema. Las fases de preprocesamiento visual, reconocimiento (SLR) y traducción (SLT) se detallan en las secciones siguientes.}
+    \caption{Visión general del \textit{pipeline} del sistema propuesto. Las fases de preprocesamiento visual, reconocimiento (SLR) y traducción (SLT) se detallan en las secciones siguientes.}
     \label{fig:pipeline}
 \end{figure}
 
@@ -84,6 +84,7 @@ Confiamos en que la capacidad de la arquitectura \textit{Transformer} para captu
 \subsubsection*{Configuración técnica y formato de salida}
 Alphapose tiene la capacidad de cambiar la topologia que representan los puntos clave del esqueleto.
 Existen principalmente dos opciones adecuadas para esta tarea: \textbf{COCO-WholeBody}, una extensión del clásico MS-COCO que cubre el cuerpo entero con $133$ puntos, y \textbf{HALPE-136}, que proporciona una anotación de $136$ puntos clave.
+Ver \textit{Figura}~\ref{fig:HALPE136}.
 Elegimos esta última opción porque introduce anclas de referencia espacial estratégicas en el torso, como el centro de la cadera, el cuello y la cabeza.
 Este mapa de puntos optimiza el seguimiento temporal en secuencias dinámicas y actúa como un contrapeso que estabiliza la captura de gestos manuales veloces o marcadores faciales, mitigando en parte el problema del \textit{jittering}.
 \begin{figure}[H]
@@ -102,6 +103,7 @@ Este mapa de puntos optimiza el seguimiento temporal en secuencias dinámicas y 
     \includegraphics[width=0.8\textwidth]{face_halpe_136.jpg}
   \end{minipage}
   \caption{Distribución de \textit{keypoints} anatómicos en el formato Halpe-136 \cite{alphapose}.}
+  \label{fig:HALPE136}
 \end{figure}
 
 El producto final tras procesar cada vídeo es un archivo estructurado en formato \textsc{json}.
@@ -146,7 +148,7 @@ En esta sección se presentará la arquitectura principal del modelo \textit{Mul
 Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
 \subsection{Data Augmentation}\label{sec:DATAAUG}
-Como mencionabamos en el \textit{Capítulo}~\ref{ch:SOTA}, el coste de contratar a los expertos significa que los datos disponibles son escasos, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
+Como mencionabamos en el \textit{Capítulo}~\ref{ch:sota}, el coste de contratar a los expertos significa que los datos disponibles son escasos, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
 Una cantidad relativamente baja para tareas de aprendizaje profundo de esta escala.
 %Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
 Así, y con la intención de reducir el sobreajuste se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
@@ -230,27 +232,29 @@ Nos basamos en parte en \textit{Enhancing Human Action Recognition with 3D Skele
 Se añade ruido que sigue una distribución normal $\mathcal{N}(\mu,\sigma^2)$.
 Para asegurar que el efecto del ruido sea perceptible pero sin llegar a distorsionar gravemente los datos originales, los autores configuraron la media, $\mu$, en $0$ y la desviación estándar $\sigma$ en $0.01$.
 
-\subsection{Arquitectura del Modelo de Reconocimiento}
-La lengua de signos no concentra el significado en una sola articulación.
+\subsection{Arquitectura del Modelo de Reconocimiento}\label{sec:MSKA_SLR}
+La lengua de signos no concentra el significado en una sola articulación ni mano.
 Sino que lo distribuye a través de distintos canales simultáneamente: las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
 Para aprovechar esta riqueza de información, el sistema utiliza un mecanismo de autoatención que le permite analizar cada flujo de manera independiente.
 Posteriormente, combina la información obtenida de cada flujo mediante técnicas de destilación de conocimiento para construir una representación más completa y precisa.
 
-La arquitectura de este módulo, cuyos componentes se detallan en los apartados subsiguientes, se ilustra en el siguiente diagrama.
-\begin{figure}[H]
+La arquitectura de este módulo, cuyos componentes se detallan en los apartados subsiguientes, se ilustra en la \textit{Figura}~\ref{fig:MSKA}.
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA.pdf}
     \caption{Esquema de la estructura del módulo de reconocimiento del modelo. Imagen de \cite{MSKA}}
+    \label{fig:MSKA}
 \end{figure}
 
 \subsubsection{Desacoplamiento de Keypoints}
-Como mencionabamos el modelo \textbf{MSKA-SLR} deja de utilizar un único flujo de procesamiento (\textit{stream}) y adopta una estrategia de separación de puntos clave inspirada en los mecanismos de percepción humana.
+Como mencionabamos el modelo de reconocimiento, \textbf{MSKA-SLR}, deja de utilizar un único flujo de procesamiento (\textit{stream}) y adopta una estrategia de separación de puntos clave inspirada en los mecanismos de percepción humana.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.2\textwidth]{MSKA/MSKA_SKEL.png}
     \caption{Esquema de la división de las extremidades. Imagen de \cite{MSKA}}
+    \label{fig:Extremidad}
 \end{figure}
-Como se observa en la figura anterior, la secuencia global extraída del vídeo se segmenta en cuatro flujos (\textit{streams}) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
+Como se observa en la \textit{Figura}~\ref{fig:Extremidad}, la secuencia global extraída del vídeo se segmenta en cuatro flujos (\textit{streams}) independientes: \textbf{mano derecha}, \textbf{mano izquierda}, \textbf{rostro} y \textbf{cuerpo entero}.
 
 Este modelado paralelo captura las características específicas de cada región anatómica, mitigando el sesgo de los enfoques monolíticos donde los movimientos amplios del cuerpo pueden eclipsar las variaciones sutiles de los dedos o de la boca, que contienen información muy relevante.
 La separación asegura que los detalles finos no se pierdan en la representación global.
@@ -262,7 +266,7 @@ Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio m�
 \subsubsection{Módulo de Atención de Keypoints}
 Este módulo integra los mecanismos de atención espacio-temporal descritos en la \textit{Sección}~\ref{sec:DSTA}.
 Los pesos de estos bloques son independientes y no se comparten entre los distintos flujos.
-El siguiente diagrama ilustra la adaptación de esta estructura a los \textit{keypoints} corporales.
+El diagrama de la \textit{Figura}~\ref{fig:att_body} ilustra la adaptación de esta estructura a los \textit{keypoints} corporales.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/MSKA_ATT.pdf}
@@ -288,7 +292,7 @@ Cada bloque incorpora una convolución temporal al final de su estructura; no ob
 Esta configuración contrae la resolución temporal de forma escalonada, reduciendo los fotogramas de $T$ a $T/4$ ($T\rightarrow T/2\rightarrow T/4$).
 Simultáneamente, la dimensión de los canales de entrada ($C_{in}$) se expande progresivamente ($64$, $128$ y $256$) hasta fijar un valor de salida $C_{out}=256$.
 
-Finalizada la cascada de atención, el tensor resultante $\in\mathbb{R}^{256 \times T/4 \times N}$ es procesado mediante un agrupamiento espacial (\textit{Spatial Pooling}) antes de alimentar a la red de cabecera.
+Finalizada la cascada de atención, el tensor resultante $t \in\mathbb{R}^{256 \times T/4 \times N}$ es procesado mediante un agrupamiento espacial (\textit{Spatial Pooling}) antes de alimentar a la red de cabecera.
 Esta operación promedia la dimensión correspondiente a los \textit{keypoints} ($N$), colapsando la representación espacial explícita del esqueleto.
 Se obtiene así un tensor bidimensional de $T/4 \times 256$ que sintetiza el espacio en características abstractas, aislando la dinámica temporal para la clasificación final de las glosas.
 
@@ -307,7 +311,7 @@ Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{MSKA/headNet.pdf}
-    \caption{Esquema las redes de cabecera.}
+    \caption{Esquema de las redes de cabecera de MSKA-SLR.}
     \label{fig:att_body}
 \end{figure}
 
@@ -341,7 +345,6 @@ La pérdida de destilación se define como:
     D_{\mathrm{KL}}(P \| Q)
     = \sum_{v} P_{v} \log \frac{P_{v}}{Q_{v}}.
 \end{equation*}
-
 
 Para asegurar la estabilidad del entrenamiento, se aplica una operación de \textbf{parada de gradiente} sobre el ensamblado.
 Al desconectar el \textit{pseudo-objetivo} del grafo computacional durante la retropropagación, se garantiza que la pérdida de destilación actúe únicamente sobre los pesos de los flujos individuales.
@@ -381,11 +384,15 @@ Gracias a su preentrenamiento sobre grandes corpus multilingües, el modelo ya c
 
 La pérdida de traducción se calcula mediante entropía cruzada a nivel de token (\textit{token-level cross-entropy loss}): el decodificador predice la secuencia objetivo de forma autorregresiva, optimizando la probabilidad de cada token correcto dado el contexto previo y la representación visual codificada.
 
-\subsubsection{Modelo de lenguaje pequeño como decodificador}
-Los modelos \textit{decoder-only} modernos han demostrado capacidades de generalización, traducción y comprensión lingüística superiores a muchos modelos \textit{encoder-decoder}, gracias a su preentrenamiento sobre corpus de texto de mayor escala.
-Así, en lugar de un modelo \textit{encoder-decoder} como mBART, optamos por integrar un modelo de lenguaje con arquitectura exclusivamente de decodificador (\textit{decoder-only}).
+\subsubsection{Modelo pequeño de lenguaje como decodificador}
+Los modelos de lenguaje modernos basados exclusivamente en decodificador (\textit{decoder-only}) han demostrado capacidades de generalización y comprensión lingüística superiores a los enfoques tradicionales \textit{encoder-decoder}, principalmente gracias a su preentrenamiento sobre corpus de texto a gran escala.
 
-En esta arquitectura, las características visuales no pasan por un codificador independiente.
+Para aprovechar esta gran capacidad de razonamiento contextual manteniendo la eficiencia computacional, en lugar de utilizar un sistema \textit{encoder-decoder} clásico como mBART, optamos por integrar un modelo pequeño del lenguaje (SLM) basado en esta arquitectura \textit{decoder-only}.
+
+% Los modelos \textit{decoder-only} modernos han demostrado capacidades de generalización, traducción y comprensión lingüística superiores a muchos modelos \textit{encoder-decoder}, gracias a su preentrenamiento sobre corpus de texto de mayor escala.
+% Así, en lugar de un modelo \textit{encoder-decoder} como mBART, optamos por integrar un modelo de lenguaje con arquitectura exclusivamente de decodificador (\textit{decoder-only}).
+
+En esta arquitectura, las características visuales, las mencionadas \textbf{representaciones de la glosas}, no pasan por un codificador independiente.
 En su lugar, se emplea una estrategia de \textbf{prefijo visual} (\textit{visual prefix conditioning}), inspirada en modelos multimodales como LLaVA \cite{LLaVA}:
 \begin{enumerate}
   \item El \textit{VLMapper} proyecta las características visuales al espacio de embeddings del modelo de lenguaje.
@@ -430,8 +437,10 @@ De este modo, el modelo no recibe penalización por su comportamiento sobre el c
 Dado que un \textit{finetunning} completo de un modelo de lenguaje podría desestabilizaría sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicado en \textit{Sección}~\ref{sec:LoRA}).
 
 Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \textit{zero-shot}, siguiendo la línea del trabajo \textbf{Spotter+GPT} \cite{SpotterGPT} presentado en el estado del arte.
+Debido a no requerir entrenamiento, podemos utilizar el modelo Qwen2.5-14B para este experimento, lo cual tiebne sentido pues los modelos de lenguaje mejoran su capacidad \textit{zero-shot} con un mayor número de parámetros.
 En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
-
+Aquí, sacamos las glosas en vez de la representación interna del modelo que luego se envian al modelo de lenguaje de forma tradicional.
+Así, estamos ``desperdiciando'' parte de la información.
 
 \subsection{Tokenizador}
 Todo sistema de traducción automática requiere convertir las secuencias de texto en representaciones numéricas que la red pueda procesar.

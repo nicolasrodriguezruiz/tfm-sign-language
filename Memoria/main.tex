@@ -179,8 +179,13 @@
 \thispagestyle{empty}
 
 \newpage
-\mbox{}
+% \mbox{}
+% \thispagestyle{empty}
+\begin{flushright}
+\textit{Every drowning person will struggle.}
+\end{flushright}
 \thispagestyle{empty}
+
 
 \newpage
 \mbox{}
@@ -201,9 +206,9 @@ The recognition module is coupled to Qwen2.5 models of increasing scale (1.5B an
 Additionally, a zero-shot translation scenario is evaluated following the Spotter+GPT paradigm, where predicted glosses are passed directly to a 14B instruction-tuned model without any task-specific training.
 
 Results show that the best Qwen configuration (1.5B, LoRA-All, no instruction prompt) achieves a BLEU-4 of $20.55$ on the test set, narrowing the gap with the mBART baseline ($22.48$) to under two points.
-Scaling to 7B parameters yields BLEU-4 of $20.03$ BLEU-4 under a more constrained fine-tuning budget.
+Scaling to 7B parameters yields BLEU-4 of $20.03$ under a more constrained finetuning budget.
 The zero-shot approach proves insufficient for precise translation (BLEU-4 of $0.46$) but demonstrates partial semantic understanding as measured by BLEURT ($0.50$).
-Contrary to expectations, the instruction prompt is found to be detrimental during fine-tuning, as visual tokens and textual instructions compete for the model's attention.
+Contrary to expectations, the instruction prompt is found to be detrimental during finetuning, as visual tokens and textual instructions compete for the model's attention.
 
 These findings indicate that decoder-only SLMs are viable but not yet superior alternatives to specialised translation models in data-scarce SLT scenarios, with model scale identified as one of the most promising levers for future improvement.
 \newpage
@@ -226,12 +231,11 @@ El módulo de reconocimiento se acopla a modelos Qwen2.5 de escala creciente (1.
 Adicionalmente, se evalúa un escenario de traducción \textit{zero-shot} siguiendo el paradigma Spotter+GPT, donde las glosas predichas se pasan directamente a un modelo de 14B ajustado por instrucciones, sin ningún entrenamiento específico para la tarea.
 
 Los resultados muestran que la mejor configuración de Qwen (1.5B, LoRA-All, sin \textit{prompt} de instrucción) logra un BLEU-4 de 20.55 en el conjunto de prueba, reduciendo la brecha con la línea base mBART (22.48) a menos de dos puntos.
-Escalar a 7B de parámetros produce un BLEU-4 de 20.03 bajo un presupuesto de ajuste fino más restringido.
+Escalar a 7B de parámetros produce un BLEU-4 de 20.03 bajo un presupuesto de \textit{finetuning} más restringido.
 El enfoque \textit{zero-shot} resulta insuficiente para una traducción precisa (BLEU-4 de 0.46), pero demuestra una comprensión semántica parcial medida por BLEURT (0.50).
-Contrario a las expectativas, se observa que el \textit{prompt} de instrucción resulta perjudicial durante el ajuste fino, ya que los \textit{tokens} visuales y las instrucciones textuales compiten por la atención del modelo.
+Contrario a las expectativas, se observa que el \textit{prompt} de instrucción resulta perjudicial durante el \textit{finetuning}, ya que los \textit{tokens} visuales y las instrucciones textuales compiten por la atención del modelo.
 
 Estos hallazgos indican que los SLMs de solo decodificador son alternativas viables, aunque todavía no superiores, a los modelos de traducción especializados en escenarios de SLT con escasez de datos, identificándose la escala del modelo como una de las palancas más prometedoras para futuras mejoras.
-\hrule
 
 
 \newpage
@@ -243,11 +247,13 @@ Estos hallazgos indican que los SLMs de solo decodificador son alternativas viab
 
 \newpage
 
-\listoffigures
+% \listoffigures
+%
+% \newpage
+% \listoftables
 
 \newpage
 \mbox{}
-TODO: EConclusión y trabajo futuro
 \thispagestyle{empty}
 \newpage
 
