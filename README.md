@@ -44,7 +44,8 @@ Comparativa global de todos los sistemas evaluados. B4: BLEU-4 · R: ROUGE-L · 
 │   │   ├── train.py                   # Punto de entrada: entrenamiento y evaluación
 │   │   ├── eval.py                    # Evaluación independiente con métricas
 │   │   ├── pretrain_mapper.py         # Preentrenamiento del VLMapper
-│   │   ├── MSKA_Spotter+Qwen.py       # Pipeline zero-shot (Spotter + Qwen)
+│   │   ├── MSKA_Spotter+Qwen.py       # Pipeline zero-shot: SLR → glosas → Qwen (sin finetuning)
+│   │   ├── evaluate_oracle_slt.py     # Evaluación oráculo: glosas GT → Qwen (cota superior)
 │   │   ├── Recognition/               # Módulo SLR: CTC, tokenizer, visual head
 │   │   ├── MBart/                     # Módulo de traducción con mBART
 │   │   ├── slm/                       # Módulo de traducción con Qwen (SLM)
@@ -84,6 +85,27 @@ python train.py --config configs/SLT_base_config.yaml --slm --epoch 40
 **Solo evaluación (sin entrenamiento):**
 ```bash
 python train.py --config configs/SLT_base_config.yaml --slm --eval --resume path/to/checkpoint.pth
+```
+
+### Traducción *zero-shot* (Spotter+Qwen)
+
+Pasa las glosas predichas por el módulo SLR directamente a un modelo Qwen sin *finetuning*, siguiendo el paradigma Spotter+GPT:
+```bash
+python MSKA_Spotter+Qwen.py 
+    --config    configs/SLT_base_config.yaml \
+    --slr_ckpt  path/to/best_checkpoint_slr.pth \
+    --qwen_model Qwen/Qwen2.5-14B-Instruct \
+    --split     test
+```
+
+### Evaluación oráculo (cota superior)
+
+Evalúa la capacidad de traducción de Qwen partiendo de glosas de referencia perfectas (*ground truth*), sin el módulo SLR. Aísla el error de traducción del error de reconocimiento:
+```bash
+python evaluate_oracle_slt.py \
+    --config     configs/SLT_base_config.yaml \
+    --qwen_model Qwen/Qwen2.5-14B-Instruct \
+    --split      test
 ```
 
 ## Reconocimientos
