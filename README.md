@@ -68,22 +68,17 @@ Los archivos `configs/SLR_base_config.yaml` y `configs/SLT_base_config.yaml` deb
 **Entrenar el módulo de reconocimiento (SLR):**
 ```bash
 cd code/MSKA
-python train.py --config configs/SLR_base_config.yaml
+python train.py --config configs/SLR_base_config.yaml 
 ```
 
 **Entrenar la traducción con mBART:**
 ```bash
-python train.py --config configs/SLT_base_config.yaml
+python train.py --config configs/SLT_base_config.yaml --epoch 40
 ```
 
 **Entrenar la traducción con Qwen (SLM, decoder-only):**
 ```bash
-python train.py --config configs/SLT_base_config.yaml --slm
-```
-
-**Reanudar desde un checkpoint:**
-```bash
-python train.py --config configs/SLT_base_config.yaml --slm --resume path/to/checkpoint.pth
+python train.py --config configs/SLT_base_config.yaml --slm --epoch 40
 ```
 
 **Solo evaluación (sin entrenamiento):**
