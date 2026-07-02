@@ -6,7 +6,6 @@ En primer lugar, se estudia el módulo de reconocimiento de forma aislada, anali
 En segundo lugar, se evalúa la capacidad de traducción de Qwen en un escenario \textit{zero-shot}, estableciendo una línea base comparable al enfoque Spotter+GPT descrito en el estado del arte.
 Finalmente, se presenta el sistema completo con \textit{finetuning} mediante LoRA, incluyendo un estudio de ablación sobre las modalidades de entrada y una comparativa con la variante basada en mBART.
 
-Para la métrica BLEU se utiliza la implementación propuesta en \textit{A Call for Clarity in Reporting BLEU Scores} \cite{SBleu}.
 \section{Configuración experimental}
 
 \subsection{Entorno de entrenamiento}
@@ -16,7 +15,7 @@ El código está desarrollado en Python con PyTorch como \textit{framework} prin
 Todo el código está disponible en el repositorio de GitHub: \url{https://github.com/nicolasrodriguezruiz/tfm-sign-language}
 
 \subsection{Hiperparámetros generales}
-Los hiperparámetros comunes a todos los experimentos se recogen en la Tabla~\ref{tab:hyperparams}.
+Los hiperparámetros comunes a todos los experimentos se recogen en la \textit{Tabla}~\ref{tab:hyperparams}.
 
 \begin{table}[H]
 	\centering
@@ -46,7 +45,7 @@ Para el \textit{finetuning} de los modelos Qwen se emplea LoRA, manteniendo los 
     \item \textbf{LoRA-Completo}: adaptadores adicionales en las capas del bloque \textit{feed-forward}: \texttt{gate\_proj}, \texttt{up\_proj}, \texttt{down\_proj}.
 \end{itemize}
 
-Los parámetros de LoRA son comunes a ambas configuraciones y se recogen en la Tabla~\ref{tab:lora_params}.
+Los parámetros de LoRA son comunes a ambas configuraciones y se recogen en la \textit{Tabla}~\ref{tab:lora_params}.
 
 \begin{table}[H]
 	\centering
@@ -69,8 +68,8 @@ El \textit{finetuning} completo sirve como referencia para cuantificar el coste 
 Para los modelos de mayor tamaño (\textbf{Qwen2.5-7B} y \textbf{Qwen2.5-14B}), el \textit{finetuning} completo resulta inviable bajo las restricciones de memoria de una única A100 de 40\,GB, por lo que se emplea exclusivamente LoRA.
 
 \subsection{Configuración de generación}
-La generación de texto durante la inferencia se controla mediante los parámetros recogidos en la Tabla~\ref{tab:gen_params}.
-Como es convencional, existen dos fases validación, empleada durante el entrenamiento para seleccionar el mejor \textit{checkpoint}, y test, utilizada para la evaluación final sobre el conjunto de prueba.
+La generación de texto durante la inferencia se controla mediante los parámetros recogidos en la \textit{Tabla}~\ref{tab:gen_params}.
+Como es convencional, existen dos fases: validación, empleada durante el entrenamiento para seleccionar el mejor \textit{checkpoint}, y test, utilizada para la evaluación final sobre el conjunto de prueba.
 
 \begin{table}[H]
 	\centering
@@ -78,14 +77,14 @@ Como es convencional, existen dos fases validación, empleada durante el entrena
 		\hline
 		\textbf{Parámetro}                & \textbf{Validación} & \textbf{Test} \\ \hline
 		\multicolumn{3}{l}{\textit{Reconocimiento (CTC beam search)}}          \\
-		\hspace{1em}\textit{Beam size}    & 1                   & 5             \\ \hline
+		\hspace{1em}\textit{Beam size}    & $1$                   & $5$             \\ \hline
 		\multicolumn{3}{l}{\textit{Traducción (Qwen)}}                         \\
-		\hspace{1em}\textit{Beam size}    & 4                   & 4             \\
-		\hspace{1em}\texttt{max\_new\_tokens}      & 51         & 51            \\
-		\hspace{1em}\texttt{length\_penalty}       & 0.0        & 0.0           \\
-		\hspace{1em}\texttt{repetition\_penalty}   & 1.5        & 1.5           \\
-		\hspace{1em}\texttt{no\_repeat\_ngram\_size} & 3        & 3             \\
-		\hspace{1em}\texttt{temperature}           & 0.05       & 0.05          \\
+		\hspace{1em}\textit{Beam size}    & $4$                   & $4$             \\
+		\hspace{1em}\texttt{max\_new\_tokens}      & $51$         & $51$            \\
+		\hspace{1em}\texttt{length\_penalty}       & $0.5$        & $0.5$           \\
+		\hspace{1em}\texttt{repetition\_penalty}   & $1.1$        & $1.1$          \\
+		\hspace{1em}\texttt{no\_repeat\_ngram\_size} & $3$        & $3$             \\
+		\hspace{1em}\texttt{temperature}           & $0.05$       & $0.05$          \\
 		\hspace{1em}\texttt{do\_sample}            & \texttt{false} & \texttt{false} \\
 		\hspace{1em}\texttt{early\_stopping}       & \texttt{true}  & \texttt{true}  \\ \hline
 		\end{tabular}
@@ -105,7 +104,7 @@ Antes de presentar los resultados de los modelos, es conveniente caracterizar cu
 
 \subsection{Estadísticas del conjunto de entrenamiento}
 El conjunto de entrenamiento de PHOENIX-2014T contiene $7.096$ muestras.
-La Tabla~\ref{tab:dataset_stats} resume las principales estadísticas sobre la longitud de los vídeos y de las frases en alemán, medidas estas últimas en tokens del vocabulario de Qwen2.5.
+La \textit{Tabla}~\ref{tab:dataset_stats} resume las principales estadísticas sobre la longitud de los vídeos y de las frases en alemán, medidas estas últimas en tokens del vocabulario de Qwen2.5.
 
 \begin{table}[H]
 	\centering
@@ -128,7 +127,7 @@ La Tabla~\ref{tab:dataset_stats} resume las principales estadísticas sobre la l
 
 Se observa que el percentil $99$ de longitud textual se sitúa en $51$ tokens, lo que justifica el valor \texttt{max\_new\_tokens=51} empleado durante la generación y \texttt{text\_max\_length=128} durante el entrenamiento, dejando margen suficiente para el prompt de instrucción.
 
-En segundo lugar, el ratio medio de aproximadamente $5$ frames por token implica que secuencias de hasta $400$ frames corresponden a traducciones de en torno a $80$ tokens, coherente con el límite \texttt{clip\_len=400} establecido en el dataset.
+Por otra parte, el ratio medio de aproximadamente $5$ frames por token implica que secuencias de hasta $400$ frames corresponden a traducciones de en torno a $80$ tokens, coherente con el límite \texttt{clip\_len=400} establecido en el dataset.
 
 \subsection{Vocabulario de glosas}
 El vocabulario de glosas del conjunto de entrenamiento contiene \texttt{1094} entradas únicas, incluyendo los tokens especiales requeridos por la decodificación CTC.
@@ -149,7 +148,7 @@ Antes del cálculo, tanto las hipótesis como las referencias se normalizan medi
 \subsection{Modelo base}
 El modelo de reconocimiento sigue la arquitectura MSKA-SLR descrita en el \textit{Capítulo}~\ref{ch:metodologia}, entrenado desde pesos aleatorios exclusivamente sobre los datos de PHOENIX-2014T\@.
 
-La configuración base no aplica ninguna técnica de aumentación de datos más allá de la augmentación temporal y la rotación aleatoria, presentes en todos los experimentos.
+La configuración base no aplica ninguna técnica de aumentación de datos más allá de la aumentación temporal y la rotación aleatoria, presentes en todos los experimentos.
 
 Los hiperparámetros específicos del módulo de reconocimiento, MSKA-SLR, se recogen en la \textit{Tabla}~\ref{tab:slr_config}.
 \begin{table}[H]
@@ -169,7 +168,7 @@ Los hiperparámetros específicos del módulo de reconocimiento, MSKA-SLR, se re
 	\label{tab:slr_config}
 \end{table}
 
-La arquitectura DSTA-Net procesa cuatro flujos independientes ya mencionados en el \textit{capítulo}~\ref{ch:metodologia}, cuyos índices de \textit{keypoints} se detallan en la \textit{Tabla}~\ref{tab:streams}.
+La arquitectura DSTA-Net procesa cuatro flujos independientes ya mencionados en el \textit{Capítulo}~\ref{ch:metodologia}, cuyos índices de \textit{keypoints} se detallan en la \textit{Tabla}~\ref{tab:streams}.
 La decisión final se obtiene promediando uniformemente las distribuciones de probabilidad de los cuatro flujos junto con la cabeza de fusión (\textit{ensemble} uniforme).
 \begin{table}[H]
 	\centering
@@ -187,18 +186,20 @@ La decisión final se obtiene promediando uniformemente las distribuciones de pr
 \end{table}
 
 \subsection{Estudio de aumentación de datos}
-Se evalúan cinco configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
+Se evalúan cuatro configuraciones de aumentación, manteniendo fijos el resto de hiperparámetros.
 Las tres técnicas estudiadas: \textit{Joint Dropout}, ruido gaussiano y \textit{Structured Dropout} se describen en detalle en la \textit{Sección}~\ref{sec:DATAAUG}.
 
 La diferencia entre \textit{Joint Dropout} y \textit{Structured Dropout} es que mientras el primero enmascara articulaciones individuales de forma aleatoria e independiente, cada keypoint tiene una probabilidad
 fija de ser anulado, sin ninguna restricción anatómica.
-El segundo, agrupa los keypoints por extremidades completas tal y como se describe en la \textit{Sección}~\ref{sec:MSKA_SLR}.
+El segundo agrupa los keypoints por extremidades completas tal y como se describe en la \textit{Sección}~\ref{sec:MSKA_SLR}.
 
-Mientras \textit{Structured Dropout} modela situaciones más realistas, los resultados acontinuación muestran que el \textit{Joint Dropout} obtiene un WER ligeramente inferior ($27.24\%$ frente a $27.59\%$ en test).
+Mientras \textit{Structured Dropout} modela situaciones más realistas, los resultados a continuación muestran que el \textit{Joint Dropout} obtiene un WER ligeramente inferior ($27.24\%$ frente a $27.59\%$ en test).
 
-La razón por la que occure esto es que enmascarar una extremidad completa durante toda la secuencia priva al modelo de demasiada información simultáneamente, esto sumado a la falta de datos hacen que el modelo tenga mayor deifcultades al aprender.
+La razón es que enmascarar una extremidad completa durante toda la secuencia priva al modelo de demasiada información de forma simultánea.
+Esto, sumado a la escasez de datos, hace que el modelo tenga mayores dificultades para aprender.
 
-Por esta razón decidí realizar una pequeña modificación, en vez de ocultar por completo la articulación, ocultar puntos aleatorios preservando siempre una fracción suficiente de la estructura de cada extremidad, ofreciendo una regularización más suave y efectiva en este escenario de datos limitados.
+Por esta razón, se decidió introducir una pequeña modificación: en lugar de ocultar por completo la extremidad, se enmascaran puntos aleatorios, preservando siempre una fracción suficiente de su estructura.
+Esto ofrece una regularización más suave y efectiva en este escenario de datos limitados.
 
 \begin{table}[H]
 	\centering
@@ -223,14 +224,14 @@ Por esta razón decidí realizar una pequeña modificación, en vez de ocultar p
 
 \subsubsection*{Análisis de resultados}
 
-Los resultados de la \textit{Tabla}~\ref{tab:slr_augmentation} son poco prometedores, las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
+Los resultados de la \textit{Tabla}~\ref{tab:slr_augmentation} son poco prometedores: las técnicas de aumento de datos no aportan mejoras sustanciales en este conjunto de datos y, en varios casos, perjudican el rendimiento.
 
-La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en test de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos (en validación).
-Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error, las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
+La única variante que mejora ligeramente sobre la base es \textbf{SLR-\textit{JointDropout}}, que reduce el WER en validación de $27.81\%$ a $27.68\%$, una mejora marginal de $0.13$ puntos y de $27.33\%$ a $27.24\%$ en test ($0.09$ puntos), mejoras marginales en ambos casos.
+Su efecto más notable no es la reducción del WER global, sino el reequilibrio entre los tipos de error: las eliminaciones caen de $13.29\%$ a $12.51\%$ a costa de un leve incremento en sustituciones (de $11.81\%$ a $12.28\%$).
 
 Esto sugiere que enmascarar puntos clave individualmente obliga al modelo a ser más atrevido, reduciendo la tendencia a omitir glosas cuando parte de la información espacial no está disponible.
 
-El \textbf{SLR-\textit{StructuredDropout}}, obtiene un resultado ligeramente inferior al \textit{JointDropout} ($28.24\%$ vs $27.68\%$ en validación).
+El \textbf{SLR-\textit{StructuredDropout}} obtiene un resultado ligeramente inferior al \textit{JointDropout} ($28.24\%$ vs $27.68\%$ en validación).
 No obstante, presenta el valor de eliminaciones más bajo de todos los experimentos ($12.21\%$), lo que indica que la oclusión estructurada por extremidades ayuda al modelo a mantener la secuencia de glosas completa, aunque introduce mayor confusión entre signos similares (mayor tasa de sustitución).
 
 El \textbf{SLR-\textit{GaussianNoise}} empeora el rendimiento base en casi un punto ($28.56\%$ vs $27.81\%$).
@@ -241,11 +242,12 @@ Probablemente, en el corpus de PHOENIX, las grabaciones en estudio de calidad ho
 
 En conjunto, la ganancia máxima obtenida mediante aumentación es inferior a $0.1$ puntos de WER. Además, observando las curvas de las pérdidas en entrenamiento y validación (\textit{Figura~\ref{fig:slr_curves}}) deducimos que el modelo sufre de sobreajuste y que las técnicas de aumentación exploradas no lo logran mitigar de forma significativa.
 
-Las curvas de entrenamiento descienden de forma pronunciada hasta valores cercanos a $15$, mientras que las curvas de validación se estabilizan en torno a $45$ desde la época $20$, sin mejorar demásiado hasta que la parada temprana finalmente detiene el entrenamiento de forma anticipada.
+Las curvas de entrenamiento descienden de forma pronunciada hasta valores cercanos a $15$, mientras que las curvas de validación se estabilizan en torno a $45$ desde la época $20$, sin mejorar demasiado hasta que la parada temprana finalmente detiene el entrenamiento de forma anticipada.
 
 Esta brecha persistente entre entrenamiento y validación es evidencia del sobreajuste que se mantiene en todas las configuraciones de aumentación probadas.
 
-La gráfica de WER confirma la misma lectura, todas las variantes convergen hacia el mismo rango ($27$-$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $35$.
+La gráfica de WER confirma la misma lectura.
+Todas las variantes convergen hacia el mismo rango ($27$-$29\%$) y sus trayectorias son prácticamente indistinguibles a partir de la época $35$.
 El \textit{StructuredDropout} presenta una convergencia más lenta durante las primeras épocas, posiblemente porque enmascarar extremidades completas dificulta el aprendizaje inicial, aunque termina alcanzando un resultado comparable al resto.
 
 % En este contexto, el tamaño reducido del corpus supone una limitación más determinante que la estrategia de regularización empleada.
@@ -261,7 +263,7 @@ Para complementar el análisis cuantitativo, la Tabla~\ref{tab:slr_qualitative} 
 
 El primer caso confirma que el modelo funciona correctamente en secuencias cortas con signos frecuentes en el corpus, donde la información de los keypoints es suficientemente discriminativa.
 
-El error de sustitución del segundo ejemplo: \textit{AUFLOESEN} (dispersarse) y \textit{VERSCHWINDEN} (desaparecer) son sinónimos en el contexto meteorológico y comparten una configuración manual similar.
+El error de sustitución del segundo ejemplo, \textit{AUFLOESEN} (dispersarse) y \textit{VERSCHWINDEN} (desaparecer), son sinónimos en el contexto meteorológico y comparten una configuración manual similar.
 Este tipo de confusión semántica entre glosas de significado próximo es difícilmente evitable desde el módulo de reconocimiento, y constituye precisamente uno de los casos donde un modelo de lenguaje con capacidad de razonamiento contextual puede recuperar el significado correcto en la etapa de traducción.
 
 \begin{figure}[H]
@@ -291,7 +293,7 @@ Este tipo de confusión semántica entre glosas de significado próximo es difí
 
 El tercer ejemplo ilustra el error de eliminación: el modelo reconoce la glosa inicial pero omite las dos siguientes, posiblemente porque la secuencia \textit{LANG BLEIBEN} ocurre con menor frecuencia en el corpus y sus keypoints se confunden con ruido temporal.
 
-El cuarto caso es el más significativo desde el punto de vista del análisis, todos los modelos evaluados, producen exactamente la misma predicción errónea sobre este ejemplo (y otros $123$ del conjunto de prueba).
+El cuarto caso es el más significativo desde el punto de vista del análisis: todos los modelos evaluados producen exactamente la misma predicción errónea sobre este ejemplo (y otros $123$ del conjunto de prueba).
 La sustitución de \textit{ABEND} por \textit{NACHT} (tarde vs.\ noche) y la omisión de \textit{NIEDERUNG} apuntan a que el error nace de una ambigüedad intrínseca en los datos: los signos correspondientes son visualmente similares y el corpus no proporciona suficientes ejemplos contrastivos para que el modelo aprenda a distinguirlos.
 
 % ----------------------------------------------------------------
