@@ -121,6 +121,15 @@ En el contexto de datos esqueléticos, esta codificación se adapta para separar
 \subsection{Modelos Grandes de Lenguaje (LLMs)}
 Los \textbf{Modelos Grandes de Lenguaje} (\textit{Large Language Models}, LLMs) son modelos \textit{Transformer} de arquitectura exclusivamente decodificadora (\textit{decoder-only}) preentrenados sobre corpus de texto de escala masiva mediante el objetivo de predicción del siguiente \textit{token}.
 A diferencia de los modelos \textit{encoder-decoder} clásicos, el decodificador procesa la secuencia de forma autorregresiva: en cada paso genera un \textit{token} condicionado a todos los anteriores, lo que lo convierte en un generador de texto fluido y coherente.
+La \textit{Figura}~\ref{fig:encoder_decoder} ilustra la arquitectura \textit{encoder-decoder} clásica, en la que un codificador procesa la secuencia de entrada de forma bidireccional y un decodificador genera la salida token a token atendiendo a la representación del codificador mediante la \textbf{atención cruzada}.
+Un modelo \textit{decoder-only} prescinde por completo del codificador y de dicha atención cruzada: conserva únicamente el bloque decodificador y condiciona la generación sobre la propia secuencia de tokens previa.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\textwidth]{fundamentos/encoder_decoder.pdf}
+    \caption{Arquitectura \textit{encoder-decoder} clásica. El codificador transforma la secuencia de entrada en una representación contextual sobre la que el decodificador genera la salida de forma autorregresiva mediante la atención cruzada. Un modelo \textit{decoder-only} prescinde del codificador y de la atención cruzada, conservando solo el bloque decodificador.}
+    \label{fig:encoder_decoder}
+\end{figure}
 
 El efecto más relevante del escalado es la aparición de \textbf{capacidades emergentes}: habilidades que no estaban presentes en modelos pequeños y surgen de forma espontánea al aumentar el número de parámetros y el volumen de datos de preentrenamiento.
 Entre estas capacidades destacan el razonamiento en cadena, la traducción entre idiomas y la ejecución de tareas en modalidad \textit{zero-shot} (sin ejemplos de entrenamiento específicos para la tarea).

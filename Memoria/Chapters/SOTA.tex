@@ -1,11 +1,11 @@
 \chapter{Estado del Arte}\label{ch:sota}
 En este capítulo analizaremos el contexto general de la traducción de lengua de signos, desde su evolución hasta la actualidad.
-Finalmente, estudiaremos el estado del arte específico a los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
+Después, estudiaremos el estado del arte específico de los modelos basados en \textit{keypoints} y presentaremos los conjuntos de datos relevantes.
 
 \section{Evolución de la traducción de lengua de signos}
 Como vimos en la introducción, la traducción automática de la lengua de signos es un problema complejo que implica convertir una secuencia de vídeo continuo en una secuencia de texto en un lenguaje hablado, superando grandes barreras espaciales, sintácticas y gramaticales.
 A lo largo de los últimos años ha habido grandes avances en las técnicas utilizadas.
-De similar forma a las tareas de traducción tradicionales, se han ido preferido arquitecturas basadas en mecanismos de atención, \textit{vision transformers} o incluso \textit{LLM}.
+De similar forma a las tareas de traducción tradicionales, se han ido prefiriendo arquitecturas basadas en mecanismos de atención, \textit{vision transformers} o incluso \textit{LLM}.
 
 Históricamente, los primeros sistemas de reconocimiento y traducción dependían en gran medida de \textit{hardware} intrusivo, como guantes de datos o sensores de movimiento, y de enfoques de traducción automática estadística que operaban bajo reglas rígidas elaboradas manualmente por lingüistas.
 Estos métodos, aunque pioneros en su momento, presentaban una escalabilidad muy limitada y fracasaban al intentar capturar la naturaleza continua, fluida y multimodal de la lengua de signos en entornos reales.
@@ -42,12 +42,12 @@ El procesamiento se estructura como se ilustra en la \textit{Figura}~\ref{fig:si
 
 \begin{enumerate}
     \item \textbf{Reconocimiento Continuo de la Lengua de Signos (CSLR):} Un modelo de visión por computador procesa la secuencia de vídeo y genera una secuencia de glosas.
-    \item \textbf{Traducción Automática Neuronal (NMT):} Un modelo de procesamiento de lenguaje natural toma esa secuencia de glosas (que carece de conjugaciones y sigue la gramática espacial del lenguaje de signos) y la traduce a una oración gramaticalmente correcta en un idioma hablado.
+    \item \textbf{Traducción Automática Neuronal (NMT):} Un modelo de procesamiento de lenguaje natural toma esa secuencia de glosas (que carece de conjugaciones y sigue la gramática espacial de la lengua de signos) y la traduce a una oración gramaticalmente correcta en un idioma hablado.
 \end{enumerate}
 
 \subsection{Ventajas del enfoque}
 La principal ventaja de este método es la simplificación de la tarea conjunta.
-Identificar directamente representaciones de vídeo de alta dimensionalidad a texto hablado es un problema de optimización sumamente complejo, agravado por la escasez histórica de conjuntos de datos masivos que contengan pares directos de vídeo y texto.
+Traducir directamente representaciones de vídeo de alta dimensionalidad a texto hablado es un problema de optimización sumamente complejo, agravado por la escasez histórica de conjuntos de datos masivos que contengan pares directos de vídeo y texto.
 Al introducir las glosas como un ancla intermedia, los investigadores pudieron entrenar redes más estables y aprovechar las arquitecturas NMT ya existentes para la segunda etapa.
 
 Un ejemplo destacado de los avances logrados en la primera etapa es el modelo \textbf{STMC} (\textit{Spatial-Temporal Multi-Cue}) propuesto por Zhou et al. \cite{STMC_CSLR} en 2020.
@@ -58,17 +58,17 @@ Aunque investigaciones previas ya reconocían el carácter multimodal de la leng
 \subsection{Desventajas: propagación de errores}
 A pesar de su éxito inicial y de su interpretabilidad (al poder visualizar qué glosas ha detectado el modelo), el paradigma de dos etapas sufre de un cuello de botella por la \textbf{propagación de errores}.
 
-En este esquema arquitectonico, los dos módulos actúan de forma aislada.
+En este esquema arquitectónico, los dos módulos actúan de forma aislada.
 Si el modelo de visión comete un error, omite un signo por oclusión, o predice una glosa equivocada, esta información errónea se transfiere directamente al modelo de lenguaje.
 Al no tener acceso a la secuencia de vídeo original para extraer contexto visual complementario, el modelo de traducción, por muy avanzado que sea, intentará traducir una premisa falsa, resultando en una oración carente de sentido.
 
 A este problema se suma el coste prohibitivo de anotación de datos.
 Entrenar el primer módulo requiere bases de datos etiquetadas a nivel de glosa, un proceso manual, lento y costoso que debe ser realizado por expertos lingüistas, lo que restringe severamente el volumen de datos de entrenamiento disponibles.
-Aunque ha habido muchos esfuerzos para solventar esta limitaciones, como la generación de glosas de forma automatica utilizado, por ejemplo, LLMs \cite{guo2025bridgingsignspokenlanguages}, este problema no está cerca de estar resuelto.
+Aunque ha habido muchos esfuerzos para solventar estas limitaciones, como la generación de glosas de forma automática utilizando, por ejemplo, LLMs \cite{guo2025bridgingsignspokenlanguages} o la generación de conjuntos de datos sintéticos mediante sistemas basados en reglas \cite{SyntheticCGeneration}, este problema no está cerca de estar resuelto.
 
-Estos factores y la disponibilidad de equipos de mayor potencia obligó y permitió a la comunidad investigadora a replantearse la arquitectura fundamental de los sistemas, impulsando la búsqueda de alternativas que mitigaran esta dependencia estricta de las glosas intermedias.
+Estos factores, junto con la disponibilidad de equipos de mayor potencia, impulsaron a la comunidad investigadora a replantearse la arquitectura fundamental de los sistemas, impulsando la búsqueda de alternativas que mitigaran esta dependencia estricta de las glosas intermedias.
 
-\section{Modelos libre de glosas (una etapa)}
+\section{Modelos libres de glosas (una etapa)}
 Para sortear el cuello de botella de la propagación de errores y eliminar la necesidad de costosas anotaciones a nivel de glosa, se exploró el paradigma de traducción de principio a fin (\textit{end-to-end}), comúnmente denominado \textit{Gloss-Free SLT}. Ver \textit{Figura}~\ref{fig:sig2text}.
 
 Estos modelos proponen asociar directamente la secuencia continua de vídeo a la secuencia de texto hablado, unificando la extracción de características espacio-temporales y la generación de lenguaje en una única arquitectura conjunta.
@@ -84,7 +84,7 @@ Enfoques recientes en esta línea han adoptado arquitecturas basadas en \textit{
 
 \subsection{El límite de la traducción directa}
 Sin embargo, el paradigma \textit{end-to-end}, como es común, se ha topado con la barrera de la escasez de datos.
-Mientras que la traducción automática tradicional entre lenguajes hablados se entrena con cientos de millones de pares de oraciones, los conjuntos de datos de traducción de lengua de signos apenas superan las decenas de miles de ejemplos.
+Mientras que la traducción automática tradicional entre lenguas habladas se entrena con cientos de millones de pares de oraciones, los conjuntos de datos de traducción de lengua de signos apenas superan las decenas de miles de ejemplos.
 
 Sin la estructura y el anclaje semántico que proporcionan las glosas intermedias, los modelos libres de glosas sufren para aprender la compleja correspondencia multimodal desde cero, lo que provoca que su rendimiento se estanque.
 
@@ -92,9 +92,9 @@ Cabe anticipar una objeción razonable: si los datos de vídeo acompañado de te
 Sin embargo, la clave no está en la cantidad sino en la estructura.
 Con pocos datos pero con una representación intermedia bien definida, el modelo dispone de un espacio de aprendizaje descompuesto en dos subproblemas más sencillos y manejables, lo que facilita la convergencia.
 Por el contrario, con la misma cantidad de datos pero sin esa estructura, el modelo \textit{end-to-end} debe aprender de cero la correspondencia completa entre el espacio visual de alta dimensionalidad y el espacio semántico del texto.
-Además, investigaciones recientes han explorado la generación automática de glosas a partir del texto traducido para aliviar precisamente este cuello de botella de anotación, ya sea mediante sistemas basados en reglas o mediante enfoques de aprendizaje automático, reduciendo así la dependencia de la anotación manual.
+Además, investigaciones recientes han explorado la generación automática de glosas a partir del texto traducido para aliviar precisamente este cuello de botella de anotación, ya sea mediante sistemas basados en reglas \cite{SyntheticCGeneration} o mediante enfoques de aprendizaje automático, reduciendo así la dependencia de la anotación manual.
 
-En mi opinión esto es evidencia de que descartar por completo las glosas no era la solución definitiva, sino que el verdadero desafío residía en encontrar una manera de utilizarlas siendo tolerantes a sus imperfecciones.
+Todo esto sugiere que descartar por completo las glosas no era la solución definitiv, sino que el verdadero desafío residía en encontrar una manera de utilizarlas siendo tolerantes a sus imperfecciones.
 Esto sentó las bases para el siguiente gran salto tecnológico: el uso de Modelos de Lenguaje (\textit{LLMs}) para el razonamiento sobre secuencias ruidosas.
 
 
@@ -126,9 +126,10 @@ La arquitectura del sistema, ilustrada en la \textit{Figura}~\ref{fig:spotterGPT
     \label{fig:spotterGPT}
 \end{figure}
 
-Los experimentos realizados mostraron resultados mixtos según la métrica empleada.
-En términos de similitud semántica, medida con BLEURT\footnote{BLEURT es una métrica de evaluación automática basada en BERT que mide la calidad de textos generados por IA evaluando su similitud semántica con un texto de referencia.} \cite{BLEURT}, Spotter+GPT supera al modelo \textit{transformer} tradicional, lo que refleja su mayor capacidad para preservar el significado de la oración.
-Sin embargo, en términos de solapamiento léxico exacto, medido con BLEU, el modelo \textit{transformer} supera a Spotter+GPT, lo que sugiere que el LLM tiende a parafrasear en lugar de reproducir literalmente la referencia, lo cual tiene sentido, pues el modelo no ve la referencia en ningún momento.
+Los experimentos realizados muestran que Spotter+GPT supera al modelo \textit{transformer} tradicional (\textit{Spotter+Transformer}) en todas las métricas evaluadas, tanto en solapamiento léxico exacto (BLEU) como en similitud semántica (BLEURT\footnote{BLEURT es una métrica de evaluación automática basada en BERT que mide la calidad de textos generados por IA evaluando su similitud semántica con un texto de referencia.} \cite{BLEURT}).
+La ventaja es especialmente marcada en BLEURT ($46.93$ frente a $19.85$), lo que refleja la mayor capacidad del LLM para preservar el significado de la oración.
+No obstante, conviene matizar que el BLEU absoluto de Spotter+GPT sigue siendo bajo ($9.12$ en BLEU-4) y queda muy por debajo del que obtiene el mismo LLM cuando recibe glosas de referencia (GT+GPT, $46.22$).
+Esto sugiere que, ante glosas ruidosas, el LLM tiende a parafrasear en lugar de reproducir literalmente la referencia —que además nunca llega a ver—, lo que penaliza especialmente a una métrica basada en la coincidencia exacta de $n$-gramas.
 Además, el enfoque destaca cualitativamente por su gran resiliencia: el LLM logra mantener la coherencia semántica en la oración hablada final incluso cuando el detector visual pierde información o introduce glosas adicionales incorrectas.
 
 \begin{table}[htbp]
@@ -147,7 +148,7 @@ Además, el enfoque destaca cualitativamente por su gran resiliencia: el LLM log
 \end{table}
 
 \subsection{Limitaciones de los LLMs masivos en SLT}
-Si bien enfoques como Spotter+GPT han demostrado que los grandes modelos de lenguaje pueden solucionar el cuello de botella histórico de las glosas, introducen nuevas barreras para su despliegue en escenarios reales.
+Si bien enfoques como Spotter+GPT han demostrado que los modelos grandes de lenguaje pueden solucionar el cuello de botella histórico de las glosas, introducen nuevas barreras para su despliegue en escenarios reales.
 
 En primer lugar, la dependencia de modelos masivos comerciales (como GPT-3.5 o GPT-4) requiere conexión constante a internet e incurre en costes recurrentes por uso de API.
 En segundo lugar, enviar transcripciones o datos derivados de usuarios a servidores externos plantea serios problemas de privacidad, un aspecto crítico en aplicaciones de accesibilidad.
@@ -158,20 +159,20 @@ Finalmente, la combinación de extractores visuales pesados (como I3D) operando 
 Como hemos observado, el procesamiento de secuencias de vídeo RGB en la traducción de lengua de signos conlleva un alto coste computacional y una gran vulnerabilidad frente a las fluctuaciones del fondo, la iluminación o la apariencia del signante.
 Para mitigar estos problemas, una de las ramas de la investigación ha impulsado el uso de \textit{keypoints} como representación visual de entrada.
 
-El uso de \textit{keypoints} extraídos mediante estimadores de pose (como HRNet, OpenPose) no solo reduce sustancialmente los requisitos computacionales al transformar tensores de vídeo masivos en matrices ligeras de coordenadas, sino que también elimina los sesgos visuales del entorno.
+El uso de \textit{keypoints} extraídos mediante estimadores de pose (como MMPose u OpenPose) no solo reduce sustancialmente los requisitos computacionales al transformar tensores de vídeo masivos en matrices ligeras de coordenadas, sino que también elimina los sesgos visuales del entorno.
 Además, como se menciona en la introducción, este enfoque aborda las crecientes preocupaciones sobre la privacidad, ya que anonimiza al usuario al prescindir de sus rasgos biométricos faciales o de su entorno personal.
 
-Para superar las limitaciones topológicas de los modelos basados en grafos, Guan et al. \cite{MSKA} propusieron en $2024$ la red de atención multiescala/multiflujo basada en \textit{keypoints} (\textbf{MSKA}, \textit{Multi-Stream Keypoint Attention}).
+Para superar las limitaciones topológicas de los modelos basados en grafos, Guan et al. \cite{MSKA} propusieron en $2024$ la red de atención multiescala basada en \textit{keypoints} (\textbf{MSKA}, \textit{Multi-Stream Keypoint Attention}).
 Esta arquitectura se inspira en la cognición humana, que interpreta la lengua de signos analizando la interacción dinámica entre la configuración de las manos y los gestos corporales adicionales.
 
 A diferencia de sus predecesores, MSKA prescinde de topologías predefinidas y desacopla la entrada en flujos independientes (manos, rostro y cuerpo), procesándolos mediante módulos de atención pura para luego fusionarlos.
-Aunque los detalles arquitectónicos de este modelo se abordarán en profundidad en el capítulo de Metodología~\ref{ch:metodologia}, es crucial destacar su enfoque para la traducción.
+Aunque los detalles arquitectónicos de este modelo se abordarán en profundidad en el \textit{Capítulo}~\ref{ch:metodologia}, es crucial destacar su enfoque para la traducción.
 Para conformar su sistema completo (MSKA-SLT), los autores acoplaron este extractor visual al modelo de lenguaje \textbf{mBART} \cite{mBART}.
 
 Esta dependencia de una arquitectura de traducción clásica (\textit{Seq2Seq}) presenta una limitación teórica fundamental: la \textbf{rigidez estructural}.
 Si el módulo visual comete errores predictivos (omisiones o glosas incorrectas debido a oclusiones temporales), modelos dedicados como mBART carecen de la capacidad de inferencia deductiva profunda necesaria para reconstruir el contexto lógico de forma autónoma.
 
-Es precisamente este cuello de botella semántico el que motivan mi exploración de Modelos Pequeños de Lenguaje (SLM) como alternativa.
+Es precisamente este cuello de botella semántico  el que motiva nuestra exploración de Modelos Pequeños de Lenguaje (SLM) como alternativa.
 La integración de un SLM promete aportar la capacidad de comprensión y corrección contextual propia de los grandes modelos generativos, manteniendo un tamaño que permita su ejecución local para garantizar la privacidad.
 Sin embargo, sustituir un decodificador \textit{Seq2Seq} altamente especializado en traducción por un modelo causal de propósito general introduce nuevos y complejos desafíos de alineación y evaluación empírica.
 Explorar la viabilidad, el rendimiento y los retos de esta transición arquitectónica constituye uno de los objetivos de nuestro trabajo.
@@ -200,10 +201,9 @@ A continuación, exploramos los conjuntos de datos más relevantes que han marca
 
     \item \textbf{How2Sign \cite{How2Sign}:} Este corpus masivo de Lengua de Signos Americana (ASL) ejemplifica el paradigma moderno.
     Basado en vídeos instructivos extraídos de internet, presenta grabaciones en entornos reales con múltiples ángulos y un vocabulario extremadamente amplio y continuo, suponiendo un reto mayúsculo de generalización para los modelos actuales.
-    A diferencia de los anteriores, este corpus incluye tanto anotaciones de glosas como \textit{keypoints} $2$D preextraídos por \textit{openpose} para más de seis millones de fotogramas.
+    A diferencia de los anteriores, este corpus incluye tanto anotaciones de glosas como \textit{keypoints} $2$D preextraídos por \textit{OpenPose} para más de seis millones de fotogramas.
 
-    \item \textbf{LSE-eSaude\_UVIGO \cite{docio2022eccv}:} Un corpus de aproximadamente $10$ horas de Lengua de Signos Española (LSE) en el dominio de la salud, grabado por $10$ signatarios ($7$ sordos y $3$ intérpretes) a $1080\times720$ y $25$ fps.
-    Con anotaciones parciales de $100$ signos en contexto oracional.
+    \item \textbf{LSE-eSaude\_UVIGO \cite{docio2022eccv}:} Un corpus de aproximadamente $10$ horas de Lengua de Signos Española (LSE) en el dominio de la salud, grabado por $10$ signantes ($7$ sordos y $3$ intérpretes) a $1080\times720$ y $25$ fps, con anotaciones parciales de $100$ signos en contexto oracional.
     Su principal valor es ser uno de los pocos recursos continuos disponibles en LSE, aunque su anotación incompleta y su dominio restringido limitan su uso directo para entrenamiento de modelos de traducción de propósito general.
 
 %     \item \textbf{Sign4All :} Un conjunto de datos \textbf{en español} reciente que destaca por su enfoque en la inclusión y la captura de alta calidad.
@@ -215,7 +215,7 @@ A continuación, exploramos los conjuntos de datos más relevantes que han marca
 
 \subsection{Selección del conjunto de datos}
 Para el desarrollo y validación empírica de esta investigación, se ha seleccionado el conjunto de datos \textbf{PHOENIX-2014T} como base principal para los experimentos.
-Existem principalmente dos razones:
+Existen principalmente dos razones:
 \begin{enumerate}
     \item \textbf{Comparabilidad histórica:} Al ser el estándar de oro unánime en la investigación de SLT, utilizar PHOENIX garantiza que los resultados obtenidos en este trabajo puedan ser medidos y comparados directamente con casi una década de literatura científica, proporcionando un marco de evaluación robusto.
     \item \textbf{Alineación con el modelo base y accesibilidad:} PHOENIX-2014T es el corpus principal sobre el que se evaluó y validó la arquitectura MSKA original.
@@ -223,6 +223,6 @@ Existem principalmente dos razones:
     Además, a diferencia de corpus como CSL-Daily, que presentan fuertes barreras burocráticas de acceso, PHOENIX es de acceso público, lo que garantiza la reproducibilidad de nuestros experimentos.
 \end{enumerate}
 
-Cabe hacer una mención especial al conjunto de datos \textbf{Sign4All} \cite{sign4all} un conjunto de datos para el reconocimiento aislado de signos muy reciente (\textbf{23 de febrero de 2026}).
+Cabe hacer una mención especial a Sign4All \cite{sign4all}, un conjunto de datos para el reconocimiento aislado de signos muy reciente (\textbf{23 de febrero de 2026}).
 Aunque su altísima resolución y sus anotaciones esqueléticas nativas lo convierten en un recurso prometedor para la comunidad LSE, al estar orientado al reconocimiento de signos aislados no habría sido aplicable directamente como base de entrenamiento para este proyecto de traducción continua.
 

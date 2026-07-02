@@ -64,3 +64,21 @@ El \textit{Capítulo}~\ref{ch:fundamentos} expone los fundamentos teóricos nece
 El \textit{Capítulo}~\ref{ch:metodologia} detalla las decisiones de diseño adoptadas: el estimador de pose, el proceso de normalización, la arquitectura MSKA y la integración del SLM mediante prefijo visual.
 El \textit{Capítulo}~\ref{ch:experimentacion} presenta los experimentos realizados y analiza los resultados, incluyendo el estudio de ablación y la comparativa global.
 Finalmente, el \textit{Capítulo}~\ref{ch:conclusion} recoge las conclusiones del trabajo y propone líneas de investigación futura.
+
+\section{Estructura del repositorio}
+Todo el código desarrollado para este trabajo está disponible públicamente en el repositorio de GitHub \url{https://github.com/nicolasrodriguezruiz/tfm-sign-language}, organizado de la siguiente manera:
+
+\begin{itemize}
+    \item \texttt{code/MSKA/}: sistema principal, que integra el reconocimiento y la traducción.
+    \begin{itemize}
+        \item \texttt{train.py}: punto de entrada para el entrenamiento y la evaluación.
+        \item \texttt{Recognition/}: módulo de reconocimiento de glosas (MSKA-SLR).
+        \item \texttt{MBart/}: módulo de traducción basado en mBART.
+        \item \texttt{slm/}: módulo de traducción basado en el Modelo Pequeño de Lenguaje (Qwen).
+        \item \texttt{ICL/}: experimentos en modo \textit{zero-shot} e \textit{in-context learning}.
+        \item \texttt{aux/}: métricas de evaluación, utilidades y preparación de datos.
+        \item \texttt{configs/}: ficheros de configuración de los experimentos (formato YAML).
+    \end{itemize}
+    \item \texttt{code/preprocesing/}: extracción y normalización de los \textit{keypoints}.
+    \item \texttt{code/GRU/} y \texttt{code/Transformer/}: experimentación preliminar realizada para familiarizarse con la tarea, ajena al sistema descrito en esta memoria.
+\end{itemize}

@@ -4,12 +4,12 @@ En primer lugar, se justificará el método seleccionado para la extracción vis
 Posteriormente, se describirá el proceso de preprocesado y normalización de los datos espaciales.
 Finalmente, se desglosará la arquitectura base de los modelos.
 
-El sistema desarrollado en este trabajo sigue un flujo de procesamiento de dos etapas que transforma una secuencia de vídeo en una traducción en lenguaje natural, tal como se ilustra en la \textit{Figura}~\ref{fig:pipeline}.
+El sistema desarrollado en este trabajo sigue un flujo de procesamiento de tres etapas que transforma una secuencia de vídeo en una traducción en lenguaje natural, tal como se ilustra en la \textit{Figura}~\ref{fig:pipeline}.
 En la primera etapa, el vídeo se procesa mediante \textbf{AlphaPose} para extraer una secuencia de \textit{keypoints} anatómicos, que se normalizan antes de ser introducidos
 en el modelo de reconocimiento.
-El módulo \textbf{MSKA-SLR} procesa esta secuencia espacio-temporal para obtener una representación de glosas que actúa como puente semántico entre la señal visual y el
+En la segunda, módulo \textbf{MSKA-SLR} procesa esta secuencia espacio-temporal para obtener una representación de glosas que actúa como puente semántico entre la señal visual y el
 lenguaje natural.
-En la segunda etapa, un \textbf{VLMapper} proyecta esa representación al espacio de \textit{embeddings} de un Modelo Pequeño de Lenguaje (\textbf{Qwen}), que genera la traducción final en alemán.
+En la tercera etapa, un \textbf{VLMapper} proyecta esa representación al espacio de \textit{embeddings} de un Modelo Pequeño de Lenguaje (\textbf{Qwen}), que genera la traducción final en alemán.
 Las secciones de este capítulo siguen este mismo orden, detallando las decisiones de diseño de cada componente.
 
 \begin{figure}[H]
@@ -350,7 +350,7 @@ Para asegurar la estabilidad del entrenamiento, se aplica una operación de \tex
 Al desconectar el \textit{pseudo-objetivo} del grafo computacional durante la retropropagación, se garantiza que la pérdida de destilación actúe únicamente sobre los pesos de los flujos individuales.
 Esto evita la retroalimentación del error hacia el ensamblado, previniendo el colapso del modelo y asegurando que el objetivo de referencia actúe como un ancla estática.
 
-Así, la función de pérdida global es la siguiente.
+Así, la función de pérdida global es la siguiente:
 \begin{equation*}
     \mathcal{L}_{SLR} = \mathcal{L}_{CTC} + \mathcal{L}_{Dist}
 \end{equation*}
@@ -369,7 +369,7 @@ El responsable de generar la secuencia textual final es el decodificador (\texti
 Exploraremos la arquitectura original y la expandiremos utilizando \textbf{modelos de lenguaje}.
 
 \subsubsection{Integración mediante MLP}
-Dado que el codificador visual opera en un dominio de características espaciales y temporales comprimidas ($T/4 \times 512$), es necesario adaptar esta salida antes de introducirla en el decodificador de lenguaje.
+Dado que el codificador visual opera en un dominio de características espaciales y temporales comprimidas ($T/4 \times 512$, donde $T$ era el número de fotogramas original), es necesario adaptar esta salida antes de introducirla en el decodificador de lenguaje.
 
 Para este fin, el sistema emplea un \textbf{perceptrón multicapa} (\textit{MLP}) con dos capas ocultas.
 Este bloque actúa como un adaptador de dominio muy básico: proyecta las representaciones de la glosa al espacio semántico que el modelo de lenguaje espera, alineando las características extraídas por el flujo de fusión con las entradas del decodificador.
