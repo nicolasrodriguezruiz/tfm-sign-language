@@ -6,7 +6,7 @@ A continuación, se describen los modelos de lenguaje que actúan como decodific
 Finalmente, se introducen los fundamentos del procesamiento del esqueleto humano como señal de entrada: la estimación de pose, el mecanismo de alineación temporal CTC y la arquitectura de atención espacio-temporal DSTA.
 
 
-\section{Medidas de precisión en traducción}
+\section{Métricas de evaluación}
 La evaluación de sistemas de traducción automática no admite una única respuesta correcta: distintas formulaciones válidas del mismo contenido pueden diferir léxicamente.
 Por ello se emplean métricas automáticas que aproximan el juicio humano de forma escalable.
 
@@ -20,11 +20,11 @@ donde $S$, $D$ e $I$ son el número de sustituciones, eliminaciones e insercione
 Cada tipo de error tiene una interpretación concreta en el contexto del reconocimiento de glosas: una \textbf{sustitución} ocurre cuando el modelo predice una glosa distinta a la real; una \textbf{eliminación} se da cuando el modelo omite una glosa que sí aparece en el vídeo; y una \textbf{inserción} sucede cuando el modelo predice una glosa extra que no existe en la secuencia de referencia.
 
 Es la métrica estándar para el reconocimiento de glosas, dado que penaliza directamente los errores de segmentación temporal propios de la tarea.
-La puntiación está entre $0$ y $1$, aunque comúnmente se transforma a porcentaje, cuanto más cercano a cero mejor.
+La puntuación está entre $0$ y $1$, aunque comúnmente se transforma a porcentaje. Cuanto más cercano a cero, mejor.
 
 \subsection{BLEU}
 \textbf{BLEU} (\textit{BiLingual Evaluation Understudy}) \cite{BLEU} evalúa la calidad de la traducción midiendo la precisión de $n$-gramas entre el texto generado y la referencia.
-Las palabras deben aparecer exactamente en el mismo orden tanto en la predicción como en la referencia.
+Los $n$-gramas deben aparecer exactamente en el mismo orden tanto en la predicción como en la referencia.
 Para evitar que repetir palabras correctas infle artificialmente la puntuación, utiliza una precisión recortada (\textit{clipped}):
 \begin{align*}
   p_n &= \frac{
@@ -70,14 +70,14 @@ A diferencia de BLEU y ROUGE, no compara $n$-gramas sino representaciones semán
 Esto le permite valorar correctamente sinónimos y paráfrasis que las métricas léxicas penalizarían.
 Se emplea aquí exclusivamente en el experimento \textit{zero-shot} (Sección~\ref{sec:zeroshot}), donde la formulación libre de las traducciones hace que BLEU resulte poco informativo.
 
-El resultado final de ROUGE-L es un valor entre $0$ y $1$, donde un valor más cercano a $1$ indica una mayor calidad global de la traducción.
+El resultado final de BLEURT es una puntuación no acotada que suele situarse en torno al intervalo $[0,1]$, donde un valor más alto indica mayor calidad semántica de la traducción.
 
 \section{Modelos de Lenguaje}\label{sub:transformer}
 
 En esta sección se presentan los fundamentos de los modelos de lenguaje que sustentan el sistema desarrollado en este trabajo.
 Se parte de la arquitectura \textit{Transformer}, que constituye el bloque constructivo común a todos ellos, para después describir cómo el escalado masivo de esta arquitectura da lugar a los Modelos Grandes de Lenguaje (LLMs) y, finalmente, cómo la técnica LoRA permite adaptar dichos modelos a tareas específicas de forma eficiente.
 
-Además de los LLM, el diseño de atención pura de los \textit{transformer} se utilizaŕa para el sistema de reconocimiento de señas mendiante bloques de atención espacial y temporal especificos expuestos más adelante.
+Además de los LLM, el diseño de atención pura de los \textit{transformer} se utilizará para el sistema de reconocimiento de signos mediante bloques de atención espacial y temporal específicos expuestos más adelante.
 
 La arquitectura \textbf{Transformer}, introducida por Vaswani et al. \cite{vaswani2023attentionneed}, supuso un cambio de paradigma absoluto en el procesamiento de secuencias, desplazando a las redes neuronales recurrentes.
 Su relevancia para el presente trabajo radica en su capacidad para gestionar dependencias de largo alcance mediante el mecanismo de autoatención (\textit{self-attention}).
@@ -116,20 +116,19 @@ donde $i$ indexa la dimensión del vector y $C$ es el tamaño del canal de entra
 El uso de frecuencias distintas permite representar posiciones absolutas y, al mismo tiempo, capturar relaciones relativas entre elementos distantes.
 En el contexto de datos esqueléticos, esta codificación se adapta para separar la dimensión espacial (identidad de cada articulación) de la temporal (instante del fotograma), como se detalla en la \textit{Sección}~\ref{sec:DSTA}.
 
-\subsection{Modelos Grandes del Lenguje (LLM)}
+\subsection{Modelos Grandes de Lenguaje (LLMs)}
 Los \textbf{Modelos Grandes de Lenguaje} (\textit{Large Language Models}, LLMs) son modelos \textit{Transformer} de arquitectura exclusivamente decodificadora (\textit{decoder-only}) preentrenados sobre corpus de texto de escala masiva mediante el objetivo de predicción del siguiente \textit{token}.
-A diferencia de los modelos \textit{encoder-decoder} clásicos, el decodificador procesa la secuencia de forma autorregresiva: en cada paso genera un \textit{token} condicionado a todos los anteriores, lo que lo convierte en un generador de texto fluido y coher
+A diferencia de los modelos \textit{encoder-decoder} clásicos, el decodificador procesa la secuencia de forma autorregresiva: en cada paso genera un \textit{token} condicionado a todos los anteriores, lo que lo convierte en un generador de texto fluido y coherente.
 
 El efecto más relevante del escalado es la aparición de \textbf{capacidades emergentes}: habilidades que no estaban presentes en modelos pequeños y surgen de forma espontánea al aumentar el número de parámetros y el volumen de datos de preentrenamiento.
 Entre estas capacidades destacan el razonamiento en cadena, la traducción entre idiomas y la ejecución de tareas en modalidad \textit{zero-shot} (sin ejemplos de entrenamiento específicos para la tarea).
-En el contexto de este trabajo, estas propiedades son especialmente valiosas: permiten que el modelo reciba una secuencia ruidosa de glosas y reconstruya su significado en lenguaje natural sin haber sido entrenado explícitamente para ello, tal como se explorará en la Sección~\ref{sec:zeroshot}.
+En el contexto de este trabajo, estas propiedades son especialmente valiosas: permiten que el modelo reciba una secuencia ruidosa de glosas y reconstruya su significado en lenguaje natural sin haber sido entrenado explícitamente para ello, tal como se explorará en la \textit{Sección}~\ref{sec:zeroshot}.
 
 Dado que los LLMs pueden contar con cientos de miles de millones de parámetros, su ajuste fino completo resulta inabordable en entornos con recursos computacionales limitados.
 \textbf{LoRA} propone una solución a este problema que se describe a continuación.
 
 
 \subsection{LoRA}\label{sec:LoRA}
-
 El \textit{finetuning} completo de un modelo de lenguaje grande actualiza todos sus parámetros, lo que resulta prohibitivo en memoria y cómputo a medida que el modelo crece.
 \textbf{LoRA} (\textit{Low-Rank Adaptation}) \cite{LoRA} propone una alternativa eficiente: congelar los pesos preentrenados e inyectar actualizaciones de \textbf{rango reducido} en las capas seleccionadas.
 
@@ -171,10 +170,10 @@ El panorama actual está dominado por un conjunto reducido de herramientas de re
 Aunque supuso un hito, su coste computacional y su precisión han quedado superados por soluciones más modernas.
 \textbf{MediaPipe Holistic} \cite{mediapipe}, desarrollado por Google, ofrece una solución integrada de alta velocidad que cubre cuerpo, manos y rostro en un único pipeline, aunque está optimizado para escenarios con un único individuo en primer plano.
 
-\textbf{MMPose} (parte del ecosistema OpenMMLab) representa el paradigma modular actual: permite intercambiar arquitecturas y cabezales de detección, integrando de forma inmediata los modelos más recientes del estado del arte como RTMPose, con una precisión superior en condiciones estáticas.
+\textbf{MMPose} (parte del ecosistema OpenMMLab \cite{mmpose2020}) representa el paradigma modular actual: permite intercambiar arquitecturas y cabezales de detección, integrando de forma inmediata los modelos más recientes del estado del arte como RTMPose, con una precisión superior en condiciones estáticas.
 
 Finalmente, \textbf{AlphaPose} \cite{alphapose} adopta una estrategia descendente (\textit{top-down}) que aísla primero a cada individuo mediante un detector de objetos antes de estimar su postura, lo que lo hace especialmente robusto ante la presencia de terceros en escena.
-La justificación de la herramienta seleccionada para este trabajo y los detalles de su configuración se describen en la Sección~\ref{ch:metodologia}.
+La justificación de la herramienta seleccionada para este trabajo y los detalles de su configuración se describen en el \textit{Capítulo}~\ref{ch:metodologia}.
 
 \subsection{Clasificación Temporal Conexionista}\label{sec:CTC}
 La \textit{Connectionist Temporal Classification} (CTC) es un método que surge para entrenar Redes Neuronales Recurrentes en el etiquetado de secuencias continuas, eliminando la necesidad de utilizar datos de entrenamiento presegmentados o alineados manualmente.
@@ -182,13 +181,14 @@ La \textit{Connectionist Temporal Classification} (CTC) es un método que surge 
 Esto es especialmente importante en tareas perceptuales y de visión por computador, donde la secuencia de entrada, por ejemplo, una serie de fotogramas de vídeo que capturan a un signante, es habitualmente más larga que la secuencia objetivo de glosas o etiquetas a predecir.
 Al ser de longitudes distintas y carecer de una segmentación temporal explícita, no existe una correspondencia o alineación a priori entre ambas secuencias.
 
-Debido a la alta carga matemática de este concepto, nos limitaremos a explicar el funcionamiento y la idea que propone a grandes rasgos sin entrar en la carga teórica pues no es relevante a este trabajo, aún así todo el formalismo teórico se encuentra en \textit{Connectionist temporal classification: Labelling unsegmented sequence data with recurrent neural networks} \cite{CTC}.
+Debido a la alta carga matemática de este concepto, nos limitaremos a explicar el funcionamiento y la idea que propone a grandes rasgos.
+Aún así, todo el desarrollo teórico se encuentra en \textit{Connectionist temporal classification: Labelling unsegmented sequence data with recurrent neural networks} \cite{CTC}.
 
 Para resolver este problema de alineación, la intuición principal de la CTC radica en interpretar las salidas de la red neuronal (la secuencia completa) como una distribución de probabilidad sobre todas las posibles \textbf{secuencias de etiquetas}, condicionadas a la secuencia de entrada.
-Combinan dos técnicas principalmente.
+La CTC combina principalmente dos técnicas.
 
 \subsubsection*{\textit{Blank Label}}
-Para cada fotograma individual (cada instante de tiempo), a la capa softmax que nos devolvía una distribución de probabilidad sobre todas las glosas posibles del vocabulario, se extiende con un token especial ``BLANK''.
+Para cada fotograma individual (cada instante de tiempo), la capa \textit{softmax}, que devolvía una distribución de probabilidad sobre todas las glosas del vocabulario, se extiende con un token especial ``BLANK''.
 Este token representa la probabilidad de no observar ninguna etiqueta en ese instante de tiempo específico.
 
 \subsubsection*{\textit{Mapping}}
@@ -203,28 +203,27 @@ Llevado a la traducción de lengua de signos, si un gesto dura varios fotogramas
 \end{equation*}
 
 Finalmente, durante la fase de entrenamiento, la CTC no penaliza a la red por no adivinar el momento exacto en el que empieza o termina un signo.
-En su lugar, CTC le da ignora exactamente cuándo ocurre el signo, acepta que hay muchas formas válidas de acertar a lo largo del tiempo.
+En su lugar, la CTC ignora el momento exacto en que ocurre el signo y acepta que hay muchas formas válidas de acertar a lo largo del tiempo.
 Para un vídeo de $5$ frames, todas estas ``rutas'' de la red neuronal son válidas porque, al aplicar la regla de la CTC, todas colapsan en el mismo resultado final, \textsc{[HOLA]}.
 \begin{itemize}
-    \item \textbf{Ruta A:} \textsc{[GRACIAS, GRACIAS, -, -, -]}
-    \item \textbf{Ruta B:} \textsc{[-, GRACIAS, GRACIAS, -, -]}
-    \item \textbf{Ruta C:} \textsc{[-, -, -, GRACIAS, GRACIAS]}
+    \item \textbf{Ruta A:} \textsc{[HOLA, HOLA, -, -, -]}
+    \item \textbf{Ruta B:} \textsc{[-, HOLA, HOLA, -, -]}
+    \item \textbf{Ruta C:} \textsc{[-, -, -, HOLA, HOLA]}
 \end{itemize}
 
 Durante el entrenamiento, no se intenta forzar que ocurra solo una ruta que se considere ``perfecta''.
-Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las reglas.
-Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin atarse a una plantilla de tiempo rígida.
-
+% Lo que se hace es sumar la probabilidad de cada ruta posible que devuelva el mismo resultado tras aplicar las reglas.
+% Al maximizar esta suma, la red se entrena para predecir la etiqueta correcta sin atarse a una plantilla de tiempo rígida.
 En su lugar, utiliza una función objetivo (CTCloss) que suma las probabilidades de todas las alineaciones válidas posibles, maximizando de forma directa la probabilidad global de obtener la secuencia de glosas correcta.
 Esto permite que la red aprenda automáticamente de forma discriminativa y se vuelva robusta ante variaciones en la velocidad o duración temporal de los signos.
 
-Si $x$ representa la secuencia de entrada, $z$ es la secuencia objetivo, y $p(z|x)$ es la probabilidad total acumulada de todas las alineaciones válidas que colapsan en esa secuencia de glosas tras aplicar las reglas de remoción de blancos y repetidos. La función de pérdida CTC se define como la verosimilitud logarítmica negativa de las secuencias objetivo mapeadas.
+Sean $x$ la secuencia de entrada, $z$ la secuencia objetivo y $p(z|x)$ la probabilidad total acumulada de todas las alineaciones válidas que colapsan en esa secuencia de glosas tras aplicar las reglas de eliminación de blancos y repetidos. La función de pérdida CTC se define como la verosimilitud logarítmica negativa de las secuencias objetivo mapeadas.
 \begin{equation*}
 O^{ML}(S,N_w)=-\sum_{(x,z)\in S}\log{p(z|x)}
 \end{equation*}
 
 \subsection{\textit{Decoupled Spatial-Temporal Attention} (DSTA)}\label{sec:DSTA}
-Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes $RNN$ o $CNN$) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.
+Tradicionalmente, los métodos de reconocimiento de acciones (basados en redes \textit{RNN} o \textit{CNN}) dependían de reglas manuales o topologías de grafos prediseñadas para modelar cómo se conectan las articulaciones del cuerpo.
 El problema es que estos diseños manuales no siempre son óptimos y limitan la generalización del modelo.
 
 Para solucionar esto, \textbf{Lei Shi et al.} en \cite{DSTA} proponen un enfoque basado exclusivamente en mecanismos de atención inspirado en los \textit{transformers} vistos en la \textit{Sección}~\ref{sub:transformer}.
@@ -236,23 +235,25 @@ Si recordamos en la sección anterior donde se mencionan los \textit{transformer
 Sin embargo, los datos dinámicos del esqueleto tienen tres dimensiones: \textbf{espacio}, \textbf{tiempo} y \textbf{canales}.
 Podemos representarlos como un tensor de tercer orden: $X\in \mathbb{R}^{N\times T\times C}$, donde $N$ es el número de articulaciones, $T$ es el número de fotogramas (frames) y $C$ son los canales de coordenadas.
 
-La forma ingénua de representar los datos, ya probado por otros autores anteriores, es aplanar el espacio y el tiempo en una sola dimensión $\hat{N} = NT$, convirtiendo el tensor de tercer orden en $X\in \mathbb{R}^{\hat{N}\times C}$.
-Este enfoque presentaba varias desventajas, a priori, estaban tratando el espacio y el tiempo como si fueran lo mismo y compartieran estructura, lo cual físicamente no tiene sentido.
+La forma ingenua de representar los datos, ya probado por otros autores anteriores, es aplanar el espacio y el tiempo en una sola dimensión $\hat{N} = NT$, convirtiendo el tensor de tercer orden en $X\in \mathbb{R}^{\hat{N}\times C}$.
+Este enfoque presentaba varias desventajas.
+En primer lugar, trata el espacio y el tiempo como si compartieran la misma estructura, lo cual no tiene sentido físico.
+Además, su coste computacional en tiempo y memoria es muy elevado.
 Por otra parte, el coste computacional de este enfoque es muy alto en tiempo y en memoria.
 
-Este papel propone tres métodos para este desacoplamiento.
+Este artículo propone tres métodos para este desacoplamiento.
 Los explicaremos brevemente utilizando como ejemplo la atención espacial.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{DSTA/strategy.pdf}
-    \caption{Las tres estrategias propuestas en \cite{DSTA}. Gráfico sacado de ese papel.}
+    \caption{Las tres estrategias propuestas en \cite{DSTA}. Figura sacado de dicho artículo \cite{DSTA}.}
 \end{figure}
 
 \paragraph{Estrategia (a)} Aquí se calcula un mapa de atención único para cada fotograma de manera independiente.
 \begin{equation*}
 Attention_t = softmax(\sigma(X_t)\phi(X_t)'),
 \end{equation*}
-donde, $Attention_t\in\mathbb{R}{N\times N}$ es el mapa de atención para el fotograma $t$; $X_t\in\mathbb{R}^{N\times C}$ son los datos de ese fotograma; y, $\sigma$ y $\phi$ denotan funciones de \textit{embedding}.
+donde, $Attention_t\in\mathbb{R}^{N\times N}$ es el mapa de atención para el fotograma $t$; $X_t\in\mathbb{R}^{N\times C}$ son los datos de ese fotograma; y, $\sigma$ y $\phi$ denotan funciones de \textit{embedding}.
 
 Este método no solo tiene un alto coste computacional sino que, además, es incapaz de modelar las relaciones fuera de un mismo fotograma, carece de contexto global.
 
@@ -266,7 +267,7 @@ Attention = softmax(\sum_t^T\sum_\tau^T(\sigma(X_t)\phi(X_\tau)')).
 
 Aunque es \textbf{muy} potente, este método es aún más computacionalmente pesado.
 
-\paragraph{Estrategia (c)}\hypertarget{est:c}{} La estrategia que finalmetente propone el papel consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
+\paragraph{Estrategia (c)}\hypertarget{est:c}{} La estrategia que finalmente propone el artículo consiste en solo considerar las articulaciones dentro del mismo fotograma para calcular las relaciones, pero luego sumar y compartir los mapas de atención de todos los fotogramas.
 \begin{equation*}
 Attention = softmax(\sum_t^T(\sigma(X_t)\phi(X_t)')).
 \end{equation*}
@@ -279,11 +280,10 @@ X_0 \cdots X_T
 \end{equation*}
 por las propiedades de las multiplicaciones de las matrices por bloques, al realizar el producto por su traspuesta obtenemos una matriz cuadrada $N\times N$.
 
-Esa única operación produce matemáticamente el mismo resultado exacto que si hubieramos multiplicado y sumado cada fotograma por separado. Pasamos de hacer $T$ operaciones a hacer una sola operación (que está muy optimizada en las máquinas modernas).
+Esa única operación produce matemáticamente el mismo resultado exacto que si hubiéramos multiplicado y sumado cada fotograma por separado. Pasamos de hacer $T$ operaciones a hacer una sola operación (que está muy optimizada en las máquinas modernas).
 
 
 \subsubsection{Codificación Posicional}
-
 Como ocurre en otros modelos de atención pura, las articulaciones del esqueleto se organizan en forma de tensor para poder introducirlas en las redes neuronales.
 Estos tensores carecen de orden o estructura que indique por sí mismo qué representa cada uno (por ejemplo, el índice de la articulación o el índice del fotograma), es necesario usar un módulo de codificación posicional que asigne un identificador único a cada articulación.
 
@@ -311,7 +311,7 @@ Así, para preservar la semántica del esqueleto, los autores proponen separar e
 Utilizar esta codificación permite que, sin importar el fotograma, una articulación siempre tenga el mismo vector de identidad espacial.
 
 \paragraph{Codificación de Posición Temporal} Es el proceso análogo e inverso.
-Las articulaciones dentro de un mismo fotograma se codifican de forma secuencial, mientras que la misma articulación en fotogramas distintos mantiene exactamente la misma codificación.
+Las articulaciones dentro de un mismo fotograma mantienen la misma codificación, mientras que la misma articulación en fotogramas distintos se codifica de forma secuencial.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.5\textwidth]{DSTA/DSTA-TPE.pdf}
@@ -327,7 +327,7 @@ El \textit{keypoint} que representa la ``mano derecha'' tiene un significado fí
 Basándose en este conocimiento previo, los autores de la \textbf{DSTA} proponen esta regularización para obligar al modelo a aprender atenciones espaciales más generales y aplicables a diferentes muestras.
 
 Para ello, se crea una matriz entrenable o mapa de atención global de tamaño $N\times N$, compartida para todas las muestras de datos.
-Esta matriz actua como una plantilla que representa los patrones de relaciones que poseen las distintas articulaciones humanas entre sí, que normalmente se mantienen constantes.
+Esta matriz actúa como una plantilla que representa los patrones de relaciones que poseen las distintas articulaciones humanas entre sí, que normalmente se mantienen constantes.
 Finalmente, este nuevo mapa de atención se combina con el obtenido en la \textit{Sección}~\ref{seq:STA} junto con un factor $\alpha$ que se encarga de controlar la potencia de esta regularización.
 
 Esta regularización se aplica única y exclusivamente a la dimensión espacial, pues la dimensión temporal no posee esta característica de alineación semántica.
@@ -363,6 +363,4 @@ Además, se incluyen dos conexiones residuales a lo largo del módulo para estab
 
 La arquitectura \textbf{DSTA-Net}, ilustrada en la \textit{Figura}~\ref{fig:DSTA_Net}, organiza este proceso apilando un total de $L$ capas.
 En cada una de estas capas, el tensor de entrada se procesa secuencialmente: primero entra al módulo de atención espacial (tratando los datos como $N$ articulaciones) para aprender la estructura física, y luego la matriz resultante se transpone para entrar al módulo de atención temporal (tratando los datos como $T$ fotogramas) para aprender el movimiento.
-Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que generaría las puntuaciones finales de clasificación de la acción.
-
-
+Una vez que los datos han pasado por todas las capas, las características finales se reducen mediante un \textit{Global Average Pooling} y se envían a una capa completamente conectada que genera las puntuaciones finales de clasificación de la acción.
