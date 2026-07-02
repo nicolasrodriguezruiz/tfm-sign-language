@@ -257,6 +257,9 @@ La separación asegura que los detalles finos no se pierdan en la representació
 
 Además, el procesamiento independiente permite que la red asigne implícitamente la importancia adecuada a cada fuente de información durante la etapa posterior de fusión.
 
+El flujo del rostro, no obstante, desempeña un papel especial: en lugar de decodificarse de forma autónoma, su información se integra como contexto en los flujos de ambas manos y en la cabeza de fusión.
+Por ello no dispone de una cabeza de clasificación propia y, como se verá, tampoco aporta un término independiente a la función de pérdida.
+
 Una vez divididos los flujos, cada subsecuencia se procesa mediante su propio módulo de atención de puntos clave (\textit{Keypoint Attention Module)}.
 
 \subsubsection{Módulo de Atención de Keypoints}
@@ -322,7 +325,8 @@ Este enfoque unifica las representaciones locales, mejorando significativamente 
 
 \subsubsection{Función de Pérdida y Autodestilación}
 El entrenamiento conjunto de la red \textit{MSKA-SLR} está guiado por dos componentes principales.
-En primer lugar, se aplica la pérdida CTC a las salidas de cada una de las cuatro cabezas.
+En primer lugar, se aplica la pérdida CTC a las salidas de las cabezas de clasificación: las de ambas manos, la del cuerpo y la de fusión.
+Como se anticipó, el rostro no interviene aquí con un término propio, pues se integra como contexto en los flujos de las manos y en la fusión, sin cabeza de clasificación independiente.
 \begin{equation*}
     \mathcal{L}_{CTC} = \mathcal{L}_{CTC}^{left} + \mathcal{L}_{CTC}^{right} + \mathcal{L}_{CTC}^{body} + \mathcal{L}_{CTC}^{fuse}
 \end{equation*}
@@ -359,7 +363,7 @@ Esto garantiza que cada cabezal no solo aprenda de sus propias características 
 Los autores expanden el modelo de reconocimiento hacia un modelo de traducción mediante la adición de una red de traducción externa.
 La arquitectura sigue un paradigma de codificador-decodificador.
 
-La red MSKA-SLR hace actúa como codificador visual (\textit{Visual Encoder}), su salida, la \textbf{representación de la glosa}, sirve como el ``lenguaje intermedio'' que entiende la red.
+La red MSKA-SLR actúa como codificador visual (\textit{Visual Encoder}), su salida, la \textbf{representación de la glosa}, sirve como el ``lenguaje intermedio'' que entiende la red.
 
 El responsable de generar la secuencia textual final es el decodificador (\textit{Translation Network}).
 Exploraremos la arquitectura original y la expandiremos utilizando \textbf{modelos de lenguaje}.
@@ -383,12 +387,12 @@ La pérdida de traducción se calcula mediante entropía cruzada a nivel de toke
 \subsubsection{Modelo pequeño de lenguaje como decodificador}
 Los modelos de lenguaje modernos basados exclusivamente en decodificador (\textit{decoder-only}) han demostrado capacidades de generalización y comprensión lingüística superiores a los enfoques tradicionales \textit{encoder-decoder}, principalmente gracias a su preentrenamiento sobre corpus de texto a gran escala.
 
-Para aprovechar esta gran capacidad de razonamiento contextual manteniendo la eficiencia computacional, en lugar de utilizar un sistema \textit{encoder-decoder} clásico como mBART, optamos por integrar un modelo pequeño del lenguaje (SLM) basado en esta arquitectura \textit{decoder-only}.
+Para aprovechar esta gran capacidad de razonamiento contextual manteniendo la eficiencia computacional, en lugar de utilizar un sistema \textit{encoder-decoder} clásico como mBART, optamos por integrar un modelo pequeño de lenguaje (SLM) basado en esta arquitectura \textit{decoder-only}.
 
 % Los modelos \textit{decoder-only} modernos han demostrado capacidades de generalización, traducción y comprensión lingüística superiores a muchos modelos \textit{encoder-decoder}, gracias a su preentrenamiento sobre corpus de texto de mayor escala.
 % Así, en lugar de un modelo \textit{encoder-decoder} como mBART, optamos por integrar un modelo de lenguaje con arquitectura exclusivamente de decodificador (\textit{decoder-only}).
 
-En esta arquitectura, las características visuales, las mencionadas \textbf{representaciones de la glosas}, no pasan por un codificador independiente.
+En esta arquitectura, las características visuales, las mencionadas \textbf{representaciones de las glosas}, no pasan por un codificador independiente.
 En su lugar, se emplea una estrategia de \textbf{prefijo visual} (\textit{visual prefix conditioning}), inspirada en modelos multimodales como LLaVA \cite{LLaVA}:
 \begin{enumerate}
   \item El \textit{VLMapper} proyecta las características visuales al espacio de embeddings del modelo de lenguaje.
@@ -430,20 +434,20 @@ Esta decisión de diseño está motivada por el bajo número de parámetros del 
 La función de pérdida se aplica únicamente sobre los tokens de la traducción objetivo.
 De este modo, el modelo no recibe penalización por su comportamiento sobre el contexto de entrada, concentrando toda la señal de supervisión en aprender a generar la traducción correcta condicionada a la información visual.
 
-Dado que un \textit{finetunning} completo de un modelo de lenguaje podría desestabilizaría sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicado en \textit{Sección}~\ref{sec:LoRA}).
+Dado que un \textit{finetuning} completo de un modelo de lenguaje podría desestabilizar sus capacidades lingüísticas preentrenadas y exigiría recursos computacionales prohibitivos, la red de traducción se adapta mediante \textbf{LoRA} (explicada en la \textit{Sección}~\ref{sec:LoRA}).
 
 Antes de explorar dicha estrategia, evaluaremos su capacidad en un escenario \textit{zero-shot}, siguiendo la línea del trabajo \textbf{Spotter+GPT} \cite{SpotterGPT} presentado en el estado del arte.
-Debido a no requerir entrenamiento, podemos utilizar el modelo Qwen2.5-14B para este experimento, lo cual tiebne sentido pues los modelos de lenguaje mejoran su capacidad \textit{zero-shot} con un mayor número de parámetros.
+Debido a no requerir entrenamiento, podemos utilizar el modelo Qwen2.5-14B para este experimento, lo cual tiene sentido pues los modelos de lenguaje mejoran su capacidad \textit{zero-shot} con un mayor número de parámetros.
 En dicho trabajo, las glosas reconocidas se pasan directamente a un LLM mediante un \textit{prompt} de instrucción, sin ningún tipo de entrenamiento adicional, obteniendo traducciones coherentes gracias a la capacidad lingüística preentrenada del modelo.
-Aquí, sacamos las glosas en vez de la representación interna del modelo que luego se envian al modelo de lenguaje de forma tradicional.
-Así, estamos ``desperdiciando'' parte de la información.
+En este escenario, en lugar de la representación interna del reconocedor, se extraen las glosas predichas y se envían al modelo de lenguaje como texto plano.
+Se prescinde así, deliberadamente, de parte de la información visual.
 
 \subsection{Tokenizador}
 Todo sistema de traducción automática requiere convertir las secuencias de texto en representaciones numéricas que la red pueda procesar.
 En este trabajo coexisten dos niveles de tokenización con propósitos distintos: uno para las glosas, que actúa como señal de supervisión del módulo de reconocimiento, y otro para el texto en lenguaje natural, que supervisa el módulo de traducción.
 
 \subsubsection*{Tokenizador de Glosas}
-Como mencionamos, las glosas son la representación intermedia del lenguaje de signos, secuencias de palabras clave normalmente en mayúsculas que describen los signos ejecutados.
+Como mencionamos, las glosas son la representación intermedia del lengua de signos, secuencias de palabras clave normalmente en mayúsculas que describen los signos ejecutados.
 
 Su tokenización se realiza mediante un vocabulario cerrado construido a partir del conjunto de entrenamiento, donde cada glosa única recibe un identificador numérico.
 Este vocabulario se emplea tanto para convertir las etiquetas de referencia en índices durante el entrenamiento como para decodificar las predicciones del módulo CTC durante la inferencia.
@@ -455,7 +459,7 @@ Además, las secuencias de entrada al decodificador se desplazan una posición a
 
 \subsubsection*{Tokenizador de Qwen}
 En la variante con un modelo de lenguaje \textit{decoder-only}, se emplea el tokenizador de \textbf{Qwen}.
-A diferencia de mBART, este tokenizador no requiere token de idioma ni desplazamiento de la secuencia, el propio modelo gestiona internamente el \textit{teacher forcing} a partir de los \textit{labels}.
+A diferencia de mBART, este tokenizador no requiere token de idioma ni desplazamiento de la secuencia; el propio modelo gestiona internamente el \textit{teacher forcing} a partir de los \textit{labels}.
 
 La secuencia que se tokeniza concatena un \textit{prompt} de instrucción seguido del texto objetivo, siguiendo la estructura descrita en la sección anterior.
 La pérdida se enmascara sobre los tokens del \textit{prompt} asignándoles el valor $-100$, de modo que la señal de supervisión recae exclusivamente sobre los tokens de la traducción.

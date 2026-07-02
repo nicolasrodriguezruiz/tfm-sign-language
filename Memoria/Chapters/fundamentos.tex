@@ -64,6 +64,8 @@ Comparte con BLEU la limitación de basarse en coincidencia léxica exacta.
 
 El resultado final de ROUGE-L es un valor entre $0$ y $1$ (o $0$ y $100$), donde un valor más cercano a $1$ (o $100$) indica una mayor calidad global de la traducción.
 
+Se utilizará la implementación propuesta en \textit{A Call for Clarity in Reporting BLEU Scores} \cite{SBleu}.
+
 \subsection{BLEURT}
 \textbf{BLEURT} (\textit{Bilingual Evaluation Understudy with Representations from Transformers}) \cite{BLEURT} es una métrica neuronal entrenada para correlacionar con el juicio humano.
 A diferencia de BLEU y ROUGE, no compara $n$-gramas sino representaciones semánticas obtenidas a partir de un modelo BERT preentrenado y ajustado sobre pares de frases con puntuaciones humanas.
