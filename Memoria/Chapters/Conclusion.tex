@@ -11,7 +11,7 @@ La mejor variante, MSKA-Qwen-1.5B con LoRA-All y sin prompt, alcanza $20.55$ BLE
 Qwen2.5-7B no reduce esta brecha ($20.03$ BLEU-4).
 La ventaja de mBART se explica por su arquitectura \textit{encoder-decoder} con atención cruzada, diseñada específicamente para traducción, y por su preentrenamiento multilingüe que incluye alemán de forma masiva, factores que compensan eficazmente los errores del reconocedor visual.
 
-\textbf{El cuello de botella principal reside en la escasez de datos}
+\textbf{El cuello de botella principal reside en la escasez de datos.}
 El módulo de reconocimiento SLR presenta un WER de $27.24\%$ con la mejor configuración, y las técnicas de aumento de datos exploradas apenas reducen este valor en $0.09$ puntos.
 Las curvas de entrenamiento revelan un sobreajuste persistente: la pérdida de entrenamiento converge a valores en torno a $15$, mientras que la de validación se estabiliza cerca de $45$ desde las primeras épocas.
 Con solo $7.096$ muestras de entrenamiento, la capacidad de regularización de las técnicas exploradas es insuficiente para mitigar este problema de forma sustancial.
@@ -23,7 +23,7 @@ $1543$M).
 Esto sugiere que en regímenes de datos limitados, la capacidad representacional preentrenada del modelo base es el factor determinante, no la intensidad del \textit{finetuning}.
 
 \textbf{El prompt de instrucción es contraproducente en el régimen de \textit{finetuning}.}
-El experimento sin prompt mejora el BLEU-4 en más de $4$ puntos respecto a la misma configuración con prompt ($20.55$ vs $16.31$).
+El experimento sin prompt mejora el BLEU-4 en casi $10$ puntos respecto a la misma configuración con prompt ($20.55$ vs $10.73$).
 Una vez que el modelo dispone de suficiente capacidad de adaptación a través de LoRA-All, el texto del prompt compite con los tokens visuales por la atención del modelo en lugar de complementarlos.
 
 \textbf{El enfoque \textit{zero-shot} es insuficiente para traducción precisa.}
@@ -64,6 +64,11 @@ Paralelamente, convendría verificar si la eliminación del prompt sigue siendo 
 Todos los experimentos se han realizado sobre PHOENIX-2014T, un corpus de dominio
 restringido.
 Validar las estrategias desarrolladas sobre conjuntos de datos como \textbf{CSL-Daily} o \textbf{How2Sign} permitiría evaluar la capacidad de generalización real del sistema.% y determinar si las conclusiones obtenidas son específicas del dominio meteorológico o transferibles a escenarios de vocabulario abierto.
+
+\textbf{Extensión de la metodología a otras lenguas de signos.}
+La totalidad de los experimentos se ha centrado en la traducción de la Lengua de Signos Alemana (DGS) al alemán.
+Una línea de continuación natural es trasladar la metodología propuesta a otros pares de lenguas, como la \textbf{Lengua de Signos Española (LSE)}, empleando corpus continuos recientes como LSE-eSaude\_UVIGO \cite{docio2022eccv}.
+Esto permitiría comprobar hasta qué punto las conclusiones obtenidas son transferibles a otras lenguas de signos y, además, aprovechar modelos de lenguaje especializados en español.
 
 \textbf{Modelos con capacidades visuales nativas (\textit{Vision-Language Models}).}
 Una limitación fundamental del sistema actual es que la información visual se comprime en una representación de \textit{keypoints} 2D antes de llegar al modelo de lenguaje.
