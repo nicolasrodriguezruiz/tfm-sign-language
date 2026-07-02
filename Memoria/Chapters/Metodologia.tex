@@ -20,35 +20,29 @@ Las secciones de este capítulo siguen este mismo orden, detallando las decision
 \end{figure}
 
 \section{Extracción de \textit{Keypoints}}
-Extraer \textit{keypoints} significa, en esencia, traducir el cuerpo humano a un mapa estructurado de puntos anatómicos.
-Al capturar imágenes o vídeo, el sistema localiza coordenadas bidimensionales que representan articulaciones, extremidades y rasgos faciales.
-Esta representación abstrae la información visual relevante para el movimiento y la postura, descartando ruido visual irrelevante como el fondo, la iluminación o la apariencia superficial.
-Es una solución compacta, generalizable y, además, respetuosa con la privacidad.
+Como se introdujo en la Sección~\ref{sub:pose-estimation}, la estimación de pose abstrae la señal visual en un mapa estructurado de \textit{keypoints}: una representación compacta, generalizable y respetuosa con la privacidad. En lugar de repetir aquí ese panorama general, se evalúan las herramientas de referencia bajo los requisitos específicos de este trabajo.
 
-En los últimos años, el avance conjunto de la visión por computador y el aprendizaje profundo ha dado lugar a múltiples herramientas de estimación de pose.
-La traducción de legnua de signos exige capturar movimientos veloces y sutiles, asegurar la coherencia temporal de las trayectorias a lo largo del vídeo y operar bajo un coste computacional que viabilice futuras aplicaciones de traducción en tiempo real.
+La traducción de lengua de signos exige capturar movimientos veloces y sutiles, asegurar la coherencia temporal de las trayectorias a lo largo del vídeo y operar bajo un coste computacional que viabilice futuras aplicaciones de traducción en tiempo real.
 
 Al mirar el estado del arte actual, las herramientas de referencia muestran flaquezas de cara a este dominio.
-Un sistema clásico como \textbf{OpenPose} \cite{OpenPose}, pionero en la estimación multi-persona, se ve superado hoy en precisión y arrastra un coste de cómputo excesivo para flujos de trabajo escalables, registrando un \textit{F1-Score} del $83.67\%$ en el conjunto de datos estándar MPII.
+Un sistema clásico como \textbf{OpenPose} \cite{OpenPose} se ve superado hoy en precisión y arrastra un coste de cómputo excesivo para flujos de trabajo escalables, registrando un \textit{F1-Score} del $83.67\%$ en el conjunto de datos estándar MPII.
 
-Por otro lado, la popular opción de Google, \textbf{MediaPipe Holistic} \cite{mediapipe}, destaca por su velocidad, no obstante, su diseño está fuertemente optimizado para el seguimiento de un único individuo en primer plano
+Por otro lado, la popular opción de Google, \textbf{MediaPipe Holistic} \cite{mediapipe}, destaca por su velocidad.
+No obstante, su diseño está fuertemente optimizado para el seguimiento de un único individuo en primer plano.
 Cuando el fondo se vuelve caótico o cruzan terceras personas, el modelo puede perder el foco sobre el signante principal o introducir ruido en las estimaciones anatómicas.
 
 
-Una alternativa con una precisión espacial notable en el análisis estático es \textbf{MMPose}  (parte del proyecto OpenMMLab), que alcanza un \textit{F1-Score} del $87.12\%$ gracias a su diseño arquitectónico, orientado a preservar representaciones de alta resolución.
+Una alternativa con una precisión espacial notable en el análisis estático es \textbf{MMPose} (parte del proyecto OpenMMLab), que alcanza un \textit{F1-Score} del $87.12\%$ gracias a su diseño arquitectónico, orientado a preservar representaciones de alta resolución.
 Además, por defecto, procesa los fotogramas de manera aislada.
 Sin un hilo conductor temporal implícito, el resultado suele sufrir de temblores constantes (\textit{jittering}).
 En lengua de signos, donde la trayectoria del movimiento es tan elocuente como la propia postura de las manos, estas oscilaciones artificiales distorsionan el mensaje original.
 
 \subsection{La elección de AlphaPose}
-Al evaluar el panorama actual de la estimación de pose, es imperativo reconocer la transición de la industria hacia librerías modulares como \textbf{MMPose}.
-A diferencia de los \textit{frameworks} monolíticos, MMPose se ha consolidado como el estándar moderno gracias a su extrema versatilidad.
-Permite intercambiar arquitecturas (\textit{backbones}), cabezales de detección y funciones de pérdida con facilidad, integrando casi de inmediato los modelos más recientes y eficientes del estado del arte, como RTMPose.
-
+Como se ha señalado, la tendencia actual apunta hacia librerías modulares como \textbf{MMPose}, hoy consolidadas como el estándar por su versatilidad.
 Frente a este ecosistema tan dinámico, \textbf{AlphaPose} \cite{alphapose} representa una herramienta pionera con una arquitectura mucho más enfocada y cerrada.
 No obstante, utilizaremos AlphaPose en este trabajo por dos motivos.
-En primer lugar, una inercia histórica, AlphaPose ha sido la base de numerosas investigaciones previas, lo que garantiza un entorno probado, maduro y directamente comparable con la literatura existente.
-En segundo lugar, y más importante, su diseño integral ``listo para usar'' incorpora nativamente soluciones específicas para el seguimiento de personas en vídeo, algo que en librerías más modulares requiere una configuración ligerametne más manual.
+En primer lugar, por inercia histórica: AlphaPose ha sido la base de numerosas investigaciones previas, lo que garantiza un entorno probado, maduro y directamente comparable con la literatura existente.
+En segundo lugar, y más importante, su diseño integral ``listo para usar'' incorpora nativamente soluciones específicas para el seguimiento de personas en vídeo, algo que en librerías más modulares requiere una configuración ligeramente más manual.
 
 \subsection{Configuración y arquitectura de AlphaPose}
 El primer acierto de esta herramienta radica en cómo gestiona el espacio cuando hay más de una persona en escena.
@@ -58,10 +52,10 @@ Acota a cada sujeto en una caja delimitadora (\textit{bounding box}) y, solo ent
 De este modo, el signante principal queda blindado frente al ruido del entorno o la presencia de terceros.
 Quizás en un entorno de laboratorio controlado esta ventaja parezca menor, pero entrenar el sistema bajo esta lógica asegura que el modelo sea capaz de transferir su aprendizaje a situaciones del día a día, donde las condiciones distan mucho de ser ideales.
 
-Otro ostaculo típico es la oclusión, cuando las manos se cruzan, se superponen o tapan en parte el rostro.
-Alphapose tiene integrado nativamente dos mecanismos que buscan solucionar este problema.
+Otro obstáculo típico es la oclusión, cuando las manos se cruzan, se superponen o tapan en parte el rostro.
+AlphaPose tiene integrados nativamente dos mecanismos que buscan solucionar este problema.
 Por un lado, la Transformación Espacial Simétrica (SSTN) reajusta y centra la silueta del usuario incluso si la caja delimitadora inicial se desvió por culpa de la propia oclusión.
-Por otro, el algoritmo de Supresión de No Máximos Paramétrica (\textit{p-Pose NMS}) realiza una labor de limpieza automática, eliminando extremidades duplicadas o falsos positivos que el sistema podría haber imaginado por confusión.
+Por otro, el algoritmo de Supresión de No Máximos Paramétrica (\textit{p-Pose NMS}) realiza una labor de limpieza automática, eliminando extremidades duplicadas o falsos positivos que el sistema podría haber generado por confusión.
 
 A todo esto se suma la capacidad del \textit{software} para manejarse con vídeos borrosos o con cambios bruscos de iluminación.
 Cuando la nitidez decae debido a la rapidez de un gesto, entra en acción su módulo de rastreo temporal, \textbf{\textit{Pose Flow}} (\textit{Efficient Online Pose Tracking}).
@@ -82,7 +76,7 @@ Confiamos en que la capacidad de la arquitectura \textit{Transformer} para captu
 
 
 \subsubsection*{Configuración técnica y formato de salida}
-Alphapose tiene la capacidad de cambiar la topologia que representan los puntos clave del esqueleto.
+Alphapose tiene la capacidad de cambiar la topología que representan los puntos clave del esqueleto.
 Existen principalmente dos opciones adecuadas para esta tarea: \textbf{COCO-WholeBody}, una extensión del clásico MS-COCO que cubre el cuerpo entero con $133$ puntos, y \textbf{HALPE-136}, que proporciona una anotación de $136$ puntos clave.
 Ver \textit{Figura}~\ref{fig:HALPE136}.
 Elegimos esta última opción porque introduce anclas de referencia espacial estratégicas en el torso, como el centro de la cadera, el cuello y la cabeza.
@@ -134,7 +128,7 @@ Para que el modelo pueda aprender representaciones independientes de dicha resol
 
 El proceso consta de dos etapas.
 En primer lugar, las coordenadas se llevan al rango $[0,1]$ dividiendo cada componente entre las dimensiones del fotograma: la coordenada
-$x$ se divide entre el ancho $W$ y la coordenada y entre el alto $H$.
+$x$ se divide entre el ancho $W$ y la coordenada $y$ entre el alto $H$.
 
 Dado que en el sistema de coordenadas de imagen el eje $y$ crece hacia abajo, se invierte previamente dicho eje,\begin{equation*}y \leftarrow H - y\end{equation*} para alinearlo con la convención matemática estándar, en la que el origen se sitúa en la parte inferior.
 
@@ -145,13 +139,14 @@ El tercer canal de cada punto clave, correspondiente al índice de confianza $c$
 
 \section{\textit{Multi-Stream Keypoint Attention}}
 En esta sección se presentará la arquitectura principal del modelo \textit{Multi-stream Keypoint Attention} (MSKA) detallando el razonamiento detrás de la misma.
-Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas, se utilzan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
+Es importante notar que este modelo \textbf{no} es \textit{end-to-end}, necesita la representación en glosas.
+Estas se utilizan para asegurar que el modelo realmente aprende el significado detrás de los \textit{keypoints}.
 
 \subsection{Data Augmentation}\label{sec:DATAAUG}
-Como mencionabamos en el \textit{Capítulo}~\ref{ch:sota}, el coste de contratar a los expertos significa que los datos disponibles son escasos, por ejemplo en el caso de Phoenix-2014T unos $7000$ videos de entrenamiento.
+Como mencionábamos en el \textit{Capítulo}~\ref{ch:sota}, el coste de contratar a los expertos significa que los datos disponibles son escasos, por ejemplo en el caso de Phoenix-2014T unos $7000$ vídeos de entrenamiento.
 Una cantidad relativamente baja para tareas de aprendizaje profundo de esta escala.
 %Este problema es especialmente cierto en conjuntos de datos cuya anotación manual requiera conocimiento experto como es el caso de la lengua de signos.
-Así, y con la intención de reducir el sobreajuste se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
+Así, y con la intención de reducir el sobreajuste, se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
 % Así, para compensar esta escasez de datos se decide utilizar técnicas de aumento de datos clásicas en problemas que tratan con \textit{keypoints}.
 
 La postura y la ubicación del intérprete varían de forma natural al realizar un signo.
@@ -162,7 +157,8 @@ Sorprendentemente, Mo Guan et al. \cite{MSKA} observaron que la eficacia del mod
 Su hipótesis es que estas estrategias de aumento introdujeron discrepancias en la alineación de los datos con el conjunto de validación.
 En lugar de ayudar a generalizar, estas alteraciones terminaron provocando un sobreajuste. Así, decidieron mantener únicamente las rotaciones.
 
-Además de estos métodos, proponemos dos métodos de aumento de datos y regularización especificos para la tarea de reconocimiento de la pose: \textbf{\textit{Joint Dropout}} y \textbf{ruido gaussiano}, su funcionamiento y la motivación de su uso se explicará en las secciones siguientes.
+Además de estos métodos, proponemos dos métodos de aumento de datos y regularización específicos para la tarea de reconocimiento de la pose: \textbf{\textit{Joint Dropout}} y \textbf{ruido gaussiano}.
+Su funcionamiento y la motivación de su uso se explicará en las secciones siguientes.
 
 \subsubsection*{Rotaciones}
 El objetivo es que el modelo sea robusto ante pequeñas variaciones en la inclinación o el ángulo del intérprete.
@@ -202,30 +198,31 @@ Por eso nos limitamos a una rotación de $\pm15^{\circ}$.
 
 
 \subsubsection*{Aumento Temporal}
-Las manos ocupan un área reducida del video y son sumamente vulnerables a los movimientos rápidos que ocurren de manera natural durante la comunicación en lenguaje de señas.
-La idea al alterar aleatoriamente la longitud de la secuencia, es que el modelo se vea forzado a aprender las características de estos movimientos sin importar la velocidad a la que ocurran.
+Las manos ocupan un área reducida del video y son sumamente vulnerables a los movimientos rápidos que ocurren de manera natural durante la comunicación en lengua de signos.
+La idea al alterar aleatoriamente la longitud de la secuencia es que el modelo se vea forzado a aprender las características de estos movimientos sin importar la velocidad a la que ocurran.
 
 Para modificar la longitud temporal de las secuencias de puntos clave se seleccionan fotogramas válidos de forma completamente aleatoria dentro de un rango determinado.
-Si seleccionamos una proporción $<1$ de fotogramas simulamos a la persona hacer la misma seña, pero a mayor de velocidad.
-Si la proporción es $>1$ se está añadiendo redundancia o manteniendo la información de los fotogramas por más tiempo simulamos a la persona hacer la misma seña pero más lentamente.
+Si seleccionamos una proporción $<1$ de fotogramas simulamos a la persona hacer la misma signo, pero a mayor velocidad.
+Si la proporción es $>1$, se añade redundancia manteniendo la información de los fotogramas durante más tiempo, simulando a la persona haciendo el mismo signo más lentamente.
 
 A nivel de implementación, la expansión de la secuencia se realiza duplicando fotogramas de forma aleatoria, mientras que su reducción se logra descartándolos, preservando en todo momento el orden cronológico original.
 
 \subsubsection*{\textit{Joint Dropout}}
-Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la pérdida de información que occure cuando una o más de las extremidades del sujeto están ocultas por algún obstaculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
+Siguiendo la idea que proponen en \textit{Leveraging Artificial Occluded Samples for Data Augmentation in Human Activity Recognition} \cite{JDrop}, buscamos simular la pérdida de información que ocurre cuando una o más de las extremidades del sujeto están ocultas por algún obstáculo o el modelo de extracción de puntos clave es incapaz de extraer la información de algunas extremidades.
 
 El método consiste en eliminar la información de ciertos keypoints agrupándolos por extremidad, por ejemplo \textit{mano derecha}, \textit{mano izquierda}, \textit{brazo izquierdo} y \textit{brazo derecho}.
 Además los investigadores señalan que la oclusión debe afectar la duración completa de la acción para forzar a la red a aprender de las extremidades restantes.
 
-Se implementan dos versiones simplificadas de la técnica, que tratan con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el papel mencionado.
+Se implementan dos versiones simplificadas de la técnica, que tratan con datos $2D$ a diferencia de los datos $3D$ con los que se trata en el artículo mencionado.
 Como detalle, no tiene sentido la oclusión total de las extremidades, ya que esto privaría a la red de características representativas e introduciría ruido perjudicial en el entrenamiento.
 Así, basándonos en \cite{JDrop} nos limitamos a eliminar $2$ extremidades como máximo.
 
-La llamada \textit{Structured Joint Dropout} que corresponde exactamente con la técnica implementada en el papel y una versión menos agresiva que simplemete enmascara puntos al azar sin tener en cuenta a que extremidad pertenecen.
-Con esta variación buscamos reducir la cantidad de información que ocultamos al modelo, como veremos, ya estamos separando las extremidades, eliminar una por completo podría entorpecer el aprendizaje sin tener efecto regularizador.
+Se implementa esta técnica, llamada \textit{Structured Joint Dropout} y una versión menos agresiva que simplemente enmascara puntos al azar sin tener en cuenta a qué extremidad pertenecen, llamada \textit{Joint Dropout}.
+Con esta variación buscamos reducir la cantidad de información oculta.
+Como ya estamos separando las extremidades, eliminar una por completo podría entorpecer el aprendizaje sin aportar efecto regularizador.
 
 \subsubsection*{Ruido Gaussiano}
-Otra situación que occure frecuentemente en este tipo de tareas son los micromovimientos de la persona, las interferencias del entorno y los temblores naturales que ocurren al capturar el movimiento.
+Otra situación que ocurre frecuentemente en este tipo de tareas son los micromovimientos de la persona, las interferencias del entorno y los temblores naturales que ocurren al capturar el movimiento.
 El objetivo principal de implementar el ruido gaussiano es simular estas perturbaciones comunes.
 Nos basamos en parte en \textit{Enhancing Human Action Recognition with 3D Skeleton Data: A Comprehensive Study of Deep Learning and Data Augmentation} \cite{noise}.
 
@@ -233,8 +230,7 @@ Se añade ruido que sigue una distribución normal $\mathcal{N}(\mu,\sigma^2)$.
 Para asegurar que el efecto del ruido sea perceptible pero sin llegar a distorsionar gravemente los datos originales, los autores configuraron la media, $\mu$, en $0$ y la desviación estándar $\sigma$ en $0.01$.
 
 \subsection{Arquitectura del Modelo de Reconocimiento}\label{sec:MSKA_SLR}
-La lengua de signos no concentra el significado en una sola articulación ni mano.
-Sino que lo distribuye a través de distintos canales simultáneamente: las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
+La lengua de signos no concentra el significado en una sola articulación ni mano, sino que lo distribuye a través de distintos canales simultáneamente: las configuraciones de las manos, los movimientos de los brazos y las expresiones faciales.
 Para aprovechar esta riqueza de información, el sistema utiliza un mecanismo de autoatención que le permite analizar cada flujo de manera independiente.
 Posteriormente, combina la información obtenida de cada flujo mediante técnicas de destilación de conocimiento para construir una representación más completa y precisa.
 
@@ -247,7 +243,7 @@ La arquitectura de este módulo, cuyos componentes se detallan en los apartados 
 \end{figure}
 
 \subsubsection{Desacoplamiento de Keypoints}
-Como mencionabamos el modelo de reconocimiento, \textbf{MSKA-SLR}, deja de utilizar un único flujo de procesamiento (\textit{stream}) y adopta una estrategia de separación de puntos clave inspirada en los mecanismos de percepción humana.
+Como mencionábamos, el modelo de reconocimiento, \textbf{MSKA-SLR}, deja de utilizar un único flujo de procesamiento (\textit{stream}) y adopta una estrategia de separación de puntos clave inspirada en los mecanismos de percepción humana.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.2\textwidth]{MSKA/MSKA_SKEL.png}
@@ -277,7 +273,7 @@ El diagrama de la \textit{Figura}~\ref{fig:att_body} ilustra la adaptación de e
 El flujo de datos comienza con una secuencia de puntos clave estructurada como un tensor multidimensional $X \in \mathbb{R}^{C \times T \times N}$, donde:
 \begin{itemize}
   \item $C$ representa los \textbf{canales de entrada}, definidos por el vector $[x_t^n, y_t^n, c_t^n]$.
-  Las variables $(x_t^n, y_t^n)$) denotan las coordenadas espaciales bidimensionales, mientras que $c_t^n$ indica el nivel de confianza asignado por el estimador de pose al punto clave $n$ en el instante $t$.
+  Las variables $(x_t^n, y_t^n)$ denotan las coordenadas espaciales bidimensionales, mientras que $c_t^n$ indica el nivel de confianza asignado por el estimador de pose al punto clave $n$ en el instante $t$.
   \item $T$ corresponde a la dimensión temporal (número total de fotogramas).
   \item $N$ es el número total de puntos clave específicos del flujo.
 \end{itemize}
@@ -285,14 +281,14 @@ El flujo de datos comienza con una secuencia de puntos clave estructurada como u
 A diferencia de la arquitectura \textit{DSTA} descrita en la \textit{Sección \ref{sec:DSTA}}, la codificación posicional se restringe a la dimensión espacial, delegando el modelado temporal a convoluciones $2D$ en etapas posteriores.
 
 Esta modificación evita el incremento de parámetros inherente a la atención temporal.
-Dado el tamaño reducido de los conjuntos de datos de lenguaje de señas, una alta parametrización elevaría significativamente el riesgo de sobreajuste.
+Dado el tamaño reducido de los conjuntos de datos de lengua de signos, una alta parametrización elevaría significativamente el riesgo de sobreajuste.
 
 Delegado el modelado temporal a las convoluciones $2D$, el tensor se procesa mediante una cascada de ocho bloques de atención independientes por flujo.
 Cada bloque incorpora una convolución temporal al final de su estructura; no obstante, solo el primer y quinto bloque aplican un paso (\textit{stride}) de $2$.
 Esta configuración contrae la resolución temporal de forma escalonada, reduciendo los fotogramas de $T$ a $T/4$ ($T\rightarrow T/2\rightarrow T/4$).
 Simultáneamente, la dimensión de los canales de entrada ($C_{in}$) se expande progresivamente ($64$, $128$ y $256$) hasta fijar un valor de salida $C_{out}=256$.
 
-Finalizada la cascada de atención, el tensor resultante $t \in\mathbb{R}^{256 \times T/4 \times N}$ es procesado mediante un agrupamiento espacial (\textit{Spatial Pooling}) antes de alimentar a la red de cabecera.
+Finalizada la cascada de atención, el tensor resultante $p \in\mathbb{R}^{256 \times T/4 \times N}$ es procesado mediante un agrupamiento espacial (\textit{Spatial Pooling}) antes de alimentar a la red de cabecera.
 Esta operación promedia la dimensión correspondiente a los \textit{keypoints} ($N$), colapsando la representación espacial explícita del esqueleto.
 Se obtiene así un tensor bidimensional de $T/4 \times 256$ que sintetiza el espacio en características abstractas, aislando la dinámica temporal para la clasificación final de las glosas.
 
@@ -312,13 +308,13 @@ Esta probabilidad se utiliza principalmente para el cálculo de la pérdida; el 
     \centering
     \includegraphics[width=\textwidth]{MSKA/headNet.pdf}
     \caption{Esquema de las redes de cabecera de MSKA-SLR.}
-    \label{fig:att_body}
+    \label{fig:headnet}
 \end{figure}
 
 Cada cabezal se entrena y se corrige utilizando la función de pérdida CTC expuesta en la \textit{Sección \ref{sec:CTC}} de manera independiente.
 
 Para aprovechar al máximo la separación de la información espacial, la arquitectura incorpora un cabezal auxiliar denominado \textbf{Cabezal de Fusión} (\textit{Fuse Head}).
-Su objetivo es asimilar e integrar las características extraídas por los cuatro flujos independientes (manos, rostro y cuerpo) antes de emitir una decisión final.
+Su objetivo es asimilar e integrar las características extraídas por los cuatro flujos independientes (mano derecha, mano izquierda, rostro y cuerpo) antes de emitir una decisión final.
 La estructura interna de este módulo de fusión es idéntica a la de las redes de cabecera individuales y, de igual manera, es supervisada por su propia función de pérdida CTC ($\mathcal{L}_{CTC}^{fuse}$).
 
 Durante la inferencia, las probabilidades de glosa a nivel de fotograma predichas por los distintos flujos se promedian y se envían a un módulo de \textit{ensemble} para decodificar la secuencia final.
@@ -363,7 +359,7 @@ Esto garantiza que cada cabezal no solo aprenda de sus propias características 
 Los autores expanden el modelo de reconocimiento hacia un modelo de traducción mediante la adición de una red de traducción externa.
 La arquitectura sigue un paradigma de codificador-decodificador.
 
-La red MSKA-SLR hace papel de codificador visual (\textit{Visual Encoder}), su salida, la \textbf{representación de la glosa}, sirve como el ``lenguaje intermedio'' que entiende la red.
+La red MSKA-SLR hace actúa como codificador visual (\textit{Visual Encoder}), su salida, la \textbf{representación de la glosa}, sirve como el ``lenguaje intermedio'' que entiende la red.
 
 El responsable de generar la secuencia textual final es el decodificador (\textit{Translation Network}).
 Exploraremos la arquitectura original y la expandiremos utilizando \textbf{modelos de lenguaje}.
