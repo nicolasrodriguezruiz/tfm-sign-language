@@ -14,12 +14,12 @@
 
 %% ── Bloques principales ─────────────────────────────────────────────────────
 \node[stack, fill=blue!8] (enc) {\textbf{Codificador}\\[6pt]
-        \footnotesize $N\times$\\[3pt]
+        \footnotesize $N\times$ capas\\[3pt]
         \footnotesize Autoatención\\\footnotesize bidireccional\\[3pt]
         \footnotesize Red \textit{feed-forward}};
 
 \node[stack, fill=orange!10, right=3.6cm of enc] (dec) {\textbf{Decodificador}\\[6pt]
-        \footnotesize $N\times$\\[3pt]
+        \footnotesize $N\times$ capas\\[3pt]
         \footnotesize Autoatención\\\footnotesize enmascarada\\[3pt]
         \footnotesize Atención cruzada\\[3pt]
         \footnotesize Red \textit{feed-forward}};
