@@ -1,0 +1,306 @@
+%----------------------------------------------------------------------------------------
+%    PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+
+\documentclass[aspectratio=169,xcolor=dvipsnames]{beamer}
+\usetheme{SimpleDarkBlue}
+
+\usepackage{hyperref}
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+
+%----------------------------------------------------------------------------------------
+%    TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{Traducción de lengua de signos basada en \textit{keypoints} con modelos pequeños del lenguaje}
+%\subtitle{Subtitle}
+
+\author{Nicolás Rodríguez Ruiz}
+
+\institute
+{
+    Departamentp de Ciencias de la Computación e Inteligencia Artificial \\
+    ESCUELA TÉCNICA SUPERIOR DE INGENIERIA INFORMÁTICA
+}
+\date{\today} % Date, can be changed to a custom date
+
+%----------------------------------------------------------------------------------------
+%    PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+\begin{document}
+
+\begin{frame}
+    % Print the title page as the first slide
+    \titlepage
+\end{frame}
+
+\begin{frame}{Overview}
+    % Throughout your presentation, if you choose to use \section{} and \subsection{} commands, these will automatically be printed on this slide as an overview of your presentation
+    \tableofcontents
+\end{frame}
+
+%------------------------------------------------
+\section{Motivación y objetivos}
+%------------------------------------------------
+
+% --- Slide 1: Motivación / el reto de la comunicación ---
+\begin{frame}{El reto de la comunicación}
+    \begin{center}
+        \includegraphics[width=0.92\linewidth]{images/intro/motivacion}
+    \end{center}
+    \begin{center}
+        \small La lengua de signos es el medio natural de millones de personas,
+        pero el acceso a servicios esenciales aún depende de un recurso escaso.
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 2: Dos direcciones ---
+\begin{frame}{Dos direcciones, un mismo objetivo: la inclusión}
+    \begin{center}
+        \includegraphics[width=0.85\linewidth]{images/intro/directions}
+    \end{center}
+    \begin{itemize}
+        \item \textbf{Text2Sign}: generar signos para la comprensión de personas sordas.
+        \item \alert{Sign2Text}: comprender los signos $\rightarrow$ \textbf{impacto directo en la autonomía comunicativa}.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 3: Sign2Text del vídeo al texto ---
+\begin{frame}{Sign2Text: del vídeo al texto}
+    \begin{center}
+        \includegraphics[width=0.9\linewidth]{images/intro/sign2text_pipeline}
+    \end{center}
+    \begin{block}{¿Qué habilita?}
+        Subtitulado en tiempo real \quad·\quad asistentes que entienden a usuarios sordos
+        \quad·\quad servicios públicos sin intérprete presente.
+    \end{block}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 4: Por qué es difícil (multimodalidad) ---
+\begin{frame}{¿Por qué es difícil? Una señal multimodal}
+    \begin{columns}[c]
+        \column{0.6\textwidth}
+        \begin{center}
+            \includegraphics[width=\linewidth]{images/intro/multimodal}
+        \end{center}
+        \column{0.4\textwidth}
+        \footnotesize
+        A diferencia del habla (señal 1D), la información se distribuye en varios canales a la vez.
+        \begin{itemize}
+            \item Gran \textbf{variedad} de lenguas de signos.
+            \item Normalmente \textbf{sin relación gramatical} con la lengua oral de la región.
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 5: Keypoints ---
+\begin{frame}{Keypoints: privacidad y eficiencia}
+    \begin{center}
+        \includegraphics[width=0.95\linewidth]{images/intro/keypoints}
+    \end{center}
+    \begin{center}
+        \small Puntos predefinidos del cuerpo que capturan el gesto
+        \alert{sin preservar la identidad visual} y reducen drásticamente la dimensionalidad.
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 6: Objetivo principal ---
+\begin{frame}{Objetivo principal}
+    \begin{block}{Meta}
+        Demostrar la viabilidad de un sistema \textbf{Sign2Text} basado en representaciones
+        intermedias (\textbf{glosas} y \textbf{keypoints}) mediante un
+        \alert{Modelo Pequeño de Lenguaje} \textit{decoder-only}, manteniendo
+        \textbf{ejecución local} y \textbf{privacidad}.
+    \end{block}
+    \begin{center}
+        \includegraphics[width=0.95\linewidth]{images/intro/objetivo_pipeline}
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 7: Objetivos específicos ---
+\begin{frame}{Objetivos específicos}
+    \begin{center}
+        \includegraphics[height=0.82\textheight]{images/intro/objetivos}
+    \end{center}
+\end{frame}
+
+
+%------------------------------------------------
+\section{Estado del arte}
+%------------------------------------------------
+
+% --- Slide 1: evolución ---
+\begin{frame}{Una evolución de arquitecturas}
+    \begin{center}
+        \includegraphics[width=\linewidth]{images/sota/sota_timeline}
+    \end{center}
+    \begin{center}
+        \small Del \textit{hardware} intrusivo y las reglas manuales
+        al razonamiento contextual; el reconocimiento pasa de \textbf{aislado} a
+        \textbf{continuo}, más cercano a la comunicación real.
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 2: con glosas vs sin glosas ---
+\begin{frame}{Con glosas frente a sin glosas}
+    \begin{center}
+        \includegraphics[width=0.85\linewidth]{images/sota/sota_paradigms}
+    \end{center}
+    \begin{itemize}
+        \item \textbf{Dos etapas}: las glosas dan estructura, pero \alert{propagan errores} y exigen anotación experta.
+        \item \textbf{Una etapa}: elimina el cuello de botella, pero se \alert{estanca} por la escasez de datos.
+    \end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 3: renacer de las glosas con LLMs ---
+\begin{frame}{El renacer de las glosas con LLMs: Spotter+GPT}
+    \begin{center}
+        \includegraphics[width=0.9\linewidth]{images/sota/sota_spottergpt}
+    \end{center}
+    \begin{columns}[T]
+        \column{0.5\textwidth}
+        \begin{examples}
+            El LLM tolera glosas ruidosas \emph{zero-shot}: BLEURT $46.9$ vs.\ $19.9$ del \textit{transformer}.
+        \end{examples}
+        \column{0.5\textwidth}
+        \begin{alertblock}{Límites para el despliegue}
+            Nube, coste de API, \textbf{privacidad} y latencia $\rightarrow$ inviable en tiempo real y local.
+        \end{alertblock}
+    \end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 4: keypoints y MSKA ---
+\begin{frame}{Keypoints y MSKA: el hueco que motiva el SLM}
+    \begin{center}
+        \includegraphics[width=0.95\linewidth]{images/sota/sota_mska}
+    \end{center}
+    \begin{center}
+        \small MSKA desacopla manos, rostro y cuerpo en flujos de atención,
+        pero lo acopla a un decodificador \textbf{mBART} rígido: aquí entra nuestro
+        \alert{Modelo Pequeño de Lenguaje}.
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 5: datasets ---
+\begin{frame}{Conjuntos de datos: por qué PHOENIX-2014T}
+    \begin{table}
+        \small
+        \begin{tabular}{lllcc}
+            \toprule
+            \textbf{Corpus} & \textbf{Lengua} & \textbf{Dominio} & \textbf{Keypoints} & \textbf{Acceso} \\
+            \midrule
+            \alert{PHOENIX-2014T} & DGS (alemán) & Meteorología & No & Público \\
+            CSL-Daily             & CSL (chino)  & Cotidiano    & No & Restringido \\
+            How2Sign              & ASL (inglés) & Instructivo  & Sí (2D) & Público \\
+            LSE-eSaude            & LSE (español)& Salud        & No & Público \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    \vspace{0.4em}
+    \begin{block}{Elección}
+        \textbf{Estándar de oro} (comparabilidad con casi una década de literatura),
+        \textbf{corpus original de MSKA} (base de referencia exacta) y \textbf{acceso público}
+        (reproducibilidad).
+    \end{block}
+\end{frame}
+
+%------------------------------------------------
+\section{Fundamentos}
+%------------------------------------------------
+
+\begin{frame}{Table}
+    \begin{table}
+        \begin{tabular}{l l l}
+            \toprule
+            \textbf{Treatments} & \textbf{Response 1} & \textbf{Response 2} \\
+            \midrule
+            Treatment 1         & 0.0003262           & 0.562               \\
+            Treatment 2         & 0.0015681           & 0.910               \\
+            Treatment 3         & 0.0009271           & 0.296               \\
+            \bottomrule
+        \end{tabular}
+        \caption{Table caption}
+    \end{table}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Theorem}
+    \begin{theorem}[Mass--energy equivalence]
+        $E = mc^2$
+    \end{theorem}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}{Figure}
+    Uncomment the code on this slide to include your own image from the same directory as the template .TeX file.
+    %\begin{figure}
+    %\includegraphics[width=0.8\linewidth]{test}
+    %\end{figure}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}[fragile] % Need to use the fragile option when verbatim is used in the slide
+    \frametitle{Citation}
+    An example of the \verb|\cite| command to cite within the presentation:\\~
+
+    This statement requires citation \cite{Phoenix}.
+\end{frame}
+
+%------------------------------------------------
+\section{Metodología}
+%------------------------------------------------
+
+
+%------------------------------------------------
+\section{Experimentación y resultados}
+%------------------------------------------------
+
+
+%------------------------------------------------
+\section{Conclusiones y trabajo futuro}
+%------------------------------------------------
+
+
+
+%------------------------------------------------
+
+\begin{frame}{References}
+    \footnotesize
+    \bibliography{reference.bib}
+    \bibliographystyle{apalike}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
+    \Huge{\centerline{\textbf{Gracias por su tiempo}}}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
