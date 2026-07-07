@@ -230,45 +230,71 @@
 \section{Fundamentos}
 %------------------------------------------------
 
-\begin{frame}{Table}
-    \begin{table}
-        \begin{tabular}{l l l}
-            \toprule
-            \textbf{Treatments} & \textbf{Response 1} & \textbf{Response 2} \\
-            \midrule
-            Treatment 1         & 0.0003262           & 0.562               \\
-            Treatment 2         & 0.0015681           & 0.910               \\
-            Treatment 3         & 0.0009271           & 0.296               \\
-            \bottomrule
-        \end{tabular}
-        \caption{Table caption}
-    \end{table}
+% --- Slide 1: métricas ---
+\begin{frame}{Métricas: de lo léxico a lo semántico}
+    \begin{center}
+        \includegraphics[width=\linewidth]{images/fundamentos/metricas}
+    \end{center}
+    \begin{itemize}
+        \item \textbf{WER} mide el error sobre las \textbf{glosas} (reconocimiento).
+        \item BLEU y ROUGE-L comparan \textbf{coincidencia léxica}; \alert{BLEURT} valora el \textbf{significado} (sinónimos y paráfrasis).
+    \end{itemize}
 \end{frame}
 
 %------------------------------------------------
 
-\begin{frame}{Theorem}
-    \begin{theorem}[Mass--energy equivalence]
-        $E = mc^2$
-    \end{theorem}
+% --- Slide 2: Transformer / decoder-only ---
+\begin{frame}{Transformer y modelos \textit{decoder-only}}
+%     \begin{center}
+%         \includegraphics[width=0.92\linewidth]{images/fundamentos/decoder_only}
+%     \end{center}
+    \begin{center}
+        \small La \textbf{autoatención} relaciona cada elemento con todos en paralelo.
+        Un LLM \alert{decoder-only} prescinde del codificador y genera texto de forma
+        autorregresiva; su escalado produce \textbf{capacidades emergentes} (\textit{zero-shot}).
+    \end{center}
 \end{frame}
 
 %------------------------------------------------
 
-\begin{frame}{Figure}
-    Uncomment the code on this slide to include your own image from the same directory as the template .TeX file.
-    %\begin{figure}
-    %\includegraphics[width=0.8\linewidth]{test}
-    %\end{figure}
+% --- Slide 3: LoRA ---
+\begin{frame}{Adaptación eficiente: LoRA}
+    \begin{center}
+        \includegraphics[width=0.9\linewidth]{images/fundamentos/lora}
+    \end{center}
+    \begin{center}
+        \small Se \textbf{congelan} los pesos preentrenados y solo se entrena una
+        actualización de \alert{rango bajo} $\Delta W = BA$. Adaptar el modelo con una
+        fracción mínima de parámetros hace viable el \textit{finetuning} local.
+    \end{center}
 \end{frame}
 
 %------------------------------------------------
 
-\begin{frame}[fragile] % Need to use the fragile option when verbatim is used in the slide
-    \frametitle{Citation}
-    An example of the \verb|\cite| command to cite within the presentation:\\~
+% --- Slide 4: CTC ---
+\begin{frame}{El esqueleto como dato: alineación con CTC}
+    \begin{center}
+        \includegraphics[width=0.92\linewidth]{images/fundamentos/ctc}
+    \end{center}
+    \begin{center}
+        \small La secuencia de \textit{keypoints} es mucho más larga que la de glosas y no
+        está segmentada. \alert{CTC} alinea ambas sumando todas las rutas válidas, sin
+        anotar el instante exacto de cada signo.
+    \end{center}
+\end{frame}
 
-    This statement requires citation \cite{Phoenix}.
+%------------------------------------------------
+
+% --- Slide 5: DSTA ---
+\begin{frame}{DSTA: atención espacio-temporal desacoplada}
+    \begin{center}
+        \includegraphics[width=\linewidth]{images/fundamentos/dsta}
+    \end{center}
+    \begin{center}
+        \small Separar el modelado \textbf{espacial} (entre articulaciones) del
+        \textbf{temporal} (a lo largo del tiempo) abarata el cómputo y respeta la
+        estructura del esqueleto. Es el bloque base de \alert{MSKA}.
+    \end{center}
 \end{frame}
 
 %------------------------------------------------
