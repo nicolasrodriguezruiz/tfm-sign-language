@@ -220,3 +220,13 @@ ignoreme.txt
 key.txt
 code/MSKA/old/
 code/MSKA/old-2/
+
+# Beamer
+*.vrb
+*.snm
+*.nav
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+
