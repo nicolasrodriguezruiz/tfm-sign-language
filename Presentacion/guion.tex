@@ -1,0 +1,130 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.4em}{0.6em}
+
+\title{Guion de la defensa\\\large Traducción de lengua de signos basada en \textit{keypoints} con modelos pequeños del lenguaje}
+\author{Nicolás Rodríguez Ruiz}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\textit{Documento de apoyo con el texto previsto para cada sección de la presentación. Esto contiene un pequeño esquema, lo que se mencione en la presentación será mas extenso}
+
+\vspace{1em}
+
+%======================================================================
+\section{Motivación y objetivos}
+%======================================================================
+
+Buenos días. El trabajo que presento aborda la traducción automática de la lengua de signos a texto escrito. Conviene partir de la dimensión del problema: según la Organización Mundial de la Salud, más de mil quinientos millones de personas conviven con algún grado de pérdida auditiva. Para una parte muy significativa de ellas la lengua de signos es su medio de comunicación natural, y sin embargo el acceso a servicios esenciales sigue dependiendo de un recurso escaso y costoso como es el intérprete humano.
+
+Existen dos direcciones complementarias de trabajo. La primera, \textit{Text2Sign}, genera signos a partir de texto para facilitar la comprensión a las personas sordas. La segunda, \textit{Sign2Text}, realiza el camino inverso: interpreta los signos y los transforma en lengua escrita. Este trabajo se centra en la segunda, por su impacto directo sobre la autonomía comunicativa del usuario.
+
+Un sistema \textit{Sign2Text} transforma una secuencia de vídeo en una traducción en lengua natural. Sus aplicaciones abarcan desde el subtitulado en tiempo real hasta asistentes capaces de entender a usuarios sordos o la atención en servicios públicos sin necesidad de un intérprete presencial.
+
+La dificultad del problema reside en la naturaleza de la señal. A diferencia del habla, que es esencialmente unidimensional, la lengua de signos distribuye la información en varios canales simultáneos: la configuración de las manos, la expresión facial, la postura y el uso del espacio. A ello se suma la gran variedad de lenguas de signos existentes y el hecho de que, por lo general, no guardan relación gramatical con la lengua oral de su región.
+
+Para representar esta señal se emplean \textit{keypoints}: un conjunto de puntos predefinidos del cuerpo que capturan el gesto. Esta representación ofrece dos ventajas determinantes. Por un lado, preserva la privacidad, ya que prescinde de la identidad visual del signante. Por otro, reduce drásticamente la dimensionalidad de la entrada respecto al vídeo original.
+
+El objetivo principal del trabajo es demostrar la viabilidad de un sistema \textit{Sign2Text} construido sobre representaciones intermedias, glosas y \textit{keypoints}, empleando un modelo pequeño de lenguaje de arquitectura \textit{decoder-only}, con la vista puesta en la ejecución local y la preservación de la privacidad. Este objetivo general se concreta en una serie de objetivos específicos que estructuran el desarrollo: desde la extracción y normalización de \textit{keypoints} hasta la integración del modelo de lenguaje y su evaluación sobre un corpus de referencia.
+
+%======================================================================
+\section{Estado del arte}
+%======================================================================
+
+La traducción de lengua de signos ha atravesado una evolución arquitectónica notable. Se ha pasado del uso de \textit{hardware} intrusivo y sistemas de reglas manuales a modelos capaces de razonamiento contextual, y del reconocimiento de signos aislados al reconocimiento continuo, mucho más próximo a la comunicación real.
+
+En este recorrido conviven dos paradigmas. Los sistemas de dos etapas se apoyan en las glosas como representación intermedia: aportan estructura lingüística, pero propagan los errores de la primera etapa a la segunda y exigen una anotación experta muy costosa. Los sistemas de una etapa, o \textit{gloss-free}, eliminan ese cuello de botella, aunque su rendimiento se estanca por la escasez de datos anotados.
+
+La irrupción de los grandes modelos de lenguaje ha revitalizado el enfoque basado en glosas. El trabajo Spotter+GPT es representativo: un detector visual produce una secuencia de glosas, posiblemente ruidosa, que un modelo de lenguaje traduce sin entrenamiento específico. La capacidad de estos modelos para tolerar entradas imperfectas es considerable, con una mejora sustancial en la métrica BLEURT frente a un \textit{transformer} entrenado desde cero. No obstante, este enfoque presenta limitaciones serias para el despliegue: dependencia de la nube, coste por consulta, cuestiones de privacidad y latencia, que lo hacen inviable en un escenario local y en tiempo real.
+
+En paralelo, la línea basada en \textit{keypoints} ha dado lugar a arquitecturas como MSKA, que desacopla las manos, el rostro y el cuerpo en flujos de atención independientes. Su principal limitación es que acopla ese reconocedor a un decodificador mBART rígido. Precisamente en ese punto se sitúa la contribución de este trabajo: sustituir ese decodificador por un modelo pequeño de lenguaje.
+
+En cuanto a los datos, la elección recae en PHOENIX-2014T. Se trata del estándar de referencia en la disciplina, lo que garantiza la comparabilidad con casi una década de literatura; es además el corpus original sobre el que se evaluó MSKA, lo que permite una comparación exacta; y es de acceso público, lo que favorece la reproducibilidad.
+
+%======================================================================
+\section{Fundamentos}
+%======================================================================
+
+Antes de describir el sistema conviene fijar tres bloques de fundamentos: las métricas de evaluación, los modelos de lenguaje y el tratamiento del esqueleto como dato.
+
+Respecto a las métricas, el reconocimiento se evalúa con la tasa de error de palabras, WER, calculada sobre las glosas. La traducción se mide con métricas que van de lo léxico a lo semántico: BLEU y ROUGE-L cuantifican la coincidencia de \textit{n}-gramas con la referencia, mientras que BLEURT valora la proximidad de significado, admitiendo sinónimos y paráfrasis.
+
+En cuanto a los modelos de lenguaje, el mecanismo de autoatención permite relacionar cada elemento de una secuencia con todos los demás en paralelo. Un modelo \textit{decoder-only} prescinde del codificador y genera el texto de forma autorregresiva, token a token. El escalado de estos modelos da lugar a capacidades emergentes, entre ellas la traducción sin entrenamiento específico. Para adaptarlos de forma eficiente se recurre a LoRA: se congelan los pesos preentrenados y se entrena únicamente una actualización de rango bajo, lo que reduce a una fracción mínima el número de parámetros ajustados y hace viable el \textit{finetuning} en local.
+
+El tercer bloque trata el esqueleto como dato. La estimación de pose abstrae la imagen en un conjunto estructurado de puntos. Como la secuencia de \textit{keypoints} es mucho más larga que la de glosas y no está segmentada, la alineación entre ambas se resuelve con la clasificación temporal conexionista, CTC, que suma la probabilidad de todas las rutas de alineamiento válidas sin necesidad de anotar el instante exacto de cada signo.
+
+Sobre este último punto se apoya la arquitectura de atención espacio-temporal desacoplada, DSTA, que constituye el bloque base del reconocedor. La idea central es separar el modelado de las relaciones entre articulaciones, la dimensión espacial, del modelado a lo largo del tiempo, la dimensión temporal. Los autores estudian tres estrategias de desacoplamiento. La primera calcula un mapa de atención por fotograma, pero carece de contexto global. La segunda calcula un único mapa que abarca todos los fotogramas, muy potente pero computacionalmente prohibitivo. La tercera, la finalmente adoptada, suma los mapas calculados fotograma a fotograma, lo que equivale a un único producto matricial y ofrece el mismo resultado con un coste mucho menor.
+
+La codificación posicional también se adapta a esta doble naturaleza. Una codificación ingenua sobre el tensor aplanado asignaría a una misma articulación códigos distintos según el fotograma, dificultando el aprendizaje. Por ello se separa en codificación espacial, que preserva la identidad de cada articulación a lo largo del tiempo, y codificación temporal, que codifica el instante manteniendo constante la articulación.
+
+El módulo de atención espacial completo incorpora además una regularización global, que introduce un mapa entrenable con la anatomía común a todos los sujetos, aplicada solo en la dimensión espacial. Un detalle relevante es el uso de la tangente hiperbólica en lugar de la función \textit{softmax}, lo que permite modelar relaciones negativas entre articulaciones. La red completa, DSTA-Net, apila varias capas que encadenan atención espacial, transposición y atención temporal.
+
+%======================================================================
+\section{Metodología}
+%======================================================================
+
+El sistema propuesto se organiza en tres etapas. En la primera, el vídeo se procesa con AlphaPose para extraer y normalizar una secuencia de \textit{keypoints}. En la segunda, el módulo MSKA-SLR produce una representación de glosas que actúa como puente semántico. En la tercera, un proyector visual adapta esa representación al espacio del modelo de lenguaje, que genera la traducción final.
+
+\subsection{Extracción de \textit{keypoints}}
+
+La elección de la herramienta de estimación de pose se guía por los requisitos del dominio: capturar movimientos rápidos y sutiles, mantener la coherencia temporal y operar con un coste razonable. OpenPose queda superado en precisión y resulta costoso. MediaPipe es muy rápido, pero está optimizado para una única persona y pierde el foco con fondos complejos. MMPose alcanza mayor precisión estática, pero requiere una confuguración más manual. Se opta por AlphaPose, una herramienta madura, comparable con la literatura previa y con seguimiento de vídeo nativo.
+
+AlphaPose emplea una estrategia descendente basada en la arquitectura RMPE: primero detecta a cada persona mediante una caja delimitadora y solo después estima su pose. De este modo el signante principal queda protegido frente al ruido del entorno y la presencia de terceros. Incorpora además mecanismos nativos frente a la oclusión, como la transformación espacial simétrica y una supresión de no máximos paramétrica, así como un módulo de seguimiento temporal que aporta continuidad cuando la imagen se degrada.
+
+Una decisión metodológica importante se refiere al ruido de alta frecuencia, el \textit{jittering}. Aplicar un suavizado estadístico eliminaría ese ruido, pero con el riesgo de borrar micro-movimientos que poseen valor gramatical. Se decide, por tanto, no suavizar artificialmente los datos y delegar la absorción de ese ruido en la autoatención de la red. La topología escogida, HALPE-136, contribuye a la estabilidad al incorporar anclas de referencia en el torso.
+
+La normalización espacial persigue independencia respecto a la resolución y estabilidad numérica. Las coordenadas se llevan al rango unidad dividiendo por las dimensiones del fotograma, se invierte el eje vertical para alinearlo con la convención matemática y, finalmente, se reescalan al intervalo de menos uno a uno, de modo que el torso, referencia global del signante, queda situado en el origen. El canal de confianza se mantiene sin alterar.
+
+\subsection{Reconocimiento con MSKA-SLR}
+
+Dado el reducido tamaño del corpus, se aplican técnicas de aumento de datos: rotaciones dentro de un margen moderado, aumento temporal que altera la velocidad de la secuencia, enmascaramiento de articulaciones y ruido gaussiano. Se conservan únicamente las transformaciones que resultan beneficiosas, ya que las traslaciones y los cambios de escala degradaban el rendimiento como demostraron en MSKA.
+
+\textbf{Aquí explicar cada tipo}
+
+El reconocedor procesa por separado cuatro flujos: mano derecha, mano izquierda, rostro y cuerpo. Este desacoplamiento evita que los movimientos amplios eclipsen los detalles finos de los dedos o del rostro. El flujo facial cumple un papel particular: aporta contexto a las manos y a la cabeza de fusión, pero no dispone de una cabeza de clasificación propia. Cada flujo se procesa con un módulo de atención de \textit{keypoints} en el que la codificación posicional se restringe a la dimensión espacial y el modelado temporal se delega en convoluciones, con el fin de contener el número de parámetros y el riesgo de sobreajuste.
+
+Cada flujo cuenta con su propia red de cabecera, que produce la representación de glosa, y una cabeza de fusión integra la información de los cuatro. El entrenamiento combina dos términos. Por un lado, la pérdida CTC supervisa cada cabeza. Por otro, una autodestilación toma el promedio del conjunto como pseudo-objetivo y minimiza la divergencia de Kullback-Leibler entre ese promedio y cada flujo individual; sobre ese promedio se aplica una parada de gradiente para que actúe como ancla estable y se evite el colapso del modelo.
+
+\subsection{Traducción con un modelo pequeño de lenguaje}
+
+Aquí reside la aportación central. La propuesta original de MSKA proyecta la representación de glosa mediante un perceptrón y la introduce en un decodificador mBART de tipo \textit{encoder-decoder}. En su lugar, se proyecta esa representación con un módulo denominado VLMapper y se antepone como prefijo visual a un modelo \textit{decoder-only} de la familia Qwen. La secuencia que procesa el modelo concatena los tokens visuales, un \textit{prompt} de instrucción y la traducción objetivo.
+
+El VLMapper es el puente entre el espacio del reconocedor visual y el espacio de \textit{embeddings} del modelo de lenguaje. Se trata de un perceptrón de dos capas cuyos pesos no se congelan, de modo que aprende a alinear ambos espacios durante el entrenamiento. La adaptación del modelo de lenguaje se realiza con LoRA, manteniendo congelados los pesos base, y la pérdida se aplica exclusivamente sobre los tokens de la traducción. Antes de recurrir al \textit{finetuning} se evalúa también un escenario \textit{zero-shot}, en la línea de Spotter+GPT, en el que las glosas predichas se pasan al modelo como texto plano.
+
+%======================================================================
+\section{Experimentación y resultados}
+%======================================================================
+
+Los experimentos se ejecutan sobre una única GPU A100 de cuarenta gigabytes con precisión mixta. La configuración de LoRA emplea un rango de sesenta y cuatro y un factor de escala de dos, y se distinguen dos coberturas: adaptadores solo en la atención o también en las capas \textit{feed-forward}. La evaluación se realiza sobre PHOENIX-2014T con las métricas ya descritas.
+
+El análisis del corpus confirma su reducido tamaño, con algo más de siete mil muestras de entrenamiento, una media próxima a ciento diecisiete fotogramas por vídeo y unos veinticuatro tokens por frase. Estas estadísticas justifican varios de los límites fijados en la generación. La escasez de datos será el hilo conductor de todo el análisis.
+
+\subsection{Reconocimiento}
+
+El estudio de aumento de datos arroja una conclusión clara: ninguna técnica aporta una mejora sustancial, con diferencias inferiores a una décima de punto de WER. La variante de enmascaramiento suave de articulaciones obtiene el mejor resultado por un margen estrecho, reduciendo las eliminaciones a costa de un ligero aumento de las sustituciones. Las curvas de entrenamiento revelan un sobreajuste persistente: la pérdida de entrenamiento desciende con holgura mientras la de validación se estanca. La limitación, por tanto, no está en la regularización sino en el tamaño del corpus. Cabe destacar además que ciertos errores del reconocedor son confusiones entre sinónimos, lo que motiva el uso de un modelo de lenguaje capaz de recuperar el significado en la etapa de traducción.
+
+\subsection{Traducción}
+
+La variante con mBART establece la línea base más sólida, con un BLEU-4 de veintidós con cuarenta y ocho y un ROUGE-L de cuarenta y cinco. Estos valores son coherentes con la literatura, lo que valida la reimplementación del sistema, y muestran una notable estabilidad entre validación y prueba.
+
+En el escenario \textit{zero-shot} con Qwen de catorce mil millones de parámetros, los resultados en métricas de coincidencia léxica son muy bajos, aunque la métrica semántica indica que una fracción de las traducciones captura el sentido correcto con otra formulación. Se observan tres patrones de fallo: la respuesta vacía ante secuencias demasiado cortas, el incumplimiento de la instrucción con comentarios añadidos, y una alucinación multilingüe que llega a generar texto en chino. La distancia respecto a la línea base justifica abordar el \textit{finetuning}.
+
+El estudio de ablación sobre el modelo de mil quinientos millones de parámetros arroja varios resultados de interés. Las entradas visuales y las glosas rinden de forma similar cuando se elige la cobertura de LoRA adecuada. La combinación de entrada visual con adaptadores completos se hunde de forma llamativa, pero el origen no es la capacidad del modelo, sino la interferencia del \textit{prompt} textual con los tokens visuales. De hecho, al eliminar el \textit{prompt}, el rendimiento se recupera casi diez puntos de BLEU-4 y se alcanza la mejor configuración de este modelo. Este hallazgo indica que, una vez el modelo se condiciona directamente sobre los tokens visuales, la instrucción textual compite con ellos por la atención y resulta prescindible.
+
+La comparación entre \textit{finetuning} completo y LoRA muestra una diferencia más modesta de lo esperado. Y, sobre todo, al escalar el modelo a siete mil millones de parámetros, la variante con LoRA en la atención supera al \textit{finetuning} completo del modelo más pequeño, actualizando un número de parámetros muy inferior. La conclusión es que, en este régimen de datos escasos, la capacidad del modelo base pesa más que la estrategia de adaptación.
+
+La comparativa global ordena todos los sistemas y confirma tres ideas. La primera, que mBART sigue siendo la referencia más sólida, algo esperable en un modelo diseñado para traducción y preentrenado masivamente en alemán. La segunda, que el tamaño del modelo importa más que la estrategia de ajuste. La tercera, que el \textit{prompt} de instrucción resulta contraproducente en el régimen de \textit{finetuning}. Por último, el análisis de coste sitúa a la variante de siete mil millones de parámetros con LoRA en el punto de mejor relación entre rendimiento y recursos, con la mayor ganancia por coste de toda la batería de experimentos.
+
+\end{document}
