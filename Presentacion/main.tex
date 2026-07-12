@@ -245,14 +245,14 @@
 
 % --- Slide 2: Transformer / decoder-only ---
 \begin{frame}{Transformer y modelos \textit{decoder-only}}
-% %     \begin{center}
-% %         \includegraphics[width=0.92\linewidth]{images/fundamentos/decoder_only}
-% %     \end{center}
-%     \begin{center}
-%         \small La \textbf{autoatención} relaciona cada elemento con todos en paralelo.
-%         Un LLM \alert{decoder-only} prescinde del codificador y genera texto de forma
-%         autorregresiva; su escalado produce \textbf{capacidades emergentes} (\textit{zero-shot}).
-%     \end{center}
+    \begin{center}
+        \includegraphics[width=0.5\linewidth]{images/fundamentos/encoder_decoder}
+    \end{center}
+    \begin{center}
+        \small La \textbf{autoatención} relaciona cada elemento con todos en paralelo.
+        Un LLM \alert{decoder-only} prescinde del codificador y genera texto de forma
+        autorregresiva; su escalado produce \textbf{capacidades emergentes} (\textit{zero-shot}).
+    \end{center}
 \end{frame}
 
 %------------------------------------------------
@@ -759,7 +759,68 @@
 \section{Conclusiones y trabajo futuro}
 %------------------------------------------------
 
+% --- Slide 1: veredicto / sintesis ---
+\begin{frame}{Conclusiones: el veredicto}
+    \begin{columns}[c]
+        \column{0.55\textwidth}
+        \begin{center}
+            \includegraphics[height=0.8\textheight]{images/conclusiones/veredicto}
+        \end{center}
+        \column{0.45\textwidth}
+        \footnotesize
+        Sustituir el decodificador mBART por un \textbf{SLM \textit{decoder-only}} (Qwen2.5) es
+        \alert{viable}, pero no supera a la línea base en el rango explorado.
+        \vspace{0.6em}
 
+        La ventaja de mBART se explica por su \textbf{atención cruzada} nativa para traducción
+        y su preentrenamiento \textbf{masivo en alemán}, que compensan los errores del reconocedor.
+    \end{columns}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 2: las cuatro claves ---
+\begin{frame}{Las cuatro claves del resultado}
+    \begin{center}
+        \includegraphics[width=\linewidth]{images/conclusiones/claves}
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 3: escalado prometedor pero inconcluso ---
+\begin{frame}{Una tendencia prometedora, pero inconclusa}
+    \begin{columns}[c]
+        \column{0.5\textwidth}
+        \begin{block}{La brecha se estrecha con la escala}
+            \footnotesize
+            \begin{itemize}
+                \item 1.5B $\rightarrow$ 7B: \textbf{$+3.72$} BLEU-4.
+                \item Sin signos de saturación en el rango probado.
+            \end{itemize}
+        \end{block}
+        \column{0.5\textwidth}
+        \begin{alertblock}{El límite práctico}
+            \footnotesize
+            Qwen2.5-14B con \textit{finetuning} \textbf{excede la memoria} de una única A100:
+            la hipótesis de escalado \textbf{no puede verificarse} aquí.
+        \end{alertblock}
+    \end{columns}
+    \vspace{0.4em}
+    \begin{center}
+        \small El \textbf{cuello de botella de datos} ($7\,096$ muestras) atraviesa todo el
+        análisis: reconocimiento, alineamiento visual-lingüístico y traducción.
+    \end{center}
+\end{frame}
+
+%------------------------------------------------
+
+% --- Slide 4: trabajo futuro ---
+\begin{frame}{Trabajo futuro}
+    \begin{center}
+        \includegraphics[width=\linewidth]{images/conclusiones/roadmap}
+    \end{center}
+\end{frame}
 
 %------------------------------------------------
 
