@@ -26,6 +26,18 @@
 \date{\today} % Date, can be changed to a custom date
 
 %----------------------------------------------------------------------------------------
+%    SECTION TRANSITION SLIDES
+%----------------------------------------------------------------------------------------
+
+% Diapositiva de transicion automatica antes de cada seccion:
+% muestra el indice con la seccion actual resaltada y el resto atenuado.
+\AtBeginSection[]{
+    \begin{frame}{Contenido}
+        \tableofcontents[currentsection, sectionstyle=show/shaded, subsectionstyle=hide]
+    \end{frame}
+}
+
+%----------------------------------------------------------------------------------------
 %    PRESENTATION SLIDES
 %----------------------------------------------------------------------------------------
 
@@ -243,17 +255,17 @@
 
 %------------------------------------------------
 
-% --- Slide 2: Transformer / decoder-only ---
-\begin{frame}{Transformer y modelos \textit{decoder-only}}
-    \begin{center}
-        \includegraphics[width=0.5\linewidth]{images/fundamentos/encoder_decoder}
-    \end{center}
-    \begin{center}
-        \small La \textbf{autoatención} relaciona cada elemento con todos en paralelo.
-        Un LLM \alert{decoder-only} prescinde del codificador y genera texto de forma
-        autorregresiva; su escalado produce \textbf{capacidades emergentes} (\textit{zero-shot}).
-    \end{center}
-\end{frame}
+% % --- Slide 2: Transformer / decoder-only ---
+% \begin{frame}{Transformer y modelos \textit{decoder-only}}
+%     \begin{center}
+%         \includegraphics[width=0.5\linewidth]{images/fundamentos/encoder_decoder}
+%     \end{center}
+%     \begin{center}
+%         \small La \textbf{autoatención} relaciona cada elemento con todos en paralelo.
+%         Un LLM \alert{decoder-only} prescinde del codificador y genera texto de forma
+%         autorregresiva; su escalado produce \textbf{capacidades emergentes} (\textit{zero-shot}).
+%     \end{center}
+% \end{frame}
 
 %------------------------------------------------
 
@@ -300,17 +312,17 @@
 %------------------------------------------------
 
 % --- Slide 6: DSTA estrategias de desacoplamiento ---
-\begin{frame}{DSTA: tres estrategias de desacoplamiento}
-    \begin{center}
-        \includegraphics[width=0.95\linewidth]{images/DSTA/strategy}
-    \end{center}
-    \begin{itemize}
-        \footnotesize
-        \item \textbf{(a)} un mapa por fotograma: sin contexto global.
-        \item \textbf{(b)} un mapa entre todos los fotogramas: potente pero \alert{muy costoso}.
-        \item \alert{(c)} suma los mapas por fotograma $\rightarrow$ un \textbf{único producto} $N\!\times\!N$: mismo resultado, mucho más eficiente.
-    \end{itemize}
-\end{frame}
+% \begin{frame}{DSTA: tres estrategias de desacoplamiento}
+%     \begin{center}
+%         \includegraphics[width=0.95\linewidth]{images/DSTA/strategy}
+%     \end{center}
+%     \begin{itemize}
+%         \footnotesize
+%         \item \textbf{(a)} un mapa por fotograma: sin contexto global.
+%         \item \textbf{(b)} un mapa entre todos los fotogramas: potente pero \alert{muy costoso}.
+%         \item \alert{(c)} suma los mapas por fotograma $\rightarrow$ un \textbf{único producto} $N\!\times\!N$: mismo resultado, mucho más eficiente.
+%     \end{itemize}
+% \end{frame}
 
 %------------------------------------------------
 
@@ -408,15 +420,15 @@
 %------------------------------------------------
 
 % --- Slide 4: jittering y HALPE-136 ---
-\begin{frame}{El dilema del \textit{jittering}: no suavizar}
-    \begin{center}
-        \includegraphics[width=0.95\linewidth]{images/metodologia/jitter}
-    \end{center}
-    \begin{center}
-        \small Un suavizado estadístico podría \alert{borrar micro-gestos con valor gramatical}.
-        Preferimos delegar el ruido temporal en la \textbf{autoatención} de la red.
-    \end{center}
-\end{frame}
+% \begin{frame}{El dilema del \textit{jittering}: no suavizar}
+%     \begin{center}
+%         \includegraphics[width=0.95\linewidth]{images/metodologia/jitter}
+%     \end{center}
+%     \begin{center}
+%         \small Un suavizado estadístico podría \alert{borrar micro-gestos con valor gramatical}.
+%         Preferimos delegar el ruido temporal en la \textbf{autoatención} de la red.
+%     \end{center}
+% \end{frame}
 
 %------------------------------------------------
 

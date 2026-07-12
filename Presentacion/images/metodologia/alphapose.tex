@@ -48,12 +48,12 @@
     {signante\\ principal};
 
 % --- badges de robustez ---
-\node[badge, below=1.3cm of det, xshift=-1.9cm] (b1) {\textbf{SSTN}: recentra la silueta si la caja se desvió};
+\node[badge, below=1.5cm of det, xshift=-3.5cm] (b1) {\textbf{SSTN}: recentra la silueta si la caja se desvió};
 \node[badge, right=0.4cm of b1] (b2) {\textbf{p-Pose NMS}: elimina extremidades duplicadas};
 \node[badge, right=0.4cm of b2] (b3) {\textbf{Pose Flow}: continuidad temporal ante desenfoque};
 
 \node[font=\sffamily\bfseries, text=DarkBlue, left=0.15cm of b1] {};
-\node[font=\sffamily\scriptsize\bfseries, text=DarkBlue] at ($(b1.north west)+(-0.1,0.45)$) [anchor=west]
+\node[font=\sffamily\scriptsize\bfseries, text=DarkBlue] at ($(b1.north west)+(-1.3,0.2)$) [anchor=west]
     {Mecanismos nativos frente a oclusión y ruido:};
 
 \end{tikzpicture}
