@@ -33,14 +33,14 @@
 % ================= MODELOS ESPECIALIZADOS (arriba der) =================
 \node[theme=MediumGreen] (t2) at (5.2,2.6) {Modelos especializados};
 \node[leaf=MediumGreen, above=0.25cm of t2] (l2)
-    {LL\"aMmlein (alemán); LLM en español para LSE};
+    {LL\"aMmlein (alemán); ALIA, un LLM en español para LSE};
 \draw[link] (hub) -- (t2);
 \draw[link, MediumGreen!55] (t2) -- (l2);
 
 % ================= ARQUITECTURA (abajo izq) =================
 \node[theme=MediumRed] (t3) at (-5.2,-2.6) {Arquitectura};
 \node[leaf=MediumRed, below=0.25cm of t3] (l3)
-    {VLMs nativos sobre píxeles; aprendizaje \textit{few-shot}};
+    {VLMs nativos; aprendizaje \textit{few-shot}};
 \draw[link] (hub) -- (t3);
 \draw[link, MediumRed!55] (t3) -- (l3);
 

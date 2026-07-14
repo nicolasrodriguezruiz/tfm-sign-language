@@ -89,8 +89,7 @@
         \includegraphics[width=0.9\linewidth]{images/intro/sign2text_pipeline}
     \end{center}
     \begin{block}{¿Qué habilita?}
-        Subtitulado en tiempo real \quad·\quad asistentes que entienden a usuarios sordos
-        \quad·\quad servicios públicos sin intérprete presente.
+        Subtitulado en tiempo real, asistentes que entienden a usuarios sordos, servicios públicos sin intérprete presente.
     \end{block}
 \end{frame}
 
@@ -197,6 +196,10 @@
             Nube, coste de API, \textbf{privacidad} y latencia $\rightarrow$ inviable en tiempo real y local.
         \end{alertblock}
     \end{columns}
+    \vspace{0.5cm}
+    \begin{thebibliography}{1}
+        \bibitem{} \textsc{Ozge Mercanoglu Sincan y Richard Bowden}, \textit{Spotter+GPT: Turning Sign Spottings into Sentences with LLMs}
+    \end{thebibliography}
 \end{frame}
 
 %------------------------------------------------
@@ -327,52 +330,52 @@
 %------------------------------------------------
 
 % --- Slide 7: DSTA codificación posicional ---
-\begin{frame}{DSTA: codificación posicional espacial y temporal}
-    \begin{columns}[T]
-        \column{0.5\textwidth}
-        \begin{center}
-            \includegraphics[width=0.92\linewidth]{images/DSTA/DSTA-SPE}\\[2pt]
-            \footnotesize \textbf{Espacial}: la misma articulación conserva su identidad en todo fotograma.
-        \end{center}
-        \column{0.5\textwidth}
-        \begin{center}
-            \includegraphics[width=0.92\linewidth]{images/DSTA/DSTA-TPE}\\[2pt]
-            \footnotesize \textbf{Temporal}: se codifica el instante; dentro del fotograma no varía.
-        \end{center}
-    \end{columns}
-    \vspace{0.3em}
-    \begin{center}
-        \small Una PE ingenua sobre el tensor aplanado daría a la misma articulación
-        códigos dispares en distintos fotogramas; \alert{separar espacio y tiempo} preserva la semántica del esqueleto.
-    \end{center}
-\end{frame}
+% \begin{frame}{DSTA: codificación posicional espacial y temporal}
+%     \begin{columns}[T]
+%         \column{0.5\textwidth}
+%         \begin{center}
+%             \includegraphics[width=0.92\linewidth]{images/DSTA/DSTA-SPE}\\[2pt]
+%             \footnotesize \textbf{Espacial}: la misma articulación conserva su identidad en todo fotograma.
+%         \end{center}
+%         \column{0.5\textwidth}
+%         \begin{center}
+%             \includegraphics[width=0.92\linewidth]{images/DSTA/DSTA-TPE}\\[2pt]
+%             \footnotesize \textbf{Temporal}: se codifica el instante; dentro del fotograma no varía.
+%         \end{center}
+%     \end{columns}
+%     \vspace{0.3em}
+%     \begin{center}
+%         \small Una PE ingenua sobre el tensor aplanado daría a la misma articulación
+%         códigos dispares en distintos fotogramas; \alert{separar espacio y tiempo} preserva la semántica del esqueleto.
+%     \end{center}
+% \end{frame}
 
 %------------------------------------------------
 
-% --- Slide 8: DSTA módulo de atención espacial ---
-\begin{frame}{DSTA: el módulo de atención espacial}
-    \begin{center}
-        \includegraphics[width=\linewidth]{images/DSTA/attention}
-    \end{center}
-    \begin{itemize}
-        \footnotesize
-        \item \textbf{SGR}: mapa global entrenable $N\!\times\!N$ que aporta la anatomía (constante entre sujetos), solo en la dimensión espacial.
-        \item \alert{Tanh} en lugar de \textit{softmax}: permite relaciones \textbf{negativas} entre articulaciones. $S$ cabezas y conexiones residuales.
-    \end{itemize}
-\end{frame}
+% % --- Slide 8: DSTA módulo de atención espacial ---
+% \begin{frame}{DSTA: el módulo de atención espacial}
+%     \begin{center}
+%         \includegraphics[width=\linewidth]{images/DSTA/attention}
+%     \end{center}
+%     \begin{itemize}
+%         \footnotesize
+%         \item \textbf{SGR}: mapa global entrenable $N\!\times\!N$ que aporta la anatomía (constante entre sujetos), solo en la dimensión espacial.
+%         \item \alert{Tanh} en lugar de \textit{softmax}: permite relaciones \textbf{negativas} entre articulaciones. $S$ cabezas y conexiones residuales.
+%     \end{itemize}
+% \end{frame}
 
 %------------------------------------------------
 
 % --- Slide 9: DSTA-Net pipeline ---
-\begin{frame}{DSTA-Net: la estructura completa}
-    \begin{center}
-        \includegraphics[width=\linewidth]{images/DSTA/pipeline}
-    \end{center}
-    \begin{center}
-        \small Cada una de las $L$ capas encadena \textbf{atención espacial} $\rightarrow$ \textbf{transposición}
-        $\rightarrow$ \textbf{atención temporal}. Es el bloque que MSKA adapta por cada flujo de \textit{keypoints}.
-    \end{center}
-\end{frame}
+% \begin{frame}{DSTA-Net: la estructura completa}
+%     \begin{center}
+%         \includegraphics[width=\linewidth]{images/DSTA/pipeline}
+%     \end{center}
+%     \begin{center}
+%         \small Cada una de las $L$ capas encadena \textbf{atención espacial} $\rightarrow$ \textbf{transposición}
+%         $\rightarrow$ \textbf{atención temporal}. Es el bloque que MSKA adapta por cada flujo de \textit{keypoints}.
+%     \end{center}
+% \end{frame}
 
 %------------------------------------------------
 \section{Metodología}
@@ -407,15 +410,15 @@
 %------------------------------------------------
 
 % --- Slide 3: AlphaPose top-down y robustez ---
-\begin{frame}{AlphaPose: enfoque \textit{top-down} y robustez}
-    \begin{center}
-        \includegraphics[width=0.95\linewidth]{images/metodologia/alphapose}
-    \end{center}
-    \begin{center}
-        \small La estrategia \textbf{descendente} (RMPE) detecta primero a cada persona y
-        luego estima su pose, \alert{blindando al signante} frente al ruido del entorno.
-    \end{center}
-\end{frame}
+% \begin{frame}{AlphaPose: enfoque \textit{top-down} y robustez}
+%     \begin{center}
+%         \includegraphics[width=0.95\linewidth]{images/metodologia/alphapose}
+%     \end{center}
+%     \begin{center}
+%         \small La estrategia \textbf{descendente} (RMPE) detecta primero a cada persona y
+%         luego estima su pose, \alert{blindando al signante} frente al ruido del entorno.
+%     \end{center}
+% \end{frame}
 
 %------------------------------------------------
 
@@ -501,24 +504,24 @@
 
 %------------------------------------------------
 
-% --- Slide 9: pérdida y autodestilación ---
-\begin{frame}{Pérdida: CTC más autodestilación}
-    \begin{columns}[c]
-        \column{0.62\textwidth}
-        \begin{center}
-            \includegraphics[width=\linewidth]{images/metodologia/distill}
-        \end{center}
-        \column{0.38\textwidth}
-        \footnotesize
-        Cada cabeza se supervisa con \textbf{CTC}. Además, el promedio del \textit{ensemble}
-        actúa como \alert{pseudo-objetivo}: la divergencia \textbf{KL} acerca cada flujo al
-        conocimiento global.
-        \vspace{0.4em}
-        \begin{block}{\textit{Stop-gradient}}
-            El promedio es un \textbf{ancla estática}; evita el colapso del modelo.
-        \end{block}
-    \end{columns}
-\end{frame}
+% % --- Slide 9: pérdida y autodestilación ---
+% \begin{frame}{Pérdida: CTC más autodestilación}
+%     \begin{columns}[c]
+%         \column{0.62\textwidth}
+%         \begin{center}
+%             \includegraphics[width=\linewidth]{images/metodologia/distill}
+%         \end{center}
+%         \column{0.38\textwidth}
+%         \footnotesize
+%         Cada cabeza se supervisa con \textbf{CTC}. Además, el promedio del \textit{ensemble}
+%         actúa como \alert{pseudo-objetivo}: la divergencia \textbf{KL} acerca cada flujo al
+%         conocimiento global.
+%         \vspace{0.4em}
+%         \begin{block}{\textit{Stop-gradient}}
+%             El promedio es un \textbf{ancla estática}; evita el colapso del modelo.
+%         \end{block}
+%     \end{columns}
+% \end{frame}
 
 %------------------------------------------------
 
@@ -830,17 +833,17 @@
 % --- Slide 4: trabajo futuro ---
 \begin{frame}{Trabajo futuro}
     \begin{center}
-        \includegraphics[width=\linewidth]{images/conclusiones/roadmap}
+        \includegraphics[width=0.8\linewidth]{images/conclusiones/roadmap}
     \end{center}
 \end{frame}
 
 %------------------------------------------------
 
-\begin{frame}{References}
-    \footnotesize
-    \bibliography{reference.bib}
-    \bibliographystyle{apalike}
-\end{frame}
+% \begin{frame}{References}
+%     \footnotesize
+%     \bibliography{reference.bib}
+%     \bibliographystyle{apalike}
+% \end{frame}
 
 %------------------------------------------------
 
